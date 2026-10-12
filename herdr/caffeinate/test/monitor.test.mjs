@@ -27,6 +27,11 @@ test('stale popup actions cannot arm a run after it finishes or a replacement oc
 test('server replacement and plugin disable release all owned assertions',async()=>{
  for(const host of [{instance:'new',local:true,pluginEnabled:true},{instance:'host',local:true,pluginEnabled:false}]){const f=setup();await start(f);f.setHost(host);await f.m.refresh();assert.equal(f.active().size,0);assert.equal(f.m.snapshot().stopped,true);}
 });
+test('confirmed server disappearance releases assertions, unlike a transient read failure',async()=>{
+ let gone=false,closed=false;
+ const m=createMonitor({herdr:{hostStatus:async()=>{if(gone)throw Object.assign(Error('server gone'),{code:'HOST_GONE'});return {instance:'s',local:true,pluginEnabled:true};},list:async()=>[],publishToken:async()=>{},close(){}},assertions:{reconcile:async()=>new Map(),close:async()=>{closed=true;}},readPower:async()=> 'ac'});
+ await m.refresh();gone=true;await m.refresh();assert.equal(closed,true);assert.equal(m.snapshot().stopped,true);await m.close();
+});
 test('failed save does not acknowledge or alter config; assertion failure never shows active',async()=>{
  const m=createMonitor({herdr:{hostStatus:async()=>({local:true,instance:'s',pluginEnabled:true}),list:async()=>[{target:'a',occupant:'a'}],observe:async()=>({occupant:'a',phase:'working',evidence:'positive'}),publishToken:async()=>{},close(){}},assertions:{reconcile:async()=>new Map(),close:async()=>{}},readPower:async()=> 'ac',now:()=>100000,config:{automatic:true,defaultDurationMs:28800000},persistConfig:async()=>{throw Error('disk full');}});
  await m.refresh();const s=m.snapshot().agents[0].state;await m.command({type:'set-duration',occupant:'a',runId:s.runId,revision:s.revision,durationMs:20000});assert.equal(m.snapshot().agents[0].active,false);assert.match(m.snapshot().agents[0].error,/assertion/i);

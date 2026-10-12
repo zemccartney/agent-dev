@@ -38,13 +38,14 @@ export function request(socketPath,method,params={},timeoutMs=5000){
  });
 }
 export async function localHost(socketPath){
- const st=await lstat(socketPath);if(!st.isSocket()||st.uid!==process.getuid())throw new Error('Not an owned local Herdr socket');
- const {stdout}=await exec('/usr/sbin/lsof',['-n','-Fpc',socketPath],{timeout:1500,maxBuffer:MAX});
+ let st;try{st=await lstat(socketPath);}catch(e){if(e.code==='ENOENT')throw Object.assign(new Error('Herdr server socket disappeared'),{code:'HOST_GONE'});throw e;}
+ if(!st.isSocket()||st.uid!==process.getuid())throw new Error('Not an owned local Herdr socket');
+ let stdout;try{({stdout}=await exec('/usr/sbin/lsof',['-n','-Fpc',socketPath],{timeout:1500,maxBuffer:MAX}));}catch(e){if(e.code===1&&!e.stdout&&!e.stderr)throw Object.assign(new Error('Herdr server no longer owns its socket'),{code:'HOST_GONE'});throw e;}
  const pairs=stdout.match(/p\d+\ncherdr\n/g)??[];
  if(pairs.length!==1)throw new Error('Cannot establish local Herdr server ownership');
  const pid=Number(pairs[0].match(/p(\d+)/)[1]);
  const {stdout:started}=await exec('/bin/ps',['-p',String(pid),'-o','lstart='],{timeout:1500});
- if(!started.trim())throw new Error('Herdr server exited');
+ if(!started.trim())throw Object.assign(new Error('Herdr server exited'),{code:'HOST_GONE'});
  return {instance:`${st.dev}:${st.ino}:${st.birthtimeMs}:${pid}:${started.trim()}`,local:true};
 }
 export async function localAgentProcess(info,kind){

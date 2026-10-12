@@ -55,7 +55,7 @@ export function createMonitor({herdr,assertions,readPower,now=Date.now,config=DE
    }
    for(const [occupant,row] of rows)if(!seen.has(occupant)){await herdr.publishToken(row.target,null,6000).catch(()=>{});rows.delete(occupant);}
    gap=false;error=null;
-  }catch(e){gap=true;error=e.message;}
+  }catch(e){if(e.code==='HOST_GONE'){error=e.message;await clear();return;}gap=true;error=e.message;}
   await sync();
  }
  return {
