@@ -1,0 +1,27 @@
+{
+  "name": "pi-lence",
+  "version": "0.1.0",
+  "description": "A quieter pi conversation with a response browser, named pins, and a delayed activity warning.",
+  "type": "module",
+  "license": "MIT",
+  "keywords": ["pi-package"],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/zemccartney/agent-dev.git",
+    "directory": "pi/pi-lence"
+  },
+  "engines": {
+    "node": ">=22.18.0"
+  },
+  "scripts": {
+    "test": "node --test *.test.ts",
+    "test:integration": "node quiet-label.smoke.mjs"
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-coding-agent": "*",
+    "@earendil-works/pi-tui": "*"
+  },
+  "pi": {
+    "extensions": ["./reference-ui.ts"]
+  }
+}
