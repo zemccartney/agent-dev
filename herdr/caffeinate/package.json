@@ -1,0 +1,13 @@
+{
+  "name": "herdr-caffeinate",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "engines": { "node": ">=22.18.0" },
+  "scripts": {
+    "test": "node --test test/*.test.mjs",
+    "probe:herdr": "node scripts/probe-herdr.mjs",
+    "probe:assertions": "node scripts/probe-assertions.mjs"
+  }
+}
