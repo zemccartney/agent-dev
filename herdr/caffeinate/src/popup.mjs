@@ -1,6 +1,16 @@
 import {emitKeypressEvents} from 'node:readline';
 import {safeText,presentAgent,formatLocalDeadline} from './presentation.mjs';
 import {validateDuration} from './model.mjs';
+import {request,PLUGIN_ID} from './herdr.mjs';
+
+export async function openControls(context,env=process.env,send=request){
+ let invocation;
+ try{invocation=JSON.parse(env.HERDR_PLUGIN_CONTEXT_JSON??'{}');}catch{throw new Error('Invalid Herdr action context');}
+ const target=invocation.focused_pane_id??env.HERDR_PANE_ID;
+ if(target!==undefined&&typeof target!=='string')throw new Error('Invalid Herdr pane context');
+ const params={plugin_id:PLUGIN_ID,entrypoint:'controls',placement:'popup',env:target?{CAFFEINATE_TARGET:target}:{}};
+ await send(context.socketPath,'plugin.pane.open',params);
+}
 
 export async function runPopup({client,input,output,target}){
  if(!input.isTTY||!output.isTTY)throw new Error('Caffeination controls require an interactive terminal');
