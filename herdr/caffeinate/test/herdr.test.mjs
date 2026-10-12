@@ -34,6 +34,10 @@ test('request frames partial lines and rejects errors/timeouts/oversized respons
  assert.deepEqual(await request(path,'ok',{}),{ok:true});
  await assert.rejects(request(path,'bad',{}),/bad request/);await assert.rejects(request(path,'hang',{},30),/timed out/);await assert.rejects(request(path,'big',{}),/large/);
 });
+test('split UTF-8 session identity survives socket framing',async t=>{
+ const path=await server(t,(q,c)=>{const bytes=Buffer.from(JSON.stringify({id:q.id,result:{session:'café/☕.jsonl'}})+'\n');const i=bytes.indexOf(Buffer.from('é'))+1;c.write(bytes.subarray(0,i));setTimeout(()=>c.write(bytes.subarray(i)),5);});
+ assert.deepEqual(await request(path,'ok',{}),{session:'café/☕.jsonl'});
+});
 test('client filters unsupported/locality and invalidates rather than replaying events',async t=>{
  let subscription, invalidations=0;
  const agent={...f.pi.agent};

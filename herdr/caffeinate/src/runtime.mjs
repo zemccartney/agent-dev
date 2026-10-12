@@ -21,7 +21,7 @@ export async function serveRuntime(context,handler){
  try{await mkdir(dir,{mode:0o700});}catch(e){if(e.code==='EEXIST')throw new Error(`Monitor lock already exists: ${dir}. If the monitor crashed, inspect owner.json before removing this directory.`);throw e;}
  const socketPath=join(dir,'ipc.sock'),clients=new Set();let closed=false;
  const server=net.createServer(socket=>{
-  clients.add(socket);socket.on('close',()=>clients.delete(socket));socket.on('error',()=>{});socket.setTimeout(10000,()=>socket.destroy());let buffer='',handled=false;
+  socket.setEncoding('utf8');clients.add(socket);socket.on('close',()=>clients.delete(socket));socket.on('error',()=>{});socket.setTimeout(10000,()=>socket.destroy());let buffer='',handled=false;
   socket.on('data',async data=>{
    if(handled)return;buffer+=data;
    if(Buffer.byteLength(buffer)>65536){handled=true;socket.end(JSON.stringify({error:'IPC request too large'})+'\n');return;}
@@ -38,7 +38,7 @@ export async function serveRuntime(context,handler){
 }
 export function runtimeRequest(context,message,timeoutMs=10000){
  return new Promise((resolve,reject)=>{
-  const socket=net.createConnection(join(context.runtimeDir,'ipc.sock'));let done=false,buffer='';
+  const socket=net.createConnection(join(context.runtimeDir,'ipc.sock'));socket.setEncoding('utf8');let done=false,buffer='';
   const timer=setTimeout(()=>finish(new Error('Monitor request timed out')),timeoutMs);
   function finish(error,result){if(done)return;done=true;clearTimeout(timer);socket.destroy();error?reject(error):resolve(result);}
   socket.on('error',e=>finish(e));socket.on('end',()=>finish(new Error('Monitor connection ended')));

@@ -14,8 +14,8 @@
 
 ## Implemented-path validation
 
-- `npm test`: 49/49 passing at the first full integration checkpoint; final count is reported in handoff after review fixes.
-- `npm run test:integration`: fake Herdr Unix socket -> production evidence adapter -> production model/monitor -> real child processes (substituted for OS assertions); 4/4 passing including runtime singleton tests. No paid model calls.
+- Final review verification: `npm test` **53/53 passing**; existing Pi project baseline **8/8 passing**; `git diff --check` clean.
+- `npm run test:integration`: fake Herdr Unix socket -> production evidence adapter -> production model/monitor -> real child processes (substituted for OS assertions); **5/5 passing** including runtime singleton and split-UTF-8 IPC tests. No paid model calls.
 - Actual disposable Herdr plugin link accepted the manifest. Controls action initially exposed a real API constraint: popup placement rejects `target_pane_id`. Fixed with a RED/GREEN regression by passing captured target only in popup environment. Repeated action succeeded.
 - Real Herdr client attached in a pseudoterminal: popup rendered, Escape closed it, client detach exercised. No normal Herdr config was changed.
 - Native Pi-shaped simulator, with proper session-start anchor: idle -> working -> ten-second delay acquired a real `PreventUserIdleSystemSleep` assertion and coffee metadata; deadline remained anchored to start.
@@ -25,6 +25,10 @@
 - Confirmed Herdr server stop with active caffeine: assertion released and monitor exited. Regression distinguishes missing server ownership from transient read failure.
 - Production assertion helper independently passed a real short native timeout. Unrelated existing caffeinate assertions were observed but never modified.
 - Stale UI guard fired once during the monitor's initial discovery (snapshot before first observation completed); retry after discovery succeeded. Treat this as a usability wrinkle, not a reason to remove identity/revision guards.
+
+## Review
+
+Author self-review only: no subagent reviewer was available. Found and fixed split UTF-8 decoding across socket chunks (Herdr identity and private IPC), with RED→GREEN regressions. Added consumer coverage for shared settings propagation and release/cancel controls. See `review.md` for deferred polish and scope rulings.
 
 ## Remaining live checks
 

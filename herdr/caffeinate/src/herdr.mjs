@@ -27,7 +27,7 @@ export function classifyAgent(a,e){
 /** One newline-delimited request; no shell and no transcript reads. */
 export function request(socketPath,method,params={},timeoutMs=5000){
  return new Promise((resolve,reject)=>{
-  const socket=net.createConnection(socketPath);let buffer='',done=false;
+  const socket=net.createConnection(socketPath);socket.setEncoding('utf8');let buffer='',done=false;
   const timer=setTimeout(()=>finish(new Error(`${method}: timed out`)),timeoutMs);
   const finish=(error,value)=>{if(done)return;done=true;clearTimeout(timer);socket.destroy();error?reject(error):resolve(value);};
   socket.on('connect',()=>socket.write(JSON.stringify({id:'caffeinate',method,params})+'\n'));
@@ -94,7 +94,7 @@ export async function connectHerdr({socketPath,onInvalidate=()=>{},onUnavailable
  };
  async function subscribe(targets){
   const key=JSON.stringify(targets.sort());if(closed||sub&&subKey===key)return;
-  sub?.destroy();const socket=net.createConnection(socketPath);sub=socket;subKey=key;
+  sub?.destroy();const socket=net.createConnection(socketPath);socket.setEncoding('utf8');sub=socket;subKey=key;
   const subscriptions=['pane.created','pane.closed','pane.exited','pane.agent_detected','pane.moved'].map(type=>({type}));
   subscriptions.push(...targets.map(pane_id=>({type:'pane.agent_status_changed',pane_id})));
   await new Promise((resolve,reject)=>{
