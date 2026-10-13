@@ -2,7 +2,7 @@
 
 A planned Herdr plugin for finding and reopening saved agent conversations, with pins, registry-only labels, and archival.
 
-**Design stage: not implemented or ready to install yet.** The first version targets local Pi sessions on macOS; Claude Code is a requested fast-follow.
+**Implementation planned; not implemented or ready to install yet.** The first version targets local Pi sessions on macOS; Claude Code is a requested fast-follow.
 
 ## Runtime and distribution
 
@@ -23,8 +23,9 @@ We recognize that this prerequisite adds installation friction. It is accepted f
 
 Pi's session files remain the conversation source. The registry is not a transcript backup and cannot recover deleted or unpersisted conversations. External-process detection and navigation across Herdr namespaces are outside v0.
 
-## Design documents
+## Design and implementation plan
 
+- [Implementation plan — ready for review](PLAN.md)
 - [Compact design and trade-offs](DESIGN.md)
 - [Agreed requirements and discussion](DISCUSSION.md)
 - [Follow-ups and distribution direction](FOLLOW-UPS.md)

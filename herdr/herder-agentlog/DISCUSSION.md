@@ -1,6 +1,6 @@
 # herder-agentlog — discussion notes
 
-Status: product requirements settled; technical choices delegated to the assistant. The proposed [compact design](DESIGN.md) awaits approval. No implementation plan or product code yet.
+Status: product requirements settled; technical choices delegated to the assistant. The [compact design](DESIGN.md) is approved for planning; the [implementation plan](PLAN.md) is ready for review. No product code yet.
 
 Herdr plugin project. Follow-ups and deliberately deferred ideas are tracked in [FOLLOW-UPS.md](FOLLOW-UPS.md).
 
@@ -45,8 +45,10 @@ A morning workflow that can reopen a selected subset of prior work: e.g. ten ses
 - Herdr's built-in priority ordering is an attention queue based on runtime status and state-transition sequence, not a durable ranking of user work importance. Custom agent views can use other sorting fields/tokens; that does not supply a ready-made historical relevance algorithm.
 - Herdr already supports Claude session identity reporting and `claude --resume <id>`. Its official hook reports the ID and, when available, transcript path. This supports the feasibility of a Claude adapter; metadata extraction, historical discovery, and end-to-end plugin recovery remain to be investigated/tested.
 
-## Technical recommendations awaiting approval
+## Technical recommendations approved for planning
 
-The user delegated storage, runtime, capture mechanism, and invocation wiring, requesting a compact design with trade-offs and alternatives. [DESIGN.md](DESIGN.md) now proposes TypeScript/Node, SQLite, disk refresh plus best-effort lifecycle capture, and a plugin action with an optional conflict-checked shortcut. The user prefers a TypeScript repository and eventual shared pnpm/lint/format/test tooling; this supersedes the initial Python/curses recommendation.
+The user delegated storage, runtime, capture mechanism, and invocation wiring, requesting a compact design with trade-offs and alternatives. [DESIGN.md](DESIGN.md) records TypeScript/Node, SQLite, disk refresh plus best-effort lifecycle capture, and a plugin action with an optional conflict-checked shortcut. The user prefers a TypeScript repository and eventual shared pnpm/lint/format/test tooling; this supersedes the initial Python/curses recommendation.
 
 The user confirmed Node-based v0 and removal of the startup toast in answers 23–24. Runtime bundling is explicitly rejected; Rust/native distribution is a follow-up, not a v0 rewrite. Arbitrary custom session paths outside known roots require discovery through a Herdr API read or a known scan location. No existing conversation data or Herdr configuration was changed to implement this design. Follow-up implementation choices do not block v0.
+
+The user approved proceeding to implementation planning. [PLAN.md](PLAN.md) selects standalone pi-tui, package-local npm/TypeScript/Node tests, and isolated live Herdr/Pi acceptance tests. Root pnpm/shared-tooling migration remains separate. The plan does not authorize installation into the user's active Herdr setup.

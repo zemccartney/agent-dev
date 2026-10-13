@@ -1,6 +1,6 @@
 # herder-agentlog — compact v0 design
 
-**Status: proposed, awaiting approval. No product implementation yet.**
+**Status: approved for implementation planning. [Implementation plan](PLAN.md) ready for review; no product implementation yet.**
 
 **Refinements agreed:** TypeScript/Node for v0 with an explicit external Node prerequisite; no bundled JavaScript runtime. No startup toast or attachment polling: readiness is shown inside the on-demand popup. Rust/native distribution is a follow-up.
 
@@ -36,7 +36,7 @@ Herdr live pane list ───────────────────�
                                                focus or resume through Herdr
 ```
 
-**Agreed v0 runtime direction:** TypeScript on Node 24 LTS, using built-in `node:sqlite` and a small terminal UI library selected during planning. Target macOS first, Herdr 0.9.3 and Pi 1.1.0. Node v24.16.0 and `node:sqlite` were verified locally with an in-memory database. **V0 requires separately installed Node 24+; Herdr itself does not require Node. Bundling a JavaScript runtime is explicitly rejected.** The package README must acknowledge this prerequisite as a distribution limitation and point to the Rust/native-binary follow-up. No rewrite is required for v0. Herdr launches ordinary commands; it does not privilege Python, Node, or Rust as its plugin language.
+**Agreed v0 runtime direction:** TypeScript on Node 24 LTS, using built-in `node:sqlite` and standalone `@earendil-works/pi-tui`, selected in [PLAN.md](PLAN.md). Target macOS first, Herdr 0.9.3 and Pi 1.1.0. Node v24.16.0 and `node:sqlite` were verified locally with an in-memory database. **V0 requires separately installed Node 24+; Herdr itself does not require Node. Bundling a JavaScript runtime is explicitly rejected.** The package README must acknowledge this prerequisite as a distribution limitation and point to the Rust/native-binary follow-up. No rewrite is required for v0. Herdr launches ordinary commands; it does not privilege Python, Node, or Rust as its plugin language.
 
 The user prefers a TypeScript repository, eventually with a root pnpm workspace and shared lint/format/test tooling. Keep this package workspace-ready and align with the other Herdr plugin's Node direction. Do not create or migrate root tooling as part of this plugin without separate agreement. No daemon, Pi extension, plugin-initiated model calls, or network service. Python/curses was initially recommended for standard-library convenience, but cross-repository consistency now outweighs that local convenience.
 
@@ -111,10 +111,10 @@ Test with synthetic Pi files and disposable named Herdr servers, never by stoppi
 
 ## Review and evidence
 
-Self-reviewed against the agreed decisions and as a builder preparing an implementation plan; no independent reviewer tool was available. The review clarified startup delivery, unreliable event-only capture, original-directory ownership, and unarchive ordering. After user feedback, TypeScript/Node with an external runtime prerequisite and popup-only readiness were agreed; runtime bundling and startup-toast machinery were removed. TUI library choice remains an explicit planning task.
+Self-reviewed against the agreed decisions and as a builder preparing an implementation plan; no independent reviewer tool was available. The review clarified startup delivery, unreliable event-only capture, original-directory ownership, and unarchive ordering. After user feedback, TypeScript/Node with an external runtime prerequisite and popup-only readiness were agreed; runtime bundling and startup-toast machinery were removed. The implementation plan selects standalone pi-tui 1.1.0 after inspection of its published package and terminal/mouse APIs; actual Herdr popup behavior still requires the planned integration tests.
 
 Checked the installed runtime, Pi's session format/manager, and Herdr v0.9.3's [plugin documentation](https://raw.githubusercontent.com/herdrdev/herdr/v0.9.3/docs/next/website/src/content/docs/plugins.mdx), [plugin event allowlist](https://github.com/herdrdev/herdr/blob/v0.9.3/src/api/schema/events.rs), and [notification implementation](https://github.com/herdrdev/herdr/blob/v0.9.3/src/server/headless/notifications.rs). This is source-level feasibility evidence, not a claim that the proposed plugin has been built or end-to-end tested.
 
 ## Approval boundary
 
-Approve the behavior and technical recommendations above before implementation planning. The material constraints are **an external Node 24+ prerequisite with no bundled JavaScript runtime**, **no startup cue**, and **custom-path discovery depending on observation when outside known roots**. Exact colors, schema migrations, helper names, and test-fixture organization are left to the builder. Claude Code, naming synchronization, automatic morning recovery, and richer ranking remain follow-ups.
+The user approved proceeding to implementation planning. Review [PLAN.md](PLAN.md) and choose an execution approach before product implementation. The material constraints are **an external Node 24+ prerequisite with no bundled JavaScript runtime**, **no startup cue**, and **custom-path discovery depending on observation when outside known roots**. Exact colors, schema migrations, helper names, and test-fixture organization are left to the builder. Claude Code, naming synchronization, automatic morning recovery, and richer ranking remain follow-ups.
