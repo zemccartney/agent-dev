@@ -36,7 +36,8 @@ Current decisions: [DISCUSSION.md](DISCUSSION.md).
 
 ### Startup cue and readiness presentation
 
-- V0: one silent, nonblocking availability notification when a fresh server's registry becomes usable and visible to a client; no repeated cue on ordinary reattach.
+- **Agreed v0:** no startup toast or attachment polling. Show Loading / Refreshing / errors inside the on-demand popup. This supersedes both the startup-cue and bounded-retry proposals.
+- If notifications are added later, respect Herdr's configured notification policy and consider a plugin-specific opt-out; never force them through globally disabled toasts.
 - Evaluate both directions after actual use: a louder or more informative recovery note, or subtler inline readiness/disabled-until-ready behavior for the registry entry point.
 - More specific missing-session alerts require a reliable expected-open model; an intentionally closed conversation is not a restoration failure.
 - Do not treat startup hook execution as proof that native agent restoration has completed.
@@ -52,6 +53,20 @@ Current decisions: [DISCUSSION.md](DISCUSSION.md).
 - Share the reproducible shutdown-ordering failure and evaluate whether a core fix or optional persistence policy is appropriate.
 - Plugin adoption and personal usage can inform an upstream proposal; building a plugin does not rule out reporting the underlying issue sooner.
 - Existing diagnostic evidence and harness are currently in temporary directories referenced by the original investigation; preserve/redact them durably before relying on them for a future report.
+
+## Distribution goal: no separately installed runtime
+
+The user raised concern that requiring Node 24+ is friction for end users. Herdr itself does not require Node; it is a dependency of the proposed plugin implementation.
+
+- **Agreed v0:** TypeScript/Node with a separately installed Node 24+ runtime. The package README must acknowledge that prerequisite as a limitation and note investigation of Rust/native alternatives.
+- Before broader distribution, evaluate a self-contained executable, including SQLite facilities.
+- Rust with bundled SQLite is one candidate: no Node/Python runtime for end users, but it adds another toolchain, native UI implementation, platform builds, and release distribution.
+- **Hard constraint: do not bundle a JavaScript runtime.** The user explicitly rejected shipping that additional runtime payload; it is not an alternative to revisit without a change in direction.
+- Ordinary JavaScript bundling alone does not remove the Node runtime requirement. Rust/native distribution is the preferred direction to investigate, but no rewrite is required or scheduled for v0.
+
+## Repository direction (separate scope)
+
+The user prefers TypeScript throughout this tooling repo, with an eventual root pnpm workspace and common linting, formatting, and tests. Candidate tools mentioned: oxlint, oxfmt, Vitest, possibly bats-core, with mise for tool management. Keep herder-agentlog compatible with that direction; do not make a root-tooling migration a prerequisite or silently change another agent's package. Final tool selection and migration are separate decisions.
 
 ## Deliberately out of v0; not promised roadmap items
 
