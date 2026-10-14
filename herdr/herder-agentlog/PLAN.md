@@ -140,7 +140,7 @@ Add named cases: string/array user content; no-user timestamp is null; metadata 
 
 `openStore(stateDir:string): RegistryStore` exposes synchronous `list()`, `get(key)`, `upsert(meta, stamp)`, `setPinned(key,value)`, `setArchived(key,value)`, `setLabel(key,string|null)`, `setAvailability(key,status,error)`, `rememberPath(absolutePath)`, `knownPaths()`, and `close()`. `get(key)` returns a SessionRecord or throws for an unknown key; edits likewise fail clearly for unknown keys. `queryCatalog(records,{query:string,archived:boolean}): SessionRecord[]`; `displayTitle(record):string`; `safeDisplay(text):string` strip terminal escapes/control characters for presentation only.
 
-- [ ] **1. Write failing persistence/query tests**, beginning with `reindexing preserves committed user choices`:
+- [x] **1. Write failing persistence/query tests**, beginning with `reindexing preserves committed user choices`:
 
 ```ts
 store.upsert(meta, stamp);
@@ -156,10 +156,10 @@ assert.equal(queryCatalog(store.list(), { query: "", archived: false }).length, 
 
 Also assert persistence after close/reopen; empty labels clear overrides; native-name/excerpt/short-ID fallback; pins then user timestamp descending, nulls last within each pin group, stable key tie-break; case-insensitive AND matching of whitespace-separated terms across override/native title/excerpt/cwd; no transcript-body search; archive preserves pins. A separate SQLite connection holding a write lock must make an edit fail, not falsely acknowledge it or erase existing data.
 
-- [ ] **2. Run red:** `pnpm build && node --test test/store.test.ts test/catalog.test.ts`.
-- [ ] **3. Implement `agentlog.sqlite3` and catalog helpers.** Use schema version 1, separate source/user columns and remembered-path storage; atomic upserts update only source fields. Set `journal_mode=DELETE`, `synchronous=FULL`, `busy_timeout=2000`; private state directory 0700/file 0600. Reject unsupported newer schemas without resetting them. No delete/prune API. Strip ANSI/control sequences from displayed values, never from real filesystem paths or API argv.
-- [ ] **4. Run green:** `pnpm check`; close/reopen and contention tests pass using real temporary SQLite files.
-- [ ] **5. Commit:** `feat(agentlog): persist registry choices and catalog ordering`.
+- [x] **2. Run red:** `pnpm build && node --test test/store.test.ts test/catalog.test.ts`.
+- [x] **3. Implement `agentlog.sqlite3` and catalog helpers.** Use schema version 1, separate source/user columns and remembered-path storage; atomic upserts update only source fields. Set `journal_mode=DELETE`, `synchronous=FULL`, `busy_timeout=2000`; private state directory 0700/file 0600. Reject unsupported newer schemas without resetting them. No delete/prune API. Strip ANSI/control sequences from displayed values, never from real filesystem paths or API argv.
+- [x] **4. Run green:** `pnpm check`; close/reopen and contention tests pass using real temporary SQLite files.
+- [x] **5. Commit:** `feat(agentlog): persist registry choices and catalog ordering`.
 
 ## Task 3: Add a current-namespace Herdr bridge and path capture
 
