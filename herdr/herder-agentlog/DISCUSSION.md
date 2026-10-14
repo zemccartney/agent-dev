@@ -1,6 +1,6 @@
 # herder-agentlog — discussion notes
 
-Status: product requirements settled; technical choices delegated to the assistant. The [compact design](DESIGN.md) is approved for planning; the [implementation plan](PLAN.md) is ready for review. No product code yet.
+Status: product requirements settled; technical choices delegated to the assistant. The [compact design](DESIGN.md) and [implementation plan](PLAN.md) are approved; the human Crit review finished with all comments resolved. No product code yet.
 
 Herdr plugin project. Follow-ups and deliberately deferred ideas are tracked in [FOLLOW-UPS.md](FOLLOW-UPS.md).
 
@@ -51,4 +51,4 @@ The user delegated storage, runtime, capture mechanism, and invocation wiring, r
 
 The user confirmed Node-based v0 and removal of the startup toast in answers 23–24. Runtime bundling is explicitly rejected; Rust/native distribution is a follow-up, not a v0 rewrite. Arbitrary custom session paths outside known roots require discovery through a Herdr API read or a known scan location. No existing conversation data or Herdr configuration was changed to implement this design. Follow-up implementation choices do not block v0.
 
-The user approved proceeding to implementation planning. [PLAN.md](PLAN.md) selects standalone pi-tui, package-local npm/TypeScript/Node tests, and isolated live Herdr/Pi acceptance tests. Root pnpm/shared-tooling migration remains separate. The plan does not authorize installation into the user's active Herdr setup.
+The user approved proceeding to implementation planning. [PLAN.md](PLAN.md) selects standalone pi-tui and isolated live Herdr/Pi acceptance tests. Following the Crit review, package tooling mirrors Caffeinate's direction: pnpm with its fail-closed supply-chain policy, tsdown-built JavaScript, independent TypeScript checks, type-aware Oxlint, Oxfmt, and Node tests against built modules. Root pnpm/shared-tooling migration remains separate; the main checkout's TODO.md records that roadmap. Subsequent Crit feedback explicitly requested bundling and minifying shipped JavaScript, including pi-tui, rather than requiring consumers to install that library. Node remains the separate runtime prerequisite; the production popup must be tested from a clean payload without node_modules. The plan does not authorize installation into the user's active Herdr setup.

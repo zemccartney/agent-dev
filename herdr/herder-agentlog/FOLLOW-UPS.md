@@ -20,6 +20,16 @@ Current decisions: [DISCUSSION.md](DISCUSSION.md).
 - Investigate native-name updates/synchronization and conflict ownership. Do not assume bidirectional synchronization is the solution before testing it.
 - Pi currently documents `--session` as accepting a path or ID, not a friendly name. Name synchronization alone does not create CLI name aliases.
 
+## Cross-plugin TUI reuse requested during review
+
+### Evaluate pi-tui for Caffeinate
+
+- Motivation: avoid maintaining handwritten terminal rendering/input/layout machinery in multiple Herdr plugins; the user would welcome simplifying Caffeinate's view layer.
+- Use Agentlog to establish bundled pi-tui behavior inside Herdr, including mouse, Unicode, resize, cleanup, and measured payload size.
+- Then evaluate a focused Caffeinate UI migration: replace low-level terminal plumbing while preserving controls, domain behavior, and its existing tests. This is not approval to rewrite its active worktree during the Agentlog plan review.
+- Reusing a dependency shares knowledge and review effort; it does not make its bytes free in separately shipped, self-contained plugin bundles.
+- Keep plugin-specific state/actions separate. Extract a shared helper only when concrete repeated code warrants it; do not build a generalized UI framework first.
+
 ## Revisit after day-to-day use
 
 ### Morning work-set recovery
@@ -66,7 +76,9 @@ The user raised concern that requiring Node 24+ is friction for end users. Herdr
 
 ## Repository direction (separate scope)
 
-The user prefers TypeScript throughout this tooling repo, with an eventual root pnpm workspace and common linting, formatting, and tests. Candidate tools mentioned: oxlint, oxfmt, Vitest, possibly bats-core, with mise for tool management. Keep herder-agentlog compatible with that direction; do not make a root-tooling migration a prerequisite or silently change another agent's package. Final tool selection and migration are separate decisions.
+The user prefers TypeScript throughout this tooling repo, with an eventual root pnpm workspace and shared quality configuration. The Crit review explicitly requested mirroring Caffeinate's package-local direction now: pnpm and its dependency-security policy, tsdown, independent TypeScript checks, type-aware Oxlint, Oxfmt, and Node's test runner against built output. Vitest/bats-core were earlier candidates, not requirements for this implementation.
+
+The expanded [root TODO.md](../../TODO.md) records mise, shared workspace/configuration, hk/CI, Changesets, security checks, and the prebuilt GitHub artifact/install direction. Keep these as separate infrastructure/packaging work; do not make a root migration a prerequisite or silently change Caffeinate. The user explicitly requested a small bundled/minified Agentlog payload. Include reachable pi-tui/transitive JS in that bundle; consumers must not install pi-tui separately. Validate the clean production popup without node_modules and only include a native helper asset if the required behavior actually needs it. Measure the complete compressed/uncompressed payload and preserve license notices. Node itself must remain separately installed.
 
 ## Deliberately out of v0; not promised roadmap items
 

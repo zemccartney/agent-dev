@@ -1,6 +1,6 @@
 # herder-agentlog — compact v0 design
 
-**Status: approved for implementation planning. [Implementation plan](PLAN.md) ready for review; no product implementation yet.**
+**Status: design and [implementation plan](PLAN.md) approved; no product implementation yet.**
 
 **Refinements agreed:** TypeScript/Node for v0 with an explicit external Node prerequisite; no bundled JavaScript runtime. No startup toast or attachment polling: readiness is shown inside the on-demand popup. Rust/native distribution is a follow-up.
 
@@ -117,4 +117,4 @@ Checked the installed runtime, Pi's session format/manager, and Herdr v0.9.3's [
 
 ## Approval boundary
 
-The user approved proceeding to implementation planning. Review [PLAN.md](PLAN.md) and choose an execution approach before product implementation. The material constraints are **an external Node 24+ prerequisite with no bundled JavaScript runtime**, **no startup cue**, and **custom-path discovery depending on observation when outside known roots**. Exact colors, schema migrations, helper names, and test-fixture organization are left to the builder. Claude Code, naming synchronization, automatic morning recovery, and richer ranking remain follow-ups.
+The user approved the [implementation plan](PLAN.md) through Crit. Confirm an execution approach before product implementation. The material constraints are **an external Node 24+ prerequisite with no bundled JavaScript runtime**, **no startup cue**, and **custom-path discovery depending on observation when outside known roots**. Exact colors, schema migrations, helper names, and test-fixture organization are left to the builder. Claude Code, naming synchronization, automatic morning recovery, and richer ranking remain follow-ups.

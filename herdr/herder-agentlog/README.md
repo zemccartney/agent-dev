@@ -10,7 +10,7 @@ V0 will require **a separately installed Node.js 24+** runtime. This is a requir
 
 We recognize that this prerequisite adds installation friction. It is accepted for the first personal-use version while we evaluate native distribution, with **Rust and bundled SQLite** as the preferred direction to investigate. A native rewrite is not scheduled or required for v0.
 
-**We will not bundle a JavaScript runtime.** Ordinary application bundling would not remove the external Node prerequisite.
+**We will not bundle a JavaScript runtime.** The planned distribution bundles and minifies the plugin's JavaScript, including the pi-tui library used to draw its popup. **Consumers will not need to install pi-tui separately.** Application bundling does not remove the external Node prerequisite. Developer pnpm/compiler requirements are separate from consumer requirements; no release artifact is available yet.
 
 ## Intended behavior
 
@@ -25,7 +25,7 @@ Pi's session files remain the conversation source. The registry is not a transcr
 
 ## Design and implementation plan
 
-- [Implementation plan — ready for review](PLAN.md)
+- [Implementation plan — approved in Crit](PLAN.md)
 - [Compact design and trade-offs](DESIGN.md)
 - [Agreed requirements and discussion](DISCUSSION.md)
 - [Follow-ups and distribution direction](FOLLOW-UPS.md)
