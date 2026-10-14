@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Status:** Approved in Crit (session `9ebdef7ffdf3`; all comments resolved). Implementation has not started; execution approach remains to be confirmed.
+**Status:** Approved in Crit (session `9ebdef7ffdf3`; all comments resolved). Native execution authorized; implementation is in progress on `feat/herder-agentlog` in `.worktrees/agentlog`.
 
 **Goal:** Deliver a local Herdr popup that finds, organizes, and safely reopens saved Pi conversations after ordinary closure or restart.
 
@@ -42,20 +42,20 @@ Each concern has tests assigned below; these are ordinary correctness boundaries
 
 All paths below are relative to **`herdr/herder-agentlog/`**. Commands run from that directory unless explicitly prefixed with a repository-root path.
 
-| Files | Responsibility |
-|---|---|
-| `package.json`, `pnpm-workspace.yaml`, `pnpm-lock.yaml`, `.gitignore` | Package-local, reproducible development and supply-chain policy; ignore `dist/`, `.build/`, dependencies, and test artifacts |
-| `tsconfig.json`, `tsdown.config.ts`, `.oxlintrc.json`, `.oxfmtrc.json`, `test/tooling.test.ts`, `test/build.test.ts` | Independent typechecking, JS build, lint/format gates, effective-policy and built-output tests |
-| `src/model.ts`, `src/pi-session.ts` | Shared session metadata and streaming, read-only Pi adapter |
-| `src/store.ts`, `src/catalog.ts` | SQLite persistence; pure filtering, ordering, and display-text sanitization |
-| `src/herdr.ts`, `src/capture.ts` | CLI transport/DTO normalization; small lifecycle path-capture operation |
-| `src/discovery.ts` | Known-root discovery, changed-file refresh, availability/error reporting |
-| `src/resume.ts` | Existing-pane selection and new-session launch workflow |
-| `src/ui-view.ts`, `src/popup.ts` | pi-tui components and async popup/controller lifecycle |
-| `src/cli.ts`, `herdr-plugin.toml` | Three commands: `sessions` opens the popup, `ui` runs it, `capture` processes one event |
-| `test/*.test.ts`, `test/helpers/` | Deterministic unit/component tests and fixtures |
-| `test/integration/herdr.test.ts`, `test/helpers/herdr-sandbox.ts` | Opt-in live Herdr/Pi tests, private fixture state, cleanup |
-| `README.md` | Honest prerequisites, local setup, optional binding, usage, limitations, verification |
+| Files                                                                                                                | Responsibility                                                                                                               |
+| -------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `package.json`, `pnpm-workspace.yaml`, `pnpm-lock.yaml`, `.gitignore`                                                | Package-local, reproducible development and supply-chain policy; ignore `dist/`, `.build/`, dependencies, and test artifacts |
+| `tsconfig.json`, `tsdown.config.ts`, `.oxlintrc.json`, `.oxfmtrc.json`, `test/tooling.test.ts`, `test/build.test.ts` | Independent typechecking, JS build, lint/format gates, effective-policy and built-output tests                               |
+| `src/model.ts`, `src/pi-session.ts`                                                                                  | Shared session metadata and streaming, read-only Pi adapter                                                                  |
+| `src/store.ts`, `src/catalog.ts`                                                                                     | SQLite persistence; pure filtering, ordering, and display-text sanitization                                                  |
+| `src/herdr.ts`, `src/capture.ts`                                                                                     | CLI transport/DTO normalization; small lifecycle path-capture operation                                                      |
+| `src/discovery.ts`                                                                                                   | Known-root discovery, changed-file refresh, availability/error reporting                                                     |
+| `src/resume.ts`                                                                                                      | Existing-pane selection and new-session launch workflow                                                                      |
+| `src/ui-view.ts`, `src/popup.ts`                                                                                     | pi-tui components and async popup/controller lifecycle                                                                       |
+| `src/cli.ts`, `herdr-plugin.toml`                                                                                    | Three commands: `sessions` opens the popup, `ui` runs it, `capture` processes one event                                      |
+| `test/*.test.ts`, `test/helpers/`                                                                                    | Deterministic unit/component tests and fixtures                                                                              |
+| `test/integration/herdr.test.ts`, `test/helpers/herdr-sandbox.ts`                                                    | Opt-in live Herdr/Pi tests, private fixture state, cleanup                                                                   |
+| `README.md`                                                                                                          | Honest prerequisites, local setup, optional binding, usage, limitations, verification                                        |
 
 Mirror the direction in Caffeinate's `docs/superpowers/plans/2026-10-13-caffeinate-quality-tooling.md` (currently in `.worktrees/caffeination/`); its tooling migration is still in progress, so distinguish intended policy from already-working implementation. The current, expanded repository infrastructure roadmap is [the main checkout's TODO.md](../../TODO.md); the worktree's older TODO does not yet contain it. Do not change either Caffeinate or repository infrastructure in this task.
 
@@ -106,27 +106,27 @@ readPiSession(path: string, signal?: AbortSignal): Promise<ReadPiResult>;
 
 `makeFixture(t, options?)` in test helpers returns `{root, cwd, file}` and registers cleanup with `t.after`. Options: `userTimes?: number[]`, `assistantTime?: number`, `nativeNames?: string[]`, `cwdName?: string`, `userContent?: string | Array<{type: string; text?: string}>`. Defaults: user timestamps `[1000, 3000]`, assistant timestamp `9999`, native names `['Old', 'Current']`, first text `First prompt`. Headers/entries are valid Pi v3 JSONL; also support a header/custom-message-only fixture with `userTimes: []`.
 
-- [ ] **1. Write failing tooling contract tests, then establish package-local policy/configuration and the fixture helper** as specified above. Test effective pnpm policy, all six lint plugins/type-aware mode, strict independent typechecking, formatting, built-module resolution, and the initial bundled `--help` command. Verify production output is bundled/minified and the development-only module output is not part of the runtime payload. Include temporary negative canaries for a TS assignment error and an unhandled Promise; corrected variants must pass.
-- [ ] **2. Install exact, compatible, cooldown-eligible local developer dependencies** with pnpm: TypeScript, tsdown, Node 24 types, Oxlint, oxlint-tsgolint, and Oxfmt. Verify `pnpm install --frozen-lockfile`; commit the package-local lockfile. Do not provision a package manager or relax policy if installation is blocked.
-- [ ] **3. Write failing parser tests**, beginning with `reads the latest user timestamp without rewriting the transcript`. Save `originalBytes` before reading; assert:
+- [x] **1. Write failing tooling contract tests, then establish package-local policy/configuration and the fixture helper** as specified above. Test effective pnpm policy, all six lint plugins/type-aware mode, strict independent typechecking, formatting, built-module resolution, and the initial bundled `--help` command. Verify production output is bundled/minified and the development-only module output is not part of the runtime payload. Include temporary negative canaries for a TS assignment error and an unhandled Promise; corrected variants must pass.
+- [x] **2. Install exact, compatible, cooldown-eligible local developer dependencies** with pnpm: TypeScript, tsdown, Node 24 types, Oxlint, oxlint-tsgolint, and Oxfmt. Verify `pnpm install --frozen-lockfile`; commit the package-local lockfile. Do not provision a package manager or relax policy if installation is blocked.
+- [x] **3. Write failing parser tests**, beginning with `reads the latest user timestamp without rewriting the transcript`. Save `originalBytes` before reading; assert:
 
 ```ts
 const { file, cwd } = await makeFixture(t);
 const r = await readPiSession(file);
 assert.ok(r.ok);
 assert.equal(r.meta.cwd, cwd);
-assert.equal(r.meta.nativeName, 'Current');
+assert.equal(r.meta.nativeName, "Current");
 assert.equal(r.meta.lastUserAt, 3000); // not assistant activity or mtime
-assert.equal(r.meta.excerpt, 'First prompt');
-assert.equal((await readFile(file, 'utf8')), originalBytes);
+assert.equal(r.meta.excerpt, "First prompt");
+assert.equal(await readFile(file, "utf8"), originalBytes);
 ```
 
 Add named cases: string/array user content; no-user timestamp is null; metadata across branches uses maximum valid user-message timestamp; spaces/apostrophes in cwd survive; latest session name wins; incomplete trailing JSON has `cacheable:false`; malformed complete lines return invalid; missing/unreadable files produce explicit errors; aborted read rejects with AbortError.
 
-- [ ] **4. Run red:** `pnpm build && node --test test/parser.test.ts`. Expect missing adapter/export before implementation, then assertion failures rather than fixture mistakes.
-- [ ] **5. Implement the adapter.** Stream JSONL, use the header's absolute cwd and ID, canonicalize existing file paths, and retain at most 120 Unicode code points of the first user text as fallback. Ignore irrelevant entry types. Re-stat after parsing; changed files and incomplete tails are not cacheable. Never use file mtime as conversation recency or write to source files.
-- [ ] **6. Run green:** `pnpm check`. Tooling canaries, parser tests against built JS, formatting, lint, and strict compilation all pass.
-- [ ] **7. Commit:** `feat(agentlog): read Pi session metadata` — stage only this task's package files, source, and tests.
+- [x] **4. Run red:** `pnpm build && node --test test/parser.test.ts`. Expect missing adapter/export before implementation, then assertion failures rather than fixture mistakes.
+- [x] **5. Implement the adapter.** Stream JSONL, use the header's absolute cwd and ID, canonicalize existing file paths, and retain at most 120 Unicode code points of the first user text as fallback. Ignore irrelevant entry types. Re-stat after parsing; changed files and incomplete tails are not cacheable. Never use file mtime as conversation recency or write to source files.
+- [x] **6. Run green:** `pnpm check`. Tooling canaries, parser tests against built JS, formatting, lint, and strict compilation all pass.
+- [x] **7. Commit:** `feat(agentlog): read Pi session metadata` — stage only this task's package files, source, and tests.
 
 ## Task 2: Persist user choices and query the catalog
 
@@ -144,11 +144,14 @@ Add named cases: string/array user content; no-user timestamp is null; metadata 
 
 ```ts
 store.upsert(meta, stamp);
-store.setPinned(key, true); store.setArchived(key, true); store.setLabel(key, 'My label');
-store.upsert({ ...meta, lastUserAt: 4000, nativeName: 'Renamed in Pi' }, nextStamp);
-assert.equal(store.get(key).labelOverride, 'My label');
-assert.equal(store.get(key).pinned, true); assert.equal(store.get(key).archived, true);
-assert.equal(queryCatalog(store.list(), { query: '', archived: false }).length, 0);
+store.setPinned(key, true);
+store.setArchived(key, true);
+store.setLabel(key, "My label");
+store.upsert({ ...meta, lastUserAt: 4000, nativeName: "Renamed in Pi" }, nextStamp);
+assert.equal(store.get(key).labelOverride, "My label");
+assert.equal(store.get(key).pinned, true);
+assert.equal(store.get(key).archived, true);
+assert.equal(queryCatalog(store.list(), { query: "", archived: false }).length, 0);
 ```
 
 Also assert persistence after close/reopen; empty labels clear overrides; native-name/excerpt/short-ID fallback; pins then user timestamp descending, nulls last within each pin group, stable key tie-break; case-insensitive AND matching of whitespace-separated terms across override/native title/excerpt/cwd; no transcript-body search; archive preserves pins. A separate SQLite connection holding a write lock must make an edit fail, not falsely acknowledge it or erase existing data.
@@ -189,14 +192,16 @@ Test helper `makeFakeHerdr(initial:HerdrState)` returns `{api:HerdrClient, start
 - [ ] **1. Write failing discovery tests**, beginning with `refresh advances user recency but retains labels and pins`, plus tests for default and alternative agent-directory sessions; absolute environment/global-settings `sessionDir`; relative settings resolved against known project cwd, not plugin cwd; explicitly remembered outside paths; existing sessions never previously running in Herdr. No traversal outside known roots or following directory symlinks into arbitrary trees. Opening/importing must not modify lastUserAt.
 
 ```ts
-store.setPinned(key, true); store.setLabel(key, 'Keep');
+store.setPinned(key, true);
+store.setLabel(key, "Keep");
 await appendUserMessage(file, 5000); // fixture helper, writes only synthetic files
 await refreshCatalog(store, context);
 assert.equal(store.get(key).lastUserAt, 5000);
-assert.equal(store.get(key).labelOverride, 'Keep');
+assert.equal(store.get(key).labelOverride, "Keep");
 assert.equal(store.get(key).pinned, true);
-await unlink(file); await refreshCatalog(store, context);
-assert.equal(store.get(key).availability, 'missing-file');
+await unlink(file);
+await refreshCatalog(store, context);
+assert.equal(store.get(key).availability, "missing-file");
 ```
 
 Add: unchanged files skip parsing; unfinished tails and parse errors remain retryable; a failed scan retains prior metadata; absent cwd is distinguished from absent file; abort after one completed file preserves prior commits; a concurrent user edit survives refresh. A large synthetic transcript must allow a scheduled UI/timer callback and cancellation before the whole scan completes.
@@ -218,7 +223,7 @@ Add: unchanged files skip parsing; unfinished tails and parse errors remain retr
 
 ```ts
 const outcome = await openSession(key, { store, herdr: fake.api });
-assert.equal(outcome.kind, 'opened');
+assert.equal(outcome.kind, "opened");
 assert.deepEqual(fake.startedPaths, [record.sessionPath]);
 assert.equal(fake.createdCwds[0], record.cwd);
 assert.equal(store.get(key).archived, false);
@@ -226,6 +231,7 @@ assert.equal(store.get(key).lastUserAt, previousLastUserAt);
 ```
 
 Also test wrong/missing post-launch reference, blocked startup, timeout, vanished destination, and focus failure: retain archive state, return destination/error, never retry launch or send prompts. Cancellation must not kill Pi or perform a later focus/unarchive.
+
 - [ ] **2. Run red:** `pnpm build && node --test test/resume.test.ts`.
 - [ ] **3. Implement the workflow.** Read live state at click time. Compare canonical paths, or exact native IDs only when unambiguously resolved. Verify closed-session paths, create a no-focus destination, generate `agentlog-<12 hex chars>` as an internal name, and invoke managed start. Re-read and confirm the expected reference before focusing. Commit unarchive only after success. Abort CLI waits, not server/agent processes; an already-accepted request may still have launched Pi, so return without blind retry. Leave created destinations intact on failure.
 - [ ] **4. Run green:** `pnpm check`.
@@ -242,11 +248,13 @@ Also test wrong/missing post-launch reference, blocked startup, timeout, vanishe
 - [ ] **1. Write failing component/lifecycle tests.** Begin with `Escape stops a loading popup`: start `const done = runPopup({...deps, terminal:screen.terminal})`, `await screen.waitFor('Loading sessions…')`, `screen.send('\u001b')`, `await done`, then `assert.equal(screen.stopped, true)`. Assert initial `Loading sessions…`, cached `Refreshing…`, error presentation, search across native/override/project fields, archived filter, keyboard/mouse activation of all four actions, and exact label disclaimer. Rows without user messages say exactly “No submissions.” Pin/label/archive changes persist before reflecting success. Filter/refresh selection stays attached to a SessionKey, not a shifting numeric index. Closing during refresh aborts work and stops the terminal; Open closes only after success; pending/errors/duplicate choices remain actionable.
 
 For terminal correctness, assert rendered visible widths at 40/80/120 columns, emoji/combining characters and ANSI-looking labels, resize during selection, and Escape from a label editor cancelling only that editor before a second Escape closes the popup.
+
 - [ ] **2. Run red:** `pnpm build && node --test test/popup.test.ts` before implementing the popup.
 - [ ] **3. Add exact, policy-eligible dependencies with pnpm:** pi-tui as a bundled runtime library (inspected baseline 1.1.0) and dev-only xterm/headless (inspected baseline 5.5.0). Preserve the pnpm policy and verify the frozen lockfile. Explicitly bundle reachable library JS; neither the library nor its transitive packages may require consumer installation. Retain required license notices.
 - [ ] **4. Implement standalone `TuiAltScreen` + `ProcessTerminal`.** Use Input, SelectList, MouseRegion, layout and width helpers; default terminal palette, no Pi-agent theme/SDK. Keep a fixed search/header/footer and a bounded list. Recreate the list on data/size changes, preserving selected key. Show full selected path in a detail line if truncated. Forward keyboard input to the existing Input and compare values rather than assigning nonexistent `onChange`.
 
 Keyboard: printable input searches; Up/Down navigate; Enter opens; Tab toggles Saved/Archived; Ctrl+P pin, Ctrl+L label, Ctrl+X archive/unarchive, Ctrl+R refresh; Esc/Ctrl+C close (or cancel the label/duplicate-choice subview first). Provide clickable equivalents. Disable repeated Open while its request is outstanding. Do not auto-copy selections to the clipboard. Render once before starting refresh. Every refresh obtains a fresh Herdr state, updates discovery's project cwds/live paths, and captures those paths; if Herdr is unavailable, retain the disk-backed list with an error rather than inventing live status. On close, abort outstanding waits, prevent late rendering/focus, settle cleanup, and restore terminal modes. Show “Terminal too small” with a working Escape path if controls cannot fit.
+
 - [ ] **5. Run green:** `pnpm check`. Test real renderer output via the fake terminal, not merely a pure string snapshot disconnected from input handlers.
 - [ ] **6. Commit:** `feat(agentlog): add on-demand session registry popup`.
 
@@ -267,9 +275,11 @@ Keyboard: printable input searches; Up/Down navigate; Enter opens; Tab toggles S
 Sandbox requirements: a short private temp directory; isolated `HOME`, `XDG_CONFIG_HOME`, `XDG_STATE_HOME`, `XDG_DATA_HOME`, `PI_CODING_AGENT_DIR`; remove inherited HERDR/PI routing variables and credentials. Start explicit uniquely named test servers with networking checks off and a simple non-login shell. Link the plugin **only after asserting its resolved config/state roots are inside the sandbox**; Herdr's global plugin registry must not touch the real user's config. Install the official Pi integration only into the sandbox agent directory. Set Pi offline, use synthetic saved conversations with a visible custom-message marker, and never send model prompts.
 
 Use macOS `script` from a TypeScript child-process helper to attach a client via a PTY; set dimensions with `stty` in a fixed wrapper using positional argv, not interpolated user paths. Capture output through xterm, respond to necessary terminal queries, and detach with the real prefix sequence. Every live operation uses sandbox env and explicit session selection. Cleanup in `finally` stops only recorded test servers, unlinks only the sandbox plugin, and retains failure diagnostics without transcripts/credentials. Assert the real default socket and configuration were untouched.
+
 - [ ] **6. Run live acceptance:** `AGENTLOG_RUN_HERDR_TESTS=1 pnpm test:integration`.
 
 Run these scenarios through the **clean minified production payload**, not a source entrypoint or modular test build. Required scenarios: popup open/search/pin/archive/label/escape with draft preservation; reopening into the original cwd; repeat Open focuses without increasing Pi process count; Herdr-first restart restores natively; Pi-SIGTERM-first and Pi-SIGKILL-first then Herdr restart lose the native reference but still allow registry recovery. Confirm a real new Pi foreground process and original visible marker. Validate no startup popup/toast, unchanged recency after reopen, and committed metadata surviving a killed importer/UI process. Exercise the actual plugin action and mouse/key input, not only direct service calls. Fix any integration gaps under these tests before claiming usability; no Mac reboot is required.
+
 - [ ] **7. Finish README and manual checklist.** Document Node prerequisite, no bundled runtime, Rust/native follow-up, separate developer pnpm source-build instructions and consumer runtime prerequisites (Node/Herdr/Pi, never a separate pi-tui install), `herdr plugin link <absolute-path>`, public action invocation, optional conflict-checked `prefix+a` snippet, “open here” scope, known-root limitations, and test commands. State that archives/labels are not transcript backups/native renames. Do not link/install into the user's actual Herdr namespace until they approve a hands-on trial.
 - [ ] **8. Final verification:** `pnpm install --frozen-lockfile && pnpm check`, then rerun the explicit live suite and clean runtime-layout smoke test. Record commands/results, versions, and any manual-only checks honestly. Inspect the package diff for accidental root-tooling/config changes.
 - [ ] **9. Commit:** `feat(agentlog): wire plugin and verify restart recovery`.
@@ -279,4 +289,4 @@ Run these scenarios through the **clean minified production payload**, not a sou
 - Spec coverage: metadata/recency Task 1; durable organization/search Task 2; namespace transport/capture Task 3; historical discovery/freshness Task 4; restoration/navigation Task 5; popup/readiness Task 6; manifest, installation docs, and real restart proof Task 7.
 - All five Review Focus classes have explicit tests in their owning tasks. Signatures above are the shared contracts; keep them consistent rather than inventing parallel services during execution.
 - No product code, dependencies, global configuration, or root tooling were changed while writing this plan. Registry and PTY boundaries were inspected; the future integration suite has not been run.
-- The human Crit review is approved; all four comment threads are resolved. Confirm execution approach before coding. This session currently has no subagent/reviewer tool; native execution with explicit self-review is available. Independent agent review requires an additional tool or separately supplied reviewer.
+- The human Crit review is approved; all four comment threads are resolved. The user subsequently authorized native execution. This session currently has no subagent/reviewer tool; native execution with explicit self-review is available. Independent agent review requires an additional tool or separately supplied reviewer.
