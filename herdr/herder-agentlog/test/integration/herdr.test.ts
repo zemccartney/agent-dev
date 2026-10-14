@@ -8,6 +8,7 @@ await test(
   { skip: process.env.AGENTLOG_RUN_HERDR_TESTS !== "1", timeout: 240000 },
   async (t) => {
     const s = await createHerdrSandbox();
+    t.diagnostic(s.versions);
     let failure: unknown;
     async function popupClosed() {
       await waitUntil(

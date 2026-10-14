@@ -2,7 +2,7 @@
 
 A Herdr popup for finding and reopening saved Pi conversations, with pins, registry-only labels, and archival.
 
-**Local source-build milestone, not a published release.** Tested with Herdr 0.9.3, Pi 1.1.0, and Node 24.16.0 on macOS. Claude Code remains a requested fast-follow. Nothing is installed into your Herdr setup automatically.
+**Local source-build milestone, not a published release.** Tested with Herdr 0.9.3, Pi 1.2.0, and Node 24.16.0 on macOS. Claude Code remains a requested fast-follow. Nothing is installed into your Herdr setup automatically.
 
 ## Runtime and distribution
 

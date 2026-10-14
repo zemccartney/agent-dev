@@ -426,6 +426,7 @@ export async function createHerdrSandbox() {
       if (!server || exited(server)) await rm(root, { recursive: true, force: true });
     }
   }
+  let versions = "";
   try {
     // Both Herdr storage roots are already canonical and inside root before any link/install.
     const pluginConfig = (await raw(["plugin", "config-dir", "herder-agentlog"])).trim();
@@ -437,11 +438,17 @@ export async function createHerdrSandbox() {
     );
     await api(["plugin", "link", payload]);
     linked = true;
+    const herdrVersion = (await exec(herdr, ["--version"], { env, cwd: root })).stdout.trim();
+    const piVersion = (
+      await exec(join(bin, "pi"), ["--version"], { env, cwd: root })
+    ).stdout.trim();
+    versions = `Node ${process.version}; ${herdrVersion}; Pi ${piVersion}`;
   } catch (error) {
     await cleanup(error);
     throw error;
   }
   return {
+    versions,
     root,
     name,
     env,
