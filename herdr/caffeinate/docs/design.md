@@ -24,15 +24,15 @@ Remove the need to manually start caffeinate or guess how long unattended agent 
 
 These are intended semantic rules, not yet a mapping to verified harness events. Conversation messages are not run boundaries. A planning conversation can contain multiple short runs followed by a long implementation run.
 
-| Observation | Lease behavior |
-| --- | --- |
-| Agent starts autonomous work | Schedule automatic caffeination after ten seconds; deadline is eight hours from run start |
-| Agent emits commentary, calls tools, or keeps working | Keep existing deadline |
-| User types or queues a message while it works | No change merely because the user interacted |
-| Agent definitively finishes, is cancelled, or needs user input to proceed | End its lease |
-| Agent resumes autonomous work after that boundary | Schedule fresh caffeination after ten seconds, with a fresh deadline anchored to that run start |
-| Status becomes uncertain | Preserve existing lease, without extending it |
-| Deadline expires while agent still works | Release protection; do not automatically renew |
+| Observation                                                               | Lease behavior                                                                                  |
+| ------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| Agent starts autonomous work                                              | Schedule automatic caffeination after ten seconds; deadline is eight hours from run start       |
+| Agent emits commentary, calls tools, or keeps working                     | Keep existing deadline                                                                          |
+| User types or queues a message while it works                             | No change merely because the user interacted                                                    |
+| Agent definitively finishes, is cancelled, or needs user input to proceed | End its lease                                                                                   |
+| Agent resumes autonomous work after that boundary                         | Schedule fresh caffeination after ten seconds, with a fresh deadline anchored to that run start |
+| Status becomes uncertain                                                  | Preserve existing lease, without extending it                                                   |
+| Deadline expires while agent still works                                  | Release protection; do not automatically renew                                                  |
 
 Human typing/queued input does not itself end a run. Only the agent's actual transition to waiting/completed should end a lease, not intermediate prose or keyboard activity.
 

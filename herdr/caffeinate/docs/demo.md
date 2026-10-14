@@ -4,7 +4,7 @@ This is a hands-on trial, not an overnight reliability claim. Start while plugge
 
 ## 1. Link the trial
 
-For the worktree used to build this trial, run these from **any directory in a Herdr terminal**:
+First check the [prerequisites and development build steps](../README.md). A fresh source checkout needs `pnpm install --frozen-lockfile` and `pnpm build`; Herdr linking does not compile it. For the already-built trial worktree, run these from **any directory in a Herdr terminal**:
 
 ```sh
 PLUGIN=/Users/enlow/proj/pi-ext/.worktrees/caffeination/herdr/caffeinate
@@ -12,11 +12,11 @@ herdr plugin link "$PLUGIN"
 herdr plugin action invoke agent-dev.caffeinate.controls
 ```
 
-The absolute path tells Herdr where the code lives. Your projects stay where they are. No merge, build, dependency install, or `cd` is required. Keep that worktree around until you unlink or relink the plugin elsewhere.
+The absolute path tells Herdr where the code lives. Your projects stay where they are. No merge or `cd` is required to invoke an already-built plugin; rebuild after source edits. Keep that worktree around until you unlink or relink the plugin elsewhere.
 
 The first controls action starts the background monitor for this Herdr server. If it finds a run already underway, that run intentionally has no automatic lease. Future server starts launch the monitor automatically. Named sessions: prefix each command with `herdr --session NAME`.
 
-The popup may offer an agent picker if you invoked it from a shell rather than targeting an agent. Choose your Pi or Claude session. Pi needs Herdr's current integration; if prompted by the controls, install/update with `herdr integration install pi`, then restart/reload Pi. No additional Claude hook is installed.
+The popup opens the focused agent's controls, or offers an agent picker if invoked from a shell. Tab / **all agents** opens the list from a focused agent. The top **Agents (a)** tab returns from Settings or About without losing your detail/list position. Choose your Pi or Claude session using arrows or a click, then Enter / **open**. Pi needs Herdr's current integration; if prompted by the controls, install/update with `herdr integration install pi`, then restart/reload Pi. No additional Claude hook is installed.
 
 ## 2. Add the cup if you want it
 
@@ -47,7 +47,7 @@ While a run is underway, enter `0.01` hours (36 seconds), then Enter. It replace
 
 When those 36 seconds expire, the cup should disappear without interrupting the agent. Continued tool activity must not bring it back. Apply another duration to re-caffeinate explicitly.
 
-Use Tab to reach **Stop caffeinating**, then Enter. Again, agent work continues. No hidden per-session policy has changed.
+Click **Stop caffeinating**, or press `r`. Again, agent work continues. No hidden per-session policy has changed.
 
 **Watch for:** a deadline that updates predictably, no persistent expired label, and no need to read paragraphs to perform the action. If a run changes between opening the popup and applying a command, the control asks you to refresh/retry instead of applying your intent to a different run.
 

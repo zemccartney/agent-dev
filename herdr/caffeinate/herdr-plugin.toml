@@ -6,13 +6,13 @@ description = "Time-bounded caffeination for local Pi and Claude Code runs"
 platforms = ["macos"]
 
 [[startup]]
-command = ["node", "src/main.mjs", "ensure"]
+command = ["/bin/sh", "scripts/launch.sh", "ensure"]
 
 [[actions]]
 id = "controls"
 title = "Caffeination…"
 contexts = ["global", "pane"]
-command = ["node", "src/main.mjs", "controls"]
+command = ["/bin/sh", "scripts/launch.sh", "controls"]
 
 [[panes]]
 id = "controls"
@@ -20,4 +20,4 @@ title = "Caffeination"
 placement = "popup"
 width = "80%"
 height = 22
-command = ["node", "src/main.mjs", "popup"]
+command = ["/bin/sh", "scripts/launch.sh", "popup"]

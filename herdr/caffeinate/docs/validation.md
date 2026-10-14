@@ -30,6 +30,38 @@
 
 Author self-review only: no subagent reviewer was available. Found and fixed split UTF-8 decoding across socket chunks (Herdr identity and private IPC), with RED→GREEN regressions. Added consumer coverage for shared settings propagation and release/cancel controls. See `review.md` for deferred polish and scope rulings.
 
+## Real Pi demo — 2026-10-13
+
+A real foreground Node tool loop ran in Pi for five minutes (03:12:52–03:17:52 UTC), emitting 30 timestamps without network requests or file writes. The user exercised automatic caffeination, a manual 36-second expiry, reapplication, and the controls, and confirmed everything worked as expected. The sidebar cup and normal-Herdr shortcut/configuration were also confirmed. This does not validate Claude, laptop battery transitions, or overnight reliability.
+
+## Popup UX iteration 1
+
+- Regression verification: `npm test` **66/66**, integration subset **5/5**, existing Pi package **8/8**; `git diff --check` clean.
+- Focused-agent first; explicit Tab/clickable agent picker, Herdr workspace/tab labels, list rules, separate contextual/global actions, editable hours/cursor, `↵` primary buttons, and mouse hit-testing.
+- Added read-only label/theme discovery in the popup process. No monitor/model/assertion changes and no running-monitor restart needed.
+- Live read-only Herdr metadata query returned human labels for all five currently visible agents; current static Gruvbox tokens resolved correctly.
+- Actual 80 × 20 pseudoterminal probe exercised the production popup with a fake monitor: Tab, mouse selection/open/apply/settings/close, guarded fractional-hour command, and mouse/cursor/raw-mode cleanup passed. It acquired no OS assertion. This is not an end-to-end Herdr mouse-forwarding test.
+- Theme support is deliberately partial: static Gruvbox dark/light and simple hex-token overrides, otherwise ANSI fallback. Native right-click integration needs a Herdr extension point.
+- User reports a “huge improvement”; subsequent navigation feedback is addressed below. Author review only; independent review and lint/typecheck/format tooling remain deferred.
+
+## Popup UX iteration 2 — persistent navigation
+
+- Reproduced Settings → Help → Settings creating cyclic back destinations. Keyboard reproduction rules out mouse hit-testing as the cause.
+- Removed history-based navigation. Persistent Agents / Settings / About tabs use accent-color selection; Agents restores its last detail/list view. Active-tab clicks are idempotent, and unsaved settings survive tab changes.
+- Removed interior padding in shortcut parentheses. The additional navigation row raises the minimum inner size to 56 × 18 cells.
+- RED→GREEN navigation and rendering regressions; `npm test` **69/69**, integration subset **5/5**, `git diff --check` clean.
+- Actual 80 × 20 PTY with the production popup and a fake monitor: mouse Settings/About/Settings/Agents sequence restored picker selection and preserved unsaved settings; apply and close passed. No OS assertions acquired. End-to-end Herdr visual acceptance remains for the user.
+
+## TypeScript/build and package-local tooling — 2026-10-13
+
+- Tested on macOS with **Node 24.16.0**, pnpm **11.26.0**, and Herdr **0.9.3**. Supported Node floor is now **24.0.0**, per the user's Node 24 LTS baseline decision; Node 22 support was dropped. The actual minimum binary was not exercised: lower/boundary versions and Linux host rejection were simulated in isolated subprocesses.
+- Pinned dev tools: TypeScript 7.0.2, tsdown 0.23.0, oxlint 1.87.0, oxlint-tsgolint 7.0.2003, oxfmt 0.72.0, and @types/node 24.19.1. Frozen pnpm install passed with the seven-day cooldown, no trust downgrade, no exotic subdependencies, and no approved dependency scripts. No security exception or dependency override was needed.
+- `pnpm check`: formatting, independent strict TypeScript, type-aware Oxlint, and **83/83 TAP tests** passed. `pnpm test:integration`: **7/7** passed. Production modules execute from `dist/`; source-free/no-node_modules consumer smoke tests pass.
+- File-list checks cover owned source, scripts, tests, fixtures and build configuration, and exclude generated output. Isolated projects inheriting the actual config demonstrate **TS2322 → clean** and **no-floating-promises → clean**. They never execute the deliberately broken code.
+- Launcher RED→GREEN covers absent/unsupported Node, missing build, unsupported host, absent/old Herdr, argument preservation from an unrelated cwd, installer-command traps, and the cached-manifest shim. Runtime preflight performs a bounded read-only Herdr version query; build preflight needs only Node, not Herdr or a running server.
+- A literal compatibility import initially pulled generated JS into source typechecking; a failing file-list regression demonstrated this, and restoring URL-based loading fixed it. The UTF-8 IPC regression also caught dropped passthrough fields during boundary typing; those fields were preserved.
+- This tooling migration did not restart/relink the normal Herdr server, discard leases, or acquire native assertions. The earlier native/real-Pi evidence above remains historical; the TypeScript revision has not repeated overnight/laptop/real-Claude acceptance.
+
 ## Remaining live checks
 
-Real Pi and Claude runs: short response, silent tool, completion/cancel, permission wait, multiple agents, client detach. Physical battery transitions, display dark with work continuing, popup feel and sidebar row configuration. Record each separately; simulator tests do not satisfy these checks.
+Claude real-agent acceptance; further Pi short-response, cancel, permission-wait, multiple-agent and detach scenarios beyond the demo above. Physical laptop battery transitions, display dark with work continuing, overnight reliability, and the revised popup's feel. Record each separately; simulator/PTY tests do not satisfy these checks.

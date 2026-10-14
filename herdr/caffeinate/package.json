@@ -2,13 +2,37 @@
   "name": "herdr-caffeinate",
   "version": "0.1.0",
   "private": true,
-  "type": "module",
   "license": "MIT",
-  "engines": { "node": ">=22.18.0" },
+  "type": "module",
+  "imports": {
+    "#caffeinate/*": {
+      "types": "./src/*.ts",
+      "default": "./dist/*.js"
+    }
+  },
   "scripts": {
-    "test": "node --test test/*.test.mjs",
-    "test:integration": "node --test test/end-to-end.test.mjs test/runtime.test.mjs",
-    "probe:herdr": "node scripts/probe-herdr.mjs",
-    "probe:assertions": "node scripts/probe-assertions.mjs"
-  }
+    "build": "node scripts/preflight.cjs build && tsdown",
+    "format": "oxfmt .",
+    "format:check": "oxfmt --check .",
+    "lint": "oxlint --type-aware --deny-warnings .",
+    "lint:fix": "oxlint --type-aware --deny-warnings --fix .",
+    "typecheck": "tsc --noEmit",
+    "check": "pnpm format:check && pnpm typecheck && pnpm lint && pnpm test",
+    "test": "pnpm build && node --test --test-reporter=tap test/*.test.ts",
+    "test:integration": "pnpm build && node --test --test-reporter=tap test/end-to-end.test.ts test/runtime.test.ts test/build.test.ts",
+    "probe:herdr": "pnpm build && node scripts/probe-herdr.ts",
+    "probe:assertions": "pnpm build && node scripts/probe-assertions.ts"
+  },
+  "devDependencies": {
+    "@types/node": "24.19.1",
+    "oxfmt": "0.72.0",
+    "oxlint": "1.87.0",
+    "oxlint-tsgolint": "7.0.2003",
+    "tsdown": "0.23.0",
+    "typescript": "7.0.2"
+  },
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "packageManager": "pnpm@11.26.0"
 }

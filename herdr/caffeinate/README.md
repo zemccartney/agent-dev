@@ -1,10 +1,21 @@
 # Caffeinate for Herdr — trial
 
-Automatically caffeinate local Pi and Claude Code runs. No model calls, dependencies to install, or changes to agent execution. macOS only; Node >=22.18.0 and Herdr >=0.9.3.
+Automatically caffeinate local Pi and Claude Code runs. No model calls, runtime npm dependencies, SQLite, or changes to agent execution.
 
-**Start with the [guided demo](docs/demo.md).** Real harness behavior and your UI experience are the remaining acceptance checks; this is not yet a promise of reliable overnight operation. See [validation](docs/validation.md) and the [design](docs/design.md).
+## Prerequisites
 
-## Install from any directory
+- macOS supported by your Herdr installation.
+- **Node >=24.0.0** available on Herdr's launch `PATH`; current Node 24 LTS is recommended. No particular version manager is required.
+- **Herdr >=0.9.3**. Pi also needs Herdr's Pi integration, as described below.
+- Git for obtaining a source checkout or GitHub-based installation, not for ongoing caffeination.
+
+The runtime launcher checks Node, macOS, built output, and the Herdr CLI before loading the application. It never installs runtimes/dependencies, sources shell profiles, or changes global configuration. Prebuilt consumers need no pnpm, TypeScript, or compiler. **Release artifacts and a public installer are not published yet**; the current local trial uses a developer-built checkout.
+
+**Start with the [guided demo](docs/demo.md).** A real Pi tool-run demo has passed. Claude, laptop power transitions, further UI trials, and overnight reliability remain acceptance checks. See [validation](docs/validation.md) and the [design](docs/design.md).
+
+## Local trial from a built checkout
+
+Build a source checkout first using [Development](#development). Herdr `plugin link` does not build it. Then run the commands below from any directory.
 
 Keep the checkout at its linked location. A Git worktree is a perfectly valid plugin directory; you do not need to run your agent or shell inside it.
 
@@ -55,9 +66,14 @@ Otherwise invoke the controls action from a Herdr terminal. When no supported ag
 
 - Type a duration in **hours**; fractions work. Enter applies it immediately to an ongoing run. Deadline uses your machine's timezone, down to milliseconds.
 - For idle/permission-waiting agents, **Set next run** arms one run; it does not keep an idle machine awake.
-- Tab to **Stop caffeinating** or **Cancel next run**, then Enter. Neither cancels agent work.
-- `s`: global settings (automatic toggle and default hours). Space toggles automatic; Tab moves to duration; Enter saves. Changes affect future runs only.
-- `?`: help. Escape goes back or closes. Ctrl+U clears a duration field. Escape/closing/detaching does not stop the monitor.
+- Persistent **Agents (a) / Settings (s) / About (?)** tabs are always at the top; the active tab uses the theme accent. Returning to Agents restores its last detail/list view. Clicking the active tab is a no-op; unsaved settings survive tab switches.
+- The focused agent opens first. **Tab / all agents** opens all supported local agents, labelled `workspace — tab (agent)`. Use arrows or click a row, then Enter / **open**. Tab returns to the current agent without changing it; the mouse wheel browses longer lists.
+- Click the hours field to edit; a cursor marks its position. Left/right, Home/End, Backspace/Delete and Ctrl+U work. Enter / **apply** submits.
+- Click **Stop caffeinating** / **Cancel next run**, or press `r`. Neither cancels agent work.
+- `s`: global settings (automatic toggle and default hours). Space toggles automatic; Tab moves to duration; Enter saves. Clicks work too. `a` returns to Agents. Changes affect future runs only.
+- `?`: About / usage guidance. Escape or **close** closes the popup from any view. Closing/detaching does not stop the monitor.
+
+This UI is a first-pass trial. Allow at least 56 × 18 terminal cells inside the popup. Static Gruvbox dark/light colors and simple custom hex overrides are read from Herdr's config when opening; other/auto-switching themes use terminal ANSI colors because Herdr 0.9.3 has no public resolved-theme API. The native Agents sidebar right-click menu has no plugin-action hook yet; keep using the shortcut/action for now.
 
 Automatic is initially on. Default is eight hours from observed run start, with a ten-second start delay. Tools, commentary and retries do not reset that deadline. A confirmed finish/wait ends the lease. Explicit manual actions bypass the delay.
 
@@ -84,7 +100,7 @@ herdr plugin action invoke agent-dev.caffeinate.controls
 herdr plugin unlink agent-dev.caffeinate
 ```
 
-Disable releases owned assertions while agent work continues. To load changed source, disable, wait a few seconds, enable and invoke controls. If you move/merge the checkout, unlink and link its new plugin path. Do not delete a worktree while Herdr still points into it.
+Disable releases owned assertions while agent work continues. After source edits, run `pnpm build`. For popup-only changes, close and reopen controls; the running monitor and leases need no restart. To load changed monitor code, deliberately disable, wait a few seconds, enable and invoke controls. If you move/merge the checkout, unlink and link its new plugin path. Do not delete a worktree while Herdr still points into it.
 
 Settings live in the directory printed by `herdr plugin config-dir agent-dev.caffeinate`, in `settings.json`. Temporary runtime state and a sibling log live under the OS temp directory's `caffeinate-<uid>/` directory. An unavailable monitor reports its exact paths.
 
@@ -92,12 +108,25 @@ Settings live in the directory printed by `herdr plugin config-dir agent-dev.caf
 
 ## Development
 
+Provide Node >=24.0.0 and the pinned **pnpm 11.26.0** yourself. Tooling is package-local; this does not change the other projects' workflow.
+
 ```sh
 cd "$PLUGIN"
-npm test
-npm run test:integration
+node scripts/preflight.cjs build
+pnpm install --frozen-lockfile
+pnpm build
+pnpm check
+pnpm test:integration
 # Explicitly opt in to brief, real macOS assertions:
-npm run probe:assertions -- --allow-system-assertion
+pnpm probe:assertions --allow-system-assertion
 ```
 
-Tests use injected clocks, fake socket servers and child processes, without acquiring real OS assertions. The optional probe does acquire short assertions. No build or `npm install` step is required. The root repository LICENSE applies.
+- TypeScript lives in `src/`; tsdown emits stable, unbundled ESM modules in `dist/`. Build before linking or trying edits. Compilation requires no running Herdr server and performs no install/relink/restart.
+- `pnpm check` runs Oxfmt, independent strict `tsc --noEmit`, type-aware Oxlint, then the built-output tests. `pnpm format` formats owned files. Exact devDependency versions, the pinned manager, and `pnpm-lock.yaml` are checked in.
+- pnpm enforces a seven-day release cooldown, trust-downgrade checks even against the lockfile, no exotic subdependencies, and no unapproved dependency build scripts. Do not bypass a blocked resolution silently.
+- `pnpm test` builds first, then uses the built-in Node test runner with TAP output. Native Node stripping runs developer `.ts` tests/probes; `#caffeinate/*` imports execute `dist/*.js` while TypeScript checks source contracts. Tests, fixtures, scripts and build configuration are included in strict checking; isolated negative canaries verify the actual compiler/linter gates.
+- Tests use injected clocks, fake socket servers and child processes, without acquiring real OS assertions. Version tests simulate detection boundaries under the installed Node; they do not prove execution under every accepted Node version. The optional assertion probe does acquire short native assertions.
+- A consumer layout needs `dist/`, `scripts/launch.sh`, `scripts/preflight.cjs`, `package.json`, and the manifest, plus appropriate documentation/license. It does not need source, pnpm, or `node_modules`. Artifact creation, checksums and installation automation are the next release stage.
+- Temporary `src/main.mjs` supports the already-cached trial manifest and forwards through preflight to the build. New manifest registrations use `/bin/sh scripts/launch.sh`. Existing monitors/IPC/leases are not restarted or restored by building; relinking the live trial is intentionally not automatic.
+
+The root repository LICENSE applies.

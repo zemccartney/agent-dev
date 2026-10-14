@@ -8,7 +8,7 @@ Author self-review; no independent reviewer was available. Review covered the ap
 - Added explicit consumer coverage for global settings across monitors and popup release/cancel-arming actions.
 - Earlier live validation found popup targeting restrictions and a server-exit/transient-failure distinction; both received regression tests and live checks.
 
-Final deterministic suite: 53/53. Integration subset: 5/5. Existing Pi package: 8/8. No independent review or real model-backed overnight test is implied.
+Initial deterministic suite: 53/53. Integration subset: 5/5. Existing Pi package: 8/8. No independent review or real model-backed overnight test is implied.
 
 ## Rulings made during implementation
 
@@ -26,6 +26,19 @@ Final deterministic suite: 53/53. Integration subset: 5/5. Existing Pi package: 
 
 - Initial discovery can make a fast popup command stale; refresh/retry is safe but inelegant.
 - Measure process/evidence polling overhead with many concurrent agents before optimizing.
-- Expand compact source formatting for readability when revisiting modules.
+- Compact source formatting was addressed by the TypeScript/Oxfmt migration below.
 
 Recommendation: suitable for the documented attended demo; not yet validated as an unattended reliability tool. Branch remains unmerged and unpublished.
+
+## TypeScript/build tooling review — 2026-10-13
+
+Author self-review only; no independent reviewer tool was available. Reviewed the pending working-tree changes, not just the historical commit range: model/command invariants, JSON/IPC narrowing, assertion ownership/timeouts, popup ports and compatibility, stable build paths, runtime preflight, locked dependency policy, and test/consumer-layout coverage.
+
+- Strict TypeScript, independent type-aware lint, Oxfmt and **83/83** built-output tests pass; integration subset **7/7** passed at the task gate. No blanket `any`, rule suppressions, or excluded tests were added.
+- One Important type-safety finding: the assertion manager's empty return map inferred `Map<any, any>` and erased its result contract. A real compiler canary accepted an invalid string assignment before the fix; explicit map typing now produces TS2322 and accepts the correct result access. Also typed the internal occupant set. The full 83-test aggregate check passed after this fix.
+- Runtime launch checks Node >=24.0.0, macOS, built output and Herdr CLI >=0.9.3 before application loading; build preflight checks only Node. The tiny checked CommonJS bootstrap intentionally uses old syntax for useful unsupported-runtime errors. Version boundaries were simulated, not exercised with historical Node binaries.
+- Node 24 is the user's revised baseline, so Node 22 support is intentionally removed. Optional unsupported `import/no-unresolved` was not enabled in this Oxlint version; the import plugin remains enabled and TypeScript independently checks resolution.
+- Runtime Herdr validation adds a bounded read-only version subprocess per launch and can reject an unrecognized/custom version string. It does not contact/restart the live server or modify its configuration.
+- No new Critical/Important findings remain from this pass. Existing deferred polish above is unchanged; actual release packaging/installer validation and real-Claude/laptop/overnight acceptance are explicitly not supplied by these tests.
+
+Assessment: the scoped tooling work is ready for human/independent review, not a release or unattended-reliability sign-off. Work remains uncommitted, unmerged and unpublished; the linked worktree and execution ledger are retained.
