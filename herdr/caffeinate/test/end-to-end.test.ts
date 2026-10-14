@@ -5,6 +5,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { spawn, type ChildProcess } from "node:child_process";
+import { once } from "node:events";
 import { connectHerdr } from "#caffeinate/herdr";
 import { createMonitor, type HerdrPort } from "#caffeinate/monitor";
 import { createAssertions } from "#caffeinate/assertions";
@@ -183,6 +184,165 @@ void test("socket adapter + model + subprocess assertions: complete lifecycle wi
         !method.includes("send") && !method.includes("prompt") && !method.includes("close"),
     ),
   );
+});
+
+void test("agent disappearance releases its active assertion without touching another lease", async (t) => {
+  const dir = await mkdtemp(join(tmpdir(), "cf-active-exit-"));
+  const socketPath = join(dir, "server.sock");
+  const sockets = new Set<net.Socket>();
+  const children: ChildProcess[] = [];
+  const methods: string[] = [];
+  const tokens = new Map<string, unknown>();
+  const present = new Set(["one", "two"]);
+  let phase: Phase = "idle",
+    seq = 1,
+    time = 1800000000000;
+  const agent = (id: string) => ({
+    terminal_id: `term_${id}`,
+    agent: "pi",
+    agent_status: phase,
+    screen_detection_skipped: true,
+    agent_session: { source: "herdr:pi", agent: "pi", kind: "id", value: id },
+    workspace_id: "w1",
+    tab_id: "w1:t1",
+    pane_id: id,
+    focused: false,
+    state_change_seq: seq,
+    revision: 0,
+  });
+  const server = net.createServer((socket) => {
+    sockets.add(socket);
+    socket.on("close", () => sockets.delete(socket));
+    socket.setEncoding("utf8");
+    let buffer = "";
+    socket.on("data", (data: string) => {
+      buffer += data;
+      let end;
+      while ((end = buffer.indexOf("\n")) >= 0) {
+        const q = object(JSON.parse(buffer.slice(0, end)));
+        buffer = buffer.slice(end + 1);
+        assert.equal(typeof q.method, "string");
+        const method = String(q.method),
+          params = object(q.params);
+        methods.push(method);
+        let result: Record<string, unknown>;
+        switch (method) {
+          case "events.subscribe":
+            result = { type: "subscription_started" };
+            break;
+          case "session.snapshot":
+            result = { snapshot: { agents: [...present].map(agent) } };
+            break;
+          case "agent.get":
+            assert.ok(typeof params.target === "string" && present.has(params.target));
+            result = { agent: agent(params.target) };
+            break;
+          case "agent.explain":
+            result = {
+              explain: {
+                agent: "pi",
+                state: phase,
+                screen_detection_skipped: true,
+                screen_detection_skip_reason: "full_lifecycle_hook_authority",
+              },
+            };
+            break;
+          case "pane.process_info":
+            result = { process_info: { foreground_processes: [{ pid: 123, name: "pi" }] } };
+            break;
+          case "pane.report_metadata":
+            assert.ok(typeof params.pane_id === "string");
+            assert.equal(params.ttl_ms, 6000);
+            tokens.set(params.pane_id, object(params.tokens).caffeination);
+            result = {};
+            break;
+          default:
+            throw new Error(`Unexpected API method ${method}`);
+        }
+        socket.write(JSON.stringify({ id: q.id, result }) + "\n");
+      }
+    });
+  });
+  await new Promise<void>((resolve) => server.listen(socketPath, resolve));
+  const herdr = await connectHerdr({
+    socketPath,
+    verifyHost: async () => ({ instance: "local", local: true, pluginEnabled: true }),
+    verifyProcess: async () => "123:birth",
+  });
+  const assertions = createAssertions({
+    now: () => time,
+    spawn: () => {
+      const child = spawn(process.execPath, ["-e", "setTimeout(() => {}, 30000)"], {
+        stdio: "ignore",
+      });
+      children.push(child);
+      return child;
+    },
+  });
+  const monitor = createMonitor({
+    herdr,
+    assertions,
+    readPower: async () => "ac",
+    now: () => time,
+  });
+  t.after(async () => {
+    await monitor.close();
+    for (const child of children) child.kill("SIGKILL");
+    for (const socket of sockets) socket.destroy();
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+    await rm(dir, { recursive: true, force: true });
+  });
+
+  await monitor.refresh();
+  phase = "working";
+  seq++;
+  await monitor.refresh();
+  time += 10000;
+  await monitor.tick();
+  assert.deepEqual(
+    monitor.snapshot().agents.map((row) => row.active),
+    [true, true],
+  );
+  assert.deepEqual(
+    [...tokens],
+    [
+      ["one", "☕"],
+      ["two", "☕"],
+    ],
+  );
+  assert.equal(children.length, 2);
+  const first = children[0],
+    survivor = children[1];
+  assert.ok(first.pid && survivor.pid);
+  const survivorPid = survivor.pid;
+  process.kill(first.pid, 0);
+  process.kill(survivorPid, 0);
+  const survivorBefore = monitor.snapshot().agents.find((row) => row.target === "two");
+  assert.ok(survivorBefore);
+  assert.equal(deadline(survivorBefore.state), 1800028800000);
+  const firstExited = once(first, "exit", { signal: AbortSignal.timeout(2000) }).then(
+    () => true,
+    () => false,
+  );
+
+  present.delete("one");
+  await monitor.refresh();
+  assert.deepEqual(
+    monitor.snapshot().agents.map((row) => row.target),
+    ["two"],
+  );
+  assert.equal(tokens.get("one"), null);
+  assert.equal(await firstExited, true, "the vanished agent's assertion child must exit");
+  assert.ok(first.exitCode !== null || first.signalCode !== null);
+  const survivorAfter = monitor.snapshot().agents[0];
+  assert.equal(survivorAfter.active, true);
+  assert.equal(survivorAfter.state.occupant, survivorBefore.state.occupant);
+  assert.equal(deadline(survivorAfter.state), 1800028800000);
+  assert.equal(tokens.get("two"), "☕");
+  assert.equal(children.length, 2, "removal must not replace the surviving assertion");
+  assert.equal(survivor.pid, survivorPid);
+  process.kill(survivorPid, 0);
+  assert.ok(methods.every((method) => !/send|prompt|close/.test(method)));
 });
 
 void test("a known idle baseline across a monitoring gap cannot infer a new start time", async () => {
