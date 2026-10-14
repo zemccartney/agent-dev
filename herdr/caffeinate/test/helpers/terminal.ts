@@ -1,10 +1,10 @@
-import xterm from "@xterm/headless";
+import { createEmulator } from "./xterm.ts";
 import { StdinBuffer, type Terminal } from "@earendil-works/pi-tui";
 import { setTimeout as wait } from "node:timers/promises";
 
 /** Parse actual renderer output; StdinBuffer models ProcessTerminal's input boundary. */
 export function makeTestTerminal({ columns, rows }: { columns: number; rows: number }) {
-  const emulator = new xterm.Terminal({ cols: columns, rows, allowProposedApi: true });
+  const emulator = createEmulator(columns, rows);
   const input = new StdinBuffer();
   let onResize = () => {};
   let pending = Promise.resolve();
@@ -69,6 +69,11 @@ export function makeTestTerminal({ columns, rows }: { columns: number; rows: num
       onResize();
     },
     frame,
+    foregroundAt: (column: number, row: number) =>
+      emulator.buffer.active
+        .getLine(emulator.buffer.active.viewportY + row)
+        ?.getCell(column)
+        ?.getFgColor(),
     async waitFor(text: string) {
       const until = Date.now() + 2000;
       do {

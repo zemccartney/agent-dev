@@ -14,6 +14,7 @@ void test("toolkit spike retains numeric drafts across tabs and restores the ter
   await screen.waitFor("Hours: 2");
   screen.send("\u00151.5\u001b[D\u001b[3~25");
   await screen.waitFor("Hours: 1.25");
+  assert.match(screen.frame(), /Hours: 1\.25\s*(?:\n|$)/);
   screen.send("s");
   await screen.waitFor("Default: 8");
   screen.send("\u00154.5");
@@ -78,6 +79,7 @@ void test("toolkit spike accepts bracketed numeric paste and renders Unicode at 
       await screen.waitFor("Hours: 3.75");
       screen.send("\r");
       await screen.waitFor("Applied: 3.75");
+      assert.match(screen.frame(), /Applied: 3\.75\s*(?:\n|$)/);
       screen.send("\u0003");
       await done;
       assert.equal(screen.stopped, true);

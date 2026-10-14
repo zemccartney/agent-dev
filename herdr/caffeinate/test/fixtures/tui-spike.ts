@@ -1,5 +1,5 @@
 import {
-  Container,
+  VStack,
   HStack,
   Input,
   MouseRegion,
@@ -21,11 +21,13 @@ export async function runTuiSpike(terminal?: Terminal): Promise<void> {
   const tui = new TuiAltScreen(terminal ?? new ProcessTerminal(), true, undefined, {
     copyOnSelect: false,
   });
-  const content = new Container();
+  const content = new VStack();
   const hours = new Input({ prompt: "Hours: " });
   const defaults = new Input({ prompt: "Default: " });
   hours.setValue("2");
   defaults.setValue("8");
+  hours.handleInput("\x05");
+  defaults.handleInput("\x05");
   const status = new Text("Selected: agent-1", 0, 0);
   const order = new Text("Order: original", 0, 0);
   let settings = false,
@@ -39,8 +41,8 @@ export async function runTuiSpike(terminal?: Terminal): Promise<void> {
   }));
   const plain = (text: string) => text;
   const theme = {
-    selectedPrefix: (text: string) => `\x1b[38;2;250;189;47m${text}\x1b[0m`,
-    selectedText: plain,
+    selectedPrefix: plain,
+    selectedText: (text: string) => `\x1b[38;2;250;189;47m${text}\x1b[0m`,
     description: plain,
     scrollInfo: plain,
     noMatch: plain,
@@ -128,7 +130,7 @@ export async function runTuiSpike(terminal?: Terminal): Promise<void> {
     }
     return undefined;
   });
-  tui.addChild(content);
+  tui.setLayoutRoot(content);
   paint();
   try {
     tui.start();
