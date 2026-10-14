@@ -6,8 +6,8 @@ import { createHash } from "node:crypto";
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { setTimeout as wait } from "node:timers/promises";
-import { localHost } from "./herdr.js";
-import { object, errorCode, errorMessage } from "./validation.js";
+import { localHost } from "./herdr";
+import { object, errorCode, errorMessage } from "./validation";
 export interface RuntimeContext {
   runtimeDir: string;
   socketPath?: string;

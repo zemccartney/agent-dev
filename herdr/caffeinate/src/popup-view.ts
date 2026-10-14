@@ -1,6 +1,6 @@
-import { safeText, presentAgent, formatLocalDeadline } from "./presentation.js";
-import { FALLBACK_THEME, type Theme } from "./popup-data.js";
-import type { AgentRow, MonitorSnapshot } from "./monitor.js";
+import { safeText, presentAgent, formatLocalDeadline } from "./presentation";
+import { FALLBACK_THEME, type Theme } from "./popup-data";
+import type { AgentRow, MonitorSnapshot } from "./monitor";
 export type View = "controls" | "picker" | "settings" | "about";
 export type Focus = "duration" | "defaultDuration" | "automatic";
 export type Action =

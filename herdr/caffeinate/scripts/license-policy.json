@@ -1,0 +1,9 @@
+[
+  {
+    "name": "rolldown",
+    "version": "1.2.12",
+    "source": "https://www.npmjs.com/package/rolldown/v/1.2.12",
+    "licenseFiles": ["LICENSE"],
+    "noticeFiles": ["THIRD-PARTY-LICENSE"]
+  }
+]

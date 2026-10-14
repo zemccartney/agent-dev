@@ -18,9 +18,9 @@ function atLeast(version, floor) {
 
 /** @param {'build' | 'runtime'} mode */
 function check(mode) {
-  if (!atLeast(process.versions.node, nodeFloor)) {
+  if (!process.versions.node.startsWith("24.") || !atLeast(process.versions.node, nodeFloor)) {
     throw new Error(
-      "Caffeinate requires Node >=" +
+      "Caffeinate requires Node 24.x, minimum " +
         nodeFloor.join(".") +
         "; found " +
         process.versions.node +

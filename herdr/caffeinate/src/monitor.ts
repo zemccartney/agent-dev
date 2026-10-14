@@ -1,8 +1,8 @@
-import { initialState, reduce, DEFAULT_CONFIG } from "./model.js";
-import { validateConfig } from "./config.js";
-import type { AgentState, Config, Observation } from "./model.js";
-import type { Power } from "./power.js";
-import { errorCode, errorMessage, parseCommand } from "./validation.js";
+import { initialState, reduce, DEFAULT_CONFIG } from "./model";
+import { validateConfig } from "./config";
+import type { AgentState, Config, Observation } from "./model";
+import type { Power } from "./power";
+import { errorCode, errorMessage, parseCommand } from "./validation";
 export interface AgentRow {
   target: string;
   state: AgentState;

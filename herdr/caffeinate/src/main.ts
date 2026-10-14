@@ -1,13 +1,13 @@
 #!/usr/bin/env node
 import { join } from "node:path";
-import { resolveContext, ensureMonitor, serveRuntime, runtimeRequest } from "./runtime.js";
-import { connectHerdr } from "./herdr.js";
-import { createAssertions } from "./assertions.js";
-import { readPower } from "./power.js";
-import { createMonitor } from "./monitor.js";
-import { loadConfig, saveConfig } from "./config.js";
-import type { HostContext } from "./runtime.js";
-import { object, errorMessage, parseMonitorResponse } from "./validation.js";
+import { resolveContext, ensureMonitor, serveRuntime, runtimeRequest } from "./runtime";
+import { connectHerdr } from "./herdr";
+import { createAssertions } from "./assertions";
+import { readPower } from "./power";
+import { createMonitor } from "./monitor";
+import { loadConfig, saveConfig } from "./config";
+import type { HostContext } from "./runtime";
+import { object, errorMessage, parseMonitorResponse } from "./validation";
 
 async function runMonitor(context: HostContext) {
   let monitor: ReturnType<typeof createMonitor> | undefined,
@@ -130,8 +130,8 @@ async function main() {
     return;
   }
   if (command === "popup") {
-    const { runPopup } = await import("./popup.js");
-    const { readAgentLabels, readPopupTheme } = await import("./popup-data.js");
+    const { runPopup } = await import("./popup");
+    const { readAgentLabels, readPopupTheme } = await import("./popup-data");
     await runPopup({
       client: {
         request: async (message) => parseMonitorResponse(await client.request(message)),
@@ -145,7 +145,7 @@ async function main() {
     });
     return;
   }
-  const { openControls } = await import("./popup.js");
+  const { openControls } = await import("./popup");
   await openControls(context, process.env);
 }
 main().catch((error: unknown) => {

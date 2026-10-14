@@ -1,6 +1,6 @@
 import { stripVTControlCharacters } from "node:util";
-import type { AgentRow } from "./monitor.js";
-import type { Power } from "./power.js";
+import type { AgentRow } from "./monitor";
+import type { Power } from "./power";
 export const safeText = (value: string | number | null | undefined) =>
   stripVTControlCharacters(String(value ?? "")).replace(/\p{Cc}/gu, "");
 export function formatLocalDeadline(epochMs: number) {

@@ -1,20 +1,25 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { cp, mkdtemp, rm, writeFile } from "node:fs/promises";
-import { existsSync, readdirSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
 const root = fileURLToPath(new URL("../", import.meta.url));
-void test("build emits stable Node modules and tests resolve production imports to dist", () => {
+void test("build emits one production entry and runnable modular test imports", () => {
   assert.ok(existsSync(join(root, "dist/main.js")), "Missing built entrypoint");
+  assert.deepEqual(readdirSync(join(root, "dist")), ["main.js"]);
   for (const name of readdirSync(join(root, "src")).filter((n) => n.endsWith(".ts"))) {
     const base = name.slice(0, -3);
-    assert.ok(existsSync(join(root, "dist", base + ".js")), `Missing ${base}`);
+    assert.doesNotMatch(
+      readFileSync(join(root, "src", name), "utf8"),
+      /(?:from\s+|import\()["']\.\/[^"']+\.js["']/,
+    );
+    assert.ok(existsSync(join(root, ".build/test", base + ".js")), `Missing ${base}`);
     assert.equal(
       import.meta.resolve(`#caffeinate/${base}`),
-      new URL(`../dist/${base}.js`, import.meta.url).href,
+      new URL(`../.build/test/${base}.js`, import.meta.url).href,
     );
   }
 });

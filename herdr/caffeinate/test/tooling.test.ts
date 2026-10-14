@@ -38,7 +38,19 @@ void test("linting retains built-in plugins and type awareness; TypeScript runs 
   const ts = config("tsconfig.json").compilerOptions as Record<string, unknown>;
   assert.equal(ts.strict, true);
   assert.equal(ts.noEmit, true);
+  assert.equal(ts.module, "ESNext");
+  assert.equal(ts.moduleResolution, "Bundler");
+  assert.equal(config("tsconfig.json").references, undefined);
   const pkg = config("package.json");
+  assert.deepEqual(pkg.devEngines, {
+    runtime: { name: "node", version: "^24.0.0", onFail: "error" },
+  });
+  assert.equal((pkg.devDependencies as Record<string, string>)["@types/node"], "24.19.1");
+  const lock = readFileSync(new URL("../pnpm-lock.yaml", import.meta.url), "utf8");
+  assert.deepEqual(
+    [...new Set([...lock.matchAll(/@types\/node@(\d+\.\d+\.\d+)/g)].map((match) => match[1]))],
+    ["24.19.1"],
+  );
   const runtime = pkg.dependencies as Record<string, string>;
   assert.deepEqual(Object.keys(runtime), ["@earendil-works/pi-tui"]);
   assert.match(runtime["@earendil-works/pi-tui"], /^\d+\.\d+\.\d+$/);

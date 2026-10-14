@@ -3,9 +3,9 @@ import { lstat } from "node:fs/promises";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { createHash } from "node:crypto";
-import type { Observation } from "./model.js";
-import type { HerdrPort, TrackedAgent } from "./monitor.js";
-import { object, records, errorCode, errorMessage } from "./validation.js";
+import type { Observation } from "./model";
+import type { HerdrPort, TrackedAgent } from "./monitor";
+import { object, records, errorCode, errorMessage } from "./validation";
 type HostStatus = Awaited<ReturnType<HerdrPort["hostStatus"]>>;
 interface HerdrOptions {
   socketPath: string;

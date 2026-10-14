@@ -84,6 +84,15 @@ A real foreground Node tool loop ran in Pi for five minutes (03:12:52–03:17:52
 - Oracle correction: xterm's default Unicode 6 treats the rocket emoji as one cell. A cursor-addressing regression failed (`🚀 X` instead of `🚀X`); both terminal helpers now use the official Unicode 11 addon. Exact development-only additions `@xterm/addon-unicode11@0.8.0` and its required peer `@xterm/xterm@5.5.0` passed unchanged supply-chain policy. These are test tools, not production bundle dependencies.
 - Fresh frozen install, formatting, strict types, type-aware lint, **96/96 TAP tests**, **8/8 integration tests**, and the opted-in Herdr probe passed without skips. Evidence is recorded in the execution ledger's `task-2-final.log`. Physical font rendering, production popup acceptance, real-agent exits and native sleep behavior remain separate gates.
 
+## Bundled Node 24 payload — Task 3
+
+- One strict ESNext/Bundler compiler project and one Node 24 types version; extensionless application imports emit runnable modular test files under `.build/test`. Production is one minified `dist/main.js`, without chunks or source maps.
+- Consumer engines and error-only developer runtime metadata both restrict Node to `^24.0.0`; simulated launcher boundaries reject 23.x/25.x and accept 24.0.0/later 24.x. Pinned pnpm rejected a deliberately mismatched developer runtime offline without creating install output or fetching a runtime.
+- Graph-derived inventory includes the injected rolldown 1.2.12 helper. The payload retains its full MIT license plus the complete Rollup/esbuild third-party notices. The current production popup does not yet import pi-tui, so its upstream-license resolution remains mandatory when Task 4 first bundles it.
+- Prepared payload allowlists the single entry, launcher/preflight, manifest, minimal package metadata, canonical root LICENSE and generated third-party notices. Negative tests reject absent canonical/upstream text and unreviewed included packages; exact required bundler text is compared with installed originals.
+- Fresh check: **99/99 TAP tests**, strict types/lint/format; integration **8/8**. `pnpm test:runtime` ran the relocated prepared launcher with the actual Node **24.16.0** binary. `CAFFEINATE_TEST_NODE=/absolute/path/to/node` selects another preinstalled binary without rebuilding or provisioning it. **24.0.0 remains unverified** (not installed).
+- Before toolkit migration: 44,535 raw payload bytes; 17,183 summed per-file gzip bytes, not an archive-size claim. These measurements will change with the UI migration.
+
 ## Remaining live checks
 
 Claude real-agent acceptance; further Pi short-response, cancel, permission-wait, multiple-agent and detach scenarios beyond the demo above. Physical laptop battery transitions, display dark with work continuing, overnight reliability, and the revised popup's feel. Record each separately; simulator/PTY tests do not satisfy these checks.

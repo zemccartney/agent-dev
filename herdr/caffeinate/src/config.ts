@@ -1,8 +1,8 @@
 import { readFile, writeFile, rename, mkdir, unlink } from "node:fs/promises";
 import { dirname } from "node:path";
 import { randomUUID } from "node:crypto";
-import { DEFAULT_CONFIG, validateDuration } from "./model.js";
-import { object, errorCode } from "./validation.js";
+import { DEFAULT_CONFIG, validateDuration } from "./model";
+import { object, errorCode } from "./validation";
 export function validateConfig(input: unknown) {
   const value = object(input);
   if (typeof value?.automatic !== "boolean") throw new Error("automatic must be true or false");

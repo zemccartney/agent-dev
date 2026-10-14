@@ -1,7 +1,7 @@
 #!/bin/sh
 # No profiles, version managers, runtime downloads, or dependency installation.
 node_path=$(command -v node) || {
-  printf '%s\n' 'Caffeinate requires Node >=24.0.0 on PATH. Install a supported Node separately and make it available to Herdr.' >&2
+  printf '%s\n' 'Caffeinate requires Node 24.x (minimum 24.0.0) on PATH. Install a supported Node separately and make it available to Herdr.' >&2
   exit 127
 }
 case $0 in

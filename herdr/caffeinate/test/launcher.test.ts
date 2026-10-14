@@ -103,7 +103,7 @@ void test("unsupported Node versions fail before application parsing; version bo
     "25.0.0",
   ]) {
     const f = await fixture(t, { version });
-    const supported = ["24.0.0", "24.16.0", "25.0.0"].includes(version);
+    const supported = ["24.0.0", "24.16.0"].includes(version);
     if (!supported)
       await writeFile(
         join(f.dir, "dist", "main.js"),
@@ -187,7 +187,7 @@ void test("built consumer launcher and cached-manifest shim work without source 
 });
 void test("package build and all manifest entrypoints use the prerequisite guards", () => {
   const pkg = object(JSON.parse(readFileSync(join(root, "package.json"), "utf8")));
-  assert.equal(object(pkg.engines).node, ">=24.0.0");
+  assert.equal(object(pkg.engines).node, "^24.0.0");
   const build = object(pkg.scripts).build;
   assert.ok(typeof build === "string");
   assert.match(build, /node scripts\/preflight\.cjs build && tsdown/);

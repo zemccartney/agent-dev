@@ -1,15 +1,15 @@
-import { presentAgent } from "./presentation.js";
-import { validateDuration } from "./model.js";
-import { request, PLUGIN_ID } from "./herdr.js";
-import { renderPopup } from "./popup-view.js";
-import { createPopupInput, type MouseInput } from "./popup-input.js";
+import { presentAgent } from "./presentation";
+import { validateDuration } from "./model";
+import { request, PLUGIN_ID } from "./herdr";
+import { renderPopup } from "./popup-view";
+import { createPopupInput, type MouseInput } from "./popup-input";
 import type { Readable, Writable } from "node:stream";
 import type { Key } from "node:readline";
-import type { Command } from "./model.js";
-import type { MonitorSnapshot } from "./monitor.js";
-import type { Theme } from "./popup-data.js";
-import type { View, Focus, Action, Hit } from "./popup-view.js";
-import { object, errorMessage } from "./validation.js";
+import type { Command } from "./model";
+import type { MonitorSnapshot } from "./monitor";
+import type { Theme } from "./popup-data";
+import type { View, Focus, Action, Hit } from "./popup-view";
+import { object, errorMessage } from "./validation";
 export type PopupRequest = { type: "snapshot" } | { type: "command"; command: Command };
 export interface PopupClient {
   request(message: PopupRequest): Promise<{ snapshot: MonitorSnapshot }>;

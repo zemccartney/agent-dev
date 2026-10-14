@@ -1,10 +1,10 @@
 import { readFile } from "node:fs/promises";
 import { basename, join } from "node:path";
 import { homedir } from "node:os";
-import { request } from "./herdr.js";
-import { safeText } from "./presentation.js";
+import { request } from "./herdr";
+import { safeText } from "./presentation";
 
-import { object, records } from "./validation.js";
+import { object, records } from "./validation";
 export interface Theme {
   fg: string | null;
   bg: string | null;

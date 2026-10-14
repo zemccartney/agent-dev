@@ -1,5 +1,5 @@
-import type { AgentState, Command, Config, Phase } from "./model.js";
-import type { MonitorSnapshot, AgentRow } from "./monitor.js";
+import type { AgentState, Command, Config, Phase } from "./model";
+import type { MonitorSnapshot, AgentRow } from "./monitor";
 
 export function object(value: unknown): Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value)

@@ -7,11 +7,11 @@
   "imports": {
     "#caffeinate/*": {
       "types": "./src/*.ts",
-      "default": "./dist/*.js"
+      "default": "./.build/test/*.js"
     }
   },
   "scripts": {
-    "build": "node scripts/preflight.cjs build && tsdown",
+    "build": "node scripts/preflight.cjs build && tsdown && node scripts/prepare-runtime.ts",
     "build:spike": "node scripts/preflight.cjs build && tsdown --config tsdown.spike.config.ts",
     "format": "oxfmt .",
     "format:check": "oxfmt --check .",
@@ -20,6 +20,7 @@
     "typecheck": "tsc --noEmit",
     "check": "pnpm format:check && pnpm typecheck && pnpm lint && pnpm test",
     "test": "pnpm build && node --test --test-reporter=tap test/*.test.ts",
+    "test:runtime": "node --test --test-reporter=tap test/runtime-compatibility.test.mjs",
     "test:integration": "pnpm build && node --test --test-reporter=tap test/end-to-end.test.ts test/runtime.test.ts test/build.test.ts",
     "probe:herdr": "pnpm build && node scripts/probe-herdr.ts",
     "probe:tui": "pnpm build:spike && node scripts/probe-tui.ts",
@@ -39,8 +40,15 @@
     "tsdown": "0.23.0",
     "typescript": "7.0.2"
   },
+  "devEngines": {
+    "runtime": {
+      "name": "node",
+      "version": "^24.0.0",
+      "onFail": "error"
+    }
+  },
   "engines": {
-    "node": ">=24.0.0"
+    "node": "^24.0.0"
   },
   "packageManager": "pnpm@11.26.0"
 }
