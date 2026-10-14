@@ -56,7 +56,9 @@ const button = (caption: string, action: () => void) =>
     return undefined;
   });
 function submitted(row: SessionRecord) {
-  return row.lastUserAt === null ? "No submissions." : new Date(row.lastUserAt).toISOString();
+  if (row.lastUserAt === null) return "No submissions.";
+  const date = new Date(row.lastUserAt);
+  return Number.isFinite(date.getTime()) ? date.toISOString() : "Submission time unavailable";
 }
 
 export function makeView(

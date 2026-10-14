@@ -26,6 +26,15 @@ async function matches(pane: Pane, record: SessionRecord): Promise<boolean> {
   );
 }
 
+function ambiguousId(pane: Pane, record: SessionRecord, store: RegistryStore): boolean {
+  return (
+    pane.session?.kind === "id" &&
+    pane.session.value === record.sessionId &&
+    store.list().filter((row) => row.harness === "pi" && row.sessionId === record.sessionId)
+      .length !== 1
+  );
+}
+
 export async function openSession(
   key: SessionKey,
   deps: { store: RegistryStore; herdr: HerdrClient },
@@ -42,11 +51,7 @@ export async function openSession(
     const matching: Pane[] = [];
     for (const pane of state.panes) {
       if (!(await matches(pane, record))) continue;
-      if (
-        pane.session?.kind === "id" &&
-        store.list().filter((row) => row.harness === "pi" && row.sessionId === record.sessionId)
-          .length !== 1
-      ) {
+      if (ambiguousId(pane, record, store)) {
         return {
           kind: "error",
           message:
@@ -71,7 +76,7 @@ export async function openSession(
       targetId = existing.paneId;
       const current = await herdr.pane(targetId, signal);
       signal?.throwIfAborted();
-      if (!(await matches(current, record)))
+      if (ambiguousId(current, record, store) || !(await matches(current, record)))
         throw new Error("Destination changed conversation; refresh before opening again.");
       if (current.agent !== "pi") return { kind: "pending", panes: [current] };
     } else {
@@ -108,7 +113,11 @@ export async function openSession(
       signal?.throwIfAborted();
       const current = await herdr.pane(targetId, signal);
       signal?.throwIfAborted();
-      if (current.agent !== "pi" || !(await matches(current, record)))
+      if (
+        current.agent !== "pi" ||
+        ambiguousId(current, record, store) ||
+        !(await matches(current, record))
+      )
         throw new Error(
           "Started pane has not confirmed the expected Pi conversation. Inspect it before retrying.",
         );

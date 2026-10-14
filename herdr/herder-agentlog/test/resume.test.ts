@@ -48,6 +48,24 @@ await test("closed session resumes in original cwd and unarchives only after suc
   const start = s.fake.calls.find((c) => c.method === "startPi");
   assert.match(String(start?.args[2]), /^agentlog-[a-f0-9]{12}$/);
 });
+await test("final ID-only confirmation must remain unambiguous before any focus or unarchive", async (t) => {
+  for (const stage of ["after launch", "before existing focus"]) {
+    const s = await setup(t);
+    s.store.upsert({ ...s.record, sessionPath: s.record.sessionPath + ".copy" }, null);
+    if (stage === "before existing focus") s.fake.setState({ panes: [s.live], workspaces: [] });
+    s.fake.api.pane = (paneId) =>
+      Promise.resolve({
+        ...s.live,
+        paneId,
+        session: { agent: "pi", kind: "id", value: s.record.sessionId },
+      });
+    const result = await openSession(s.key, { store: s.store, herdr: s.fake.api });
+    assert.equal(result.kind, "error", stage);
+    assert.equal(s.fake.calls.filter((call) => call.method === "focus").length, 0);
+    assert.equal(s.store.get(s.key).archived, true);
+    assert.equal(s.fake.startedPaths.length, stage === "after launch" ? 1 : 0);
+  }
+});
 await test("path and exact ID matches focus without another process, even if backing file disappeared", async (t) => {
   for (const kind of ["path", "id"] as const) {
     const s = await setup(t);

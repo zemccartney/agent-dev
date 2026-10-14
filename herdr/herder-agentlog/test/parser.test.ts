@@ -34,6 +34,21 @@ await test("string content, text blocks and Unicode excerpts have bounded metada
     assert.equal(r.meta.excerpt, "🙂".repeat(120));
   }
 });
+await test("out-of-range numeric timestamps do not become catalog recency", async (t) => {
+  for (const timestamp of [1e30, -1e30]) {
+    const { file } = await makeFixture(t, { userTimes: [] });
+    await appendFile(
+      file,
+      JSON.stringify({
+        type: "message",
+        message: { role: "user", content: "Bad clock", timestamp },
+      }) + "\n",
+    );
+    const result = await readPiSession(file);
+    assert.ok(result.ok);
+    assert.equal(result.meta.lastUserAt, null);
+  }
+});
 await test("sessions without user submissions retain null recency and excerpt", async (t) => {
   const { file } = await makeFixture(t, { userTimes: [], nativeNames: [] });
   const r = await readPiSession(file);

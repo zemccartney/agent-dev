@@ -66,7 +66,7 @@ export async function readPiSession(path: string, signal?: AbortSignal): Promise
           : typeof item.timestamp === "string"
             ? Date.parse(item.timestamp)
             : Number.NaN;
-      if (Number.isFinite(timestamp))
+      if (Number.isFinite(timestamp) && Number.isFinite(new Date(timestamp).getTime()))
         meta.lastUserAt = Math.max(meta.lastUserAt ?? -Infinity, timestamp);
       if (meta.excerpt === null) {
         const text = userText(message.content).replace(/\s+/gu, " ").trim();

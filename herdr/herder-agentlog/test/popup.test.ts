@@ -289,6 +289,21 @@ await test("pending, duplicate choices and failed opens stay actionable, and rep
   s.screen.send("\x1b");
   await done;
 });
+await test("an invalid cached timestamp cannot prevent the popup from opening", async (t) => {
+  const s = await setup(t);
+  s.store.upsert({ ...s.record, lastUserAt: 1e30 }, null);
+  s.fake.api.state = async (signal) => {
+    await setTimeout(150, undefined, { signal });
+    return { panes: [], workspaces: [] };
+  };
+  await assert.doesNotReject(async () => {
+    const done = s.start();
+    await Promise.race([done, s.screen.waitFor("Submission time unavailable")]);
+    assert.match(s.screen.frame(), /Submission time unavailable/);
+    s.screen.send("\x1b");
+    await done;
+  });
+});
 await test("rendered terminal fits narrow and wide sizes, sanitizes labels and survives resize", async (t) => {
   const s = await setup(t, { nativeNames: ["Café 👩‍💻 unicode"] });
   s.store.setLabel(s.key, "\x1b[31mCafé 👩‍💻\x1b[0m");
