@@ -221,7 +221,7 @@ Add: unchanged files skip parsing; unfinished tails and parse errors remain retr
 
 **Produces:** `OpenResult = {kind:'opened';paneId:string} | {kind:'choose';panes:Pane[]} | {kind:'pending';panes:Pane[]} | {kind:'error';message:string;paneId?:string}`; `openSession(key:SessionKey,deps:{store:RegistryStore;herdr:HerdrClient},options?:{paneId?:string;signal?:AbortSignal}):Promise<OpenResult>`.
 
-- [ ] **1. Write failing workflow tests**, beginning with `closed session resumes in its original cwd and unarchives only after focus`: matching paths/IDs focus existing agents and never call start; multiple matches return choices and require a fresh match check after selection; saved references with no ready agent return pending, never start. Check a live match before rejecting a missing file/cwd: a still-running process may remain visitable. Closed-session missing paths create no destination. Workspace matching uses exact canonical pane cwd/worktree checkout; zero or multiple matching workspaces create a new one. Existing unique match creates one new tab.
+- [x] **1. Write failing workflow tests**, beginning with `closed session resumes in its original cwd and unarchives only after focus`: matching paths/IDs focus existing agents and never call start; multiple matches return choices and require a fresh match check after selection; saved references with no ready agent return pending, never start. Check a live match before rejecting a missing file/cwd: a still-running process may remain visitable. Closed-session missing paths create no destination. Workspace matching uses exact canonical pane cwd/worktree checkout; zero or multiple matching workspaces create a new one. Existing unique match creates one new tab.
 
 ```ts
 const outcome = await openSession(key, { store, herdr: fake.api });
@@ -234,10 +234,10 @@ assert.equal(store.get(key).lastUserAt, previousLastUserAt);
 
 Also test wrong/missing post-launch reference, blocked startup, timeout, vanished destination, and focus failure: retain archive state, return destination/error, never retry launch or send prompts. Cancellation must not kill Pi or perform a later focus/unarchive.
 
-- [ ] **2. Run red:** `pnpm build && node --test test/resume.test.ts`.
-- [ ] **3. Implement the workflow.** Read live state at click time. Compare canonical paths, or exact native IDs only when unambiguously resolved. Verify closed-session paths, create a no-focus destination, generate `agentlog-<12 hex chars>` as an internal name, and invoke managed start. Re-read and confirm the expected reference before focusing. Commit unarchive only after success. Abort CLI waits, not server/agent processes; an already-accepted request may still have launched Pi, so return without blind retry. Leave created destinations intact on failure.
-- [ ] **4. Run green:** `pnpm check`.
-- [ ] **5. Commit:** `feat(agentlog): focus or resume saved Pi conversations`.
+- [x] **2. Run red:** `pnpm build && node --test test/resume.test.ts`.
+- [x] **3. Implement the workflow.** Read live state at click time. Compare canonical paths, or exact native IDs only when unambiguously resolved. Verify closed-session paths, create a no-focus destination, generate `agentlog-<12 hex chars>` as an internal name, and invoke managed start. Re-read and confirm the expected reference before focusing. Commit unarchive only after success. Abort CLI waits, not server/agent processes; an already-accepted request may still have launched Pi, so return without blind retry. Leave created destinations intact on failure.
+- [x] **4. Run green:** `pnpm check`.
+- [x] **5. Commit:** `feat(agentlog): focus or resume saved Pi conversations`.
 
 ## Task 6: Build the responsive popup on pi-tui
 
