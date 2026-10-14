@@ -211,6 +211,7 @@ export async function runPopup(options: PopupOptions): Promise<void> {
       if (state.busy || !state.selected) return;
       state.editor = true;
       label.setValue(safeDisplay(store.get(state.selected).labelOverride ?? ""));
+      label.handleInput("\x05"); // Ctrl+E: edit existing labels from their end.
       state.status = "Empty label restores the native title.";
       paint();
     },

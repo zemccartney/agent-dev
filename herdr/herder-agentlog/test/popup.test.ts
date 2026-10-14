@@ -147,6 +147,20 @@ await test("cached rows remain usable while refreshing; keyboard actions persist
   s.screen.send("\x1b");
   await done;
 });
+await test("a prefilled label opens at its end so Ctrl+U can restore the native title", async (t) => {
+  const s = await setup(t);
+  s.store.setLabel(s.key, "Existing label");
+  const done = s.start();
+  await s.screen.waitFor("Existing label");
+  s.screen.send("\x0c");
+  await s.screen.waitFor("Registry only");
+  s.screen.send("\x15");
+  s.screen.send("\r");
+  assert.equal(s.store.get(s.key).labelOverride, null);
+  await s.screen.waitFor("Current");
+  s.screen.send("\x1b");
+  await done;
+});
 await test("mouse equivalents pin, label, archive, filter, refresh and open through the same actions", async (t) => {
   const s = await setup(t);
   const done = s.start();

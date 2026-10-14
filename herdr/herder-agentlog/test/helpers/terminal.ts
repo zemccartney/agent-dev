@@ -63,7 +63,7 @@ export function makeTestTerminal(size: { columns: number; rows: number }) {
     const buffer = parser.buffer.active;
     return Array.from(
       { length: parser.rows },
-      (_, i) => buffer.getLine(buffer.viewportY + i)?.translateToString(true) ?? "",
+      (_, i) => buffer.getLine(buffer.viewportY + i)?.translateToString(true, 0, parser.cols) ?? "",
     ).join("\n");
   }
   return {

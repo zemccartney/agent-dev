@@ -1,0 +1,28 @@
+id = "herder-agentlog"
+name = "Agentlog"
+version = "0.1.0"
+min_herdr_version = "0.9.3"
+description = "Find, organize, and reopen saved Pi conversations"
+platforms = ["macos"]
+
+[[actions]]
+id = "sessions"
+title = "Sessions…"
+contexts = ["workspace", "pane"]
+command = ["node", "scripts/run.cjs", "sessions"]
+
+[[events]]
+on = "pane.agent_detected"
+command = ["node", "scripts/run.cjs", "capture"]
+
+[[events]]
+on = "pane.agent_status_changed"
+command = ["node", "scripts/run.cjs", "capture"]
+
+[[panes]]
+id = "registry"
+title = "Sessions"
+placement = "popup"
+width = "90%"
+height = "80%"
+command = ["node", "scripts/run.cjs", "ui"]

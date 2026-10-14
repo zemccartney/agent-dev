@@ -26,6 +26,7 @@ Current decisions: [DISCUSSION.md](DISCUSSION.md).
 
 - Motivation: avoid maintaining handwritten terminal rendering/input/layout machinery in multiple Herdr plugins; the user would welcome simplifying Caffeinate's view layer.
 - Use Agentlog to establish bundled pi-tui behavior inside Herdr, including mouse, Unicode, resize, cleanup, and measured payload size.
+- Agentlog's source-build acceptance now exercises bundled pi-tui 1.0.4 inside real Herdr with mouse, control keys, Unicode, resize, and cleanup, without optional native helpers. The complete runtime is about 202 KB / 62 KB tar.gz. Useful integration details: recreate SelectList while retaining the SessionKey, initialize it before handling input (not only during render), and explicitly move a prefilled Input's cursor to the end.
 - Then evaluate a focused Caffeinate UI migration: replace low-level terminal plumbing while preserving controls, domain behavior, and its existing tests. This is not approval to rewrite its active worktree during the Agentlog plan review.
 - Reusing a dependency shares knowledge and review effort; it does not make its bytes free in separately shipped, self-contained plugin bundles.
 - Keep plugin-specific state/actions separate. Extract a shared helper only when concrete repeated code warrants it; do not build a generalized UI framework first.
@@ -70,7 +71,7 @@ The user accepts Node's release-candidate SQLite API for v0, with a 24.15 / 25.7
 
 ## Distribution goal: no separately installed runtime
 
-The user raised concern that requiring Node 24.15+ is friction for end users. Herdr itself does not require Node; it is a dependency of the proposed plugin implementation.
+The user raised concern that requiring Node 24.15+ is friction for end users. Herdr itself does not require Node; it is a dependency of this plugin implementation.
 
 - **Agreed v0:** TypeScript/Node with a separately installed Node 24.15+ runtime (25.x: 25.7+). The package README must acknowledge that prerequisite as a limitation and note investigation of Rust/native alternatives.
 - Before broader distribution, evaluate a self-contained executable, including SQLite facilities.
