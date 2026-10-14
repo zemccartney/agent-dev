@@ -93,6 +93,13 @@ A real foreground Node tool loop ran in Pi for five minutes (03:12:52–03:17:52
 - Fresh check: **99/99 TAP tests**, strict types/lint/format; integration **8/8**. `pnpm test:runtime` ran the relocated prepared launcher with the actual Node **24.16.0** binary. `CAFFEINATE_TEST_NODE=/absolute/path/to/node` selects another preinstalled binary without rebuilding or provisioning it. **24.0.0 remains unverified** (not installed).
 - Before toolkit migration: 44,535 raw payload bytes; 17,183 summed per-file gzip bytes, not an archive-size claim. These measurements will change with the UI migration.
 
+## Toolkit popup migration — Task 4
+
+- Production now uses standalone pi-tui `TuiAltScreen`, explicit layout components, `Input`, `SelectList`, mouse regions and toolkit width handling. Removed the handwritten screen grid, caret editor, width tables and generic mouse decoder. Domain state, target propagation, command guards, monitor, IPC and leases remain separate.
+- Accepted navigation/drafts/settings/actions/themes and 56×18 minimum are exercised through the real renderer. Added reordered/removed picker identities, Unicode mouse targeting after resize/scroll, bracketed paste, duplicate submission prevention, and shutdown during initial snapshot/label load/refresh/command. Late completions and failures cannot repaint or leak rejections; closing restores the terminal and closes the client once without sending a monitor command.
+- Packaging first failed on newly included unreviewed pi-tui. Exact upstream MIT text omitted from its tarball is now retained under `scripts/licenses/pi-tui-1.0.4`, with the full OpenTUI MIT license and source-attribution/provenance NOTICE. An explicit `vendor:` policy namespace is path-bounded and fails on missing inputs. Marked's full license, including Markdown redistribution terms, and get-east-asian-width's MIT license are retained alongside bundler notices. Tests compare complete required texts.
+- Fresh verification: **107/107 TAP**, **8/8 integration**, and actual relocated-runtime check **1/1**, plus frozen install and strict tooling. Current payload: 225,321 raw bytes; 69,776 summed per-file gzip bytes (not an archive size). Production-bundle Herdr acceptance follows separately; the normal trial has not been restarted or relinked.
+
 ## Remaining live checks
 
 Claude real-agent acceptance; further Pi short-response, cancel, permission-wait, multiple-agent and detach scenarios beyond the demo above. Physical laptop battery transitions, display dark with work continuing, overnight reliability, and the revised popup's feel. Record each separately; simulator/PTY tests do not satisfy these checks.

@@ -1,9 +1,8 @@
 import test, { type TestContext } from "node:test";
 import assert from "node:assert/strict";
-import { PassThrough } from "node:stream";
-import { stripVTControlCharacters } from "node:util";
+import { visibleWidth } from "@earendil-works/pi-tui";
+import { makeTestTerminal } from "./helpers/terminal.ts";
 import { runPopup, type PopupClient } from "#caffeinate/popup";
-import { cellWidth } from "#caffeinate/popup-view";
 import { initialState, type AgentState, type Phase, type Command } from "#caffeinate/model";
 import type { AgentRow, MonitorSnapshot } from "#caffeinate/monitor";
 interface SetupOptions {
@@ -17,16 +16,7 @@ async function setup(
   t: TestContext,
   { phase = "working", fail = false, state = {}, extra = [] }: SetupOptions = {},
 ) {
-  const input = Object.assign(new PassThrough(), {
-      isTTY: true,
-      isRaw: false,
-      setRawMode(value: boolean) {
-        this.isRaw = value;
-      },
-    }),
-    output = Object.assign(new PassThrough(), { isTTY: true, columns: 80, rows: 20 });
-  let text = "";
-  output.on("data", (d) => (text += d));
+  const terminal = makeTestTerminal({ columns: 80, rows: 20 });
   const commands: Command[] = [];
   const snap: MonitorSnapshot = {
     now: 1800000000000,
@@ -55,25 +45,32 @@ async function setup(
     close() {},
   };
   const labels = { "w1:p1": "pi-ext — caff-test (pi)", "w1:p2": "house — notes (claude)" };
-  const done = runPopup({ client, input, output, target: "w1:p1", loadLabels: async () => labels });
-  await wait();
-  t.after(async () => {
-    input.write("\x03");
-    await done;
+  const done = runPopup({
+    client,
+    terminal: terminal.terminal,
+    target: "w1:p1",
+    loadLabels: async () => labels,
   });
-  const screen = () => stripVTControlCharacters(text.slice(text.lastIndexOf("\x1b[H")));
+  t.after(async () => {
+    terminal.send("\x03");
+    await done;
+    await terminal.dispose();
+  });
+  await terminal.waitFor("Set");
+  const screen = terminal.frame;
   const key = async (sequence: string) => {
-    input.write(sequence);
-    await wait(sequence === "\x1b" ? 60 : 10);
+    terminal.send(sequence);
+    if (sequence === "\x1b") await wait(60);
+    await terminal.settle();
   };
   const click = async (label: string) => {
-    const lines = screen().split("\r\n"),
+    const lines = screen().split("\n"),
       y = lines.findIndex((l) => l.includes(label));
     assert.ok(y >= 0, `Missing ${label}`);
-    const x = cellWidth(lines[y].slice(0, lines[y].indexOf(label))) + 1;
+    const x = visibleWidth(lines[y].slice(0, lines[y].indexOf(label))) + 1;
     await key(`\x1b[<0;${x};${y + 1}M\x1b[<0;${x};${y + 1}m`);
   };
-  return { input, output, commands, done, text: () => text, screen, snap, key, click };
+  return { terminal, commands, done, text: terminal.text, screen, snap, key, click };
 }
 void test("duration entry and Enter submit guarded fractional hours; Escape restores terminal and mouse", async (t) => {
   const f = await setup(t);
@@ -81,11 +78,10 @@ void test("duration entry and Enter submit guarded fractional hours; Escape rest
   assert.ok(f.commands[0].type === "set-duration");
   assert.equal(f.commands[0].durationMs, 1800000);
   assert.equal(f.commands[0].revision, 1);
-  f.output.columns = 35;
-  f.output.emit("resize");
+  f.terminal.resize(35, 20);
   await f.key("\x1b");
   await f.done;
-  assert.equal(f.input.isRaw, false);
+  assert.equal(f.terminal.stopCount, 1);
   assert.match(f.text(), /Set from now/);
   assert.ok(f.text().includes("\x1b[?1006l"));
 });
@@ -160,6 +156,8 @@ void test("number field supports caret editing and mouse reports do not enter nu
   await f.key("12");
   await f.key("\x1b[D");
   await f.key(".");
+  await f.key("\x1b[<0;");
+  await f.key("1;1M\x1b[<0;1;1m");
   await f.click("apply (↵)");
   assert.ok(f.commands[0].type === "set-duration");
   assert.equal(f.commands[0].durationMs, 4320000);
@@ -223,6 +221,67 @@ void test("persistent tabs preserve picker selection and unsaved settings; activ
   assert.match(f.screen(), /Set next run \(hours\)/);
   assert.equal(f.commands.length, 0);
 });
+void test("reordered picker rows retain the selected occupant and numeric draft", async (t) => {
+  const f = await setup(t, {
+    extra: [
+      {
+        target: "w1:p2",
+        state: { ...initialState("b"), phase: "idle", revision: 7 },
+        active: false,
+        error: null,
+      },
+    ],
+  });
+  await f.key("0.125\t");
+  await f.click("house — notes");
+  f.snap.agents.reverse();
+  await wait(1100);
+  await f.key("\r\r");
+  assert.ok(f.commands[0].type === "set-duration");
+  assert.equal(f.commands[0].occupant, "b");
+  assert.equal(f.commands[0].durationMs, 450000);
+});
+void test("removed picker selection cannot open or apply to its replacement", async (t) => {
+  const f = await setup(t, {
+    extra: [
+      {
+        target: "w1:p2",
+        state: { ...initialState("b"), phase: "idle" },
+        active: false,
+        error: null,
+      },
+    ],
+  });
+  await f.key("\t");
+  await f.click("house — notes");
+  f.snap.agents[1].state = initialState("replacement");
+  await wait(1100);
+  await f.key("\r\r");
+  assert.match(f.screen(), /Previously selected agent/);
+  assert.equal(f.commands.length, 0);
+});
+void test("resized and scrolled Unicode picker uses stable mouse targeting and numeric paste", async (t) => {
+  const f = await setup(t, {
+    extra: Array.from({ length: 12 }, (_, index) => ({
+      target: `p${index}`,
+      label: `工作 🚀 é ${index}`,
+      state: { ...initialState(`o${index}`), phase: "idle" as const },
+      active: false,
+      error: null,
+    })),
+  });
+  await f.key("\t\x1b[F");
+  f.terminal.resize(56, 18);
+  await f.terminal.settle();
+  await f.click("工作 🚀 é 11");
+  await f.click("open (↵)");
+  await f.key("\x1b[200~0.");
+  await f.key("25\x1b[201~");
+  await f.key("\r");
+  assert.ok(f.commands[0].type === "set-duration");
+  assert.equal(f.commands[0].occupant, "o11");
+  assert.equal(f.commands[0].durationMs, 900000);
+});
 void test("non-TTY popup refuses without mutating terminal", async () => {
   await assert.rejects(
     runPopup({
@@ -232,8 +291,6 @@ void test("non-TTY popup refuses without mutating terminal", async () => {
         },
         close() {},
       },
-      input: new PassThrough(),
-      output: new PassThrough(),
     }),
     /terminal/i,
   );

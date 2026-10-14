@@ -137,8 +137,6 @@ async function main() {
         request: async (message) => parseMonitorResponse(await client.request(message)),
         close: () => client.close(),
       },
-      input: process.stdin,
-      output: process.stdout,
       target: process.env.CAFFEINATE_TARGET,
       loadLabels: () => readAgentLabels(context.socketPath),
       theme: await readPopupTheme(),

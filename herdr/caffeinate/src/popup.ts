@@ -1,34 +1,20 @@
+import { ProcessTerminal, TuiAltScreen, matchesKey, type Terminal } from "@earendil-works/pi-tui";
 import { presentAgent } from "./presentation";
 import { validateDuration } from "./model";
 import { request, PLUGIN_ID } from "./herdr";
-import { renderPopup } from "./popup-view";
-import { createPopupInput, type MouseInput } from "./popup-input";
-import type { Readable, Writable } from "node:stream";
-import type { Key } from "node:readline";
+import { createPopupView, type View, type Focus, type Action } from "./popup-view";
 import type { Command } from "./model";
 import type { MonitorSnapshot } from "./monitor";
 import type { Theme } from "./popup-data";
-import type { View, Focus, Action, Hit } from "./popup-view";
 import { object, errorMessage } from "./validation";
 export type PopupRequest = { type: "snapshot" } | { type: "command"; command: Command };
 export interface PopupClient {
   request(message: PopupRequest): Promise<{ snapshot: MonitorSnapshot }>;
   close(): void;
 }
-export interface PopupInput extends Pick<Readable, "on" | "off" | "pause" | "resume"> {
-  isTTY?: boolean;
-  isRaw?: boolean;
-  setRawMode?: (mode: boolean) => unknown;
-}
-export interface PopupOutput extends Pick<Writable, "write" | "on" | "off"> {
-  isTTY?: boolean;
-  columns?: number;
-  rows?: number;
-}
 interface PopupOptions {
   client: PopupClient;
-  input: PopupInput;
-  output: PopupOutput;
+  terminal?: Terminal;
   target?: string;
   loadLabels?: () => Promise<Record<string, string>>;
   theme?: Theme;
@@ -38,7 +24,6 @@ type Send = (
   method: string,
   params: Record<string, unknown>,
 ) => Promise<unknown>;
-
 export async function openControls(
   context: { socketPath: string },
   env = process.env,
@@ -55,61 +40,68 @@ export async function openControls(
   const target = invocation.focused_pane_id ?? env.HERDR_PANE_ID;
   if (target !== undefined && typeof target !== "string")
     throw new Error("Invalid Herdr pane context");
-  const params = {
+  await send(context.socketPath, "plugin.pane.open", {
     plugin_id: PLUGIN_ID,
     entrypoint: "controls",
     placement: "popup",
     env: target ? { CAFFEINATE_TARGET: target } : {},
-  };
-  await send(context.socketPath, "plugin.pane.open", params);
+  });
 }
-
 export async function runPopup({
   client,
-  input,
-  output,
+  terminal: supplied,
   target,
   loadLabels = async () => ({}),
   theme,
-}: PopupOptions) {
-  if (!input.isTTY || !output.isTTY || !input.setRawMode)
+}: PopupOptions): Promise<void> {
+  if (!supplied && (!process.stdin.isTTY || !process.stdout.isTTY)) {
+    client.close();
     throw new Error("Caffeination controls require an interactive terminal");
+  }
+  const terminal = supplied ?? new ProcessTerminal();
   let snapshot: MonitorSnapshot | undefined,
-    labels: Record<string, string> = {},
-    selected: string | undefined,
-    pick: string | undefined,
-    view: View = "controls",
-    focus: Focus = "duration",
-    hours = "2",
-    caret = 1,
-    replace = true;
-  let settingsHours = "8",
+    labels: Record<string, string> = {};
+  let selected: string | undefined, pick: string | undefined;
+  let view: View = "controls",
+    agentView: "controls" | "picker" = "controls",
+    focus: Focus = "duration";
+  let hours = "2",
+    settingsHours = "8",
     automatic = true,
     message = "",
-    transportError = "",
-    busy = false,
+    transportError = "";
+  let busy = true,
     ended = false,
-    entered = false,
-    timer: ReturnType<typeof setInterval> | undefined,
-    decoder: ReturnType<typeof createPopupInput> | undefined,
-    lastPaint = "",
-    frame: ReturnType<typeof renderPopup> | undefined;
-  let agentView: "controls" | "picker" = "controls";
-  const wasRaw = !!input.isRaw;
-  const row = () => snapshot?.agents.find((a) => a.state.occupant === selected);
-  const request = async (m: PopupRequest) => {
-    const r = await client.request(m);
-    snapshot = r.snapshot;
-    return snapshot;
-  };
-  const duration = (value: string) => {
-    const ms = Math.floor(Number(value) * 3600000);
-    validateDuration(ms, Date.now());
-    return ms;
-  };
+    started = false;
+  let timer: ReturnType<typeof setInterval> | undefined;
+  let resolveDone!: () => void, rejectDone!: (error: unknown) => void;
+  const done = new Promise<void>((resolve, reject) => {
+    resolveDone = resolve;
+    rejectDone = reject;
+  });
+  const originalStart = terminal.start.bind(terminal);
+  terminal.start = (onInput, onResize) =>
+    originalStart(onInput, () => {
+      paint();
+      onResize();
+    });
+  const tui = new TuiAltScreen(terminal, true, undefined, { copyOnSelect: false });
+  const component = createPopupView({
+    onAction: (action, occupant) => {
+      void activate(action, occupant);
+    },
+    onEdit: (field, value) => {
+      if (ended || busy) return;
+      if (field === "duration") hours = value;
+      else settingsHours = value;
+      paint();
+    },
+  });
+  const row = () => snapshot?.agents.find((agent) => agent.state.occupant === selected);
+  const small = () => terminal.columns < 56 || terminal.rows < 18;
   function paint() {
-    if (ended || !entered) return;
-    frame = renderPopup({
+    if (ended) return;
+    component.update({
       snapshot,
       labels,
       selected,
@@ -117,32 +109,39 @@ export async function runPopup({
       view,
       focus,
       hours,
-      caret,
       settingsHours,
       automatic,
       message: message || transportError,
-      width: output.columns ?? 80,
-      height: output.rows ?? 20,
+      width: terminal.columns,
+      height: terminal.rows,
       theme,
+      busy,
     });
-    const text =
-      "\x1b[?25l" +
-      frame.text +
-      (frame.cursor ? `\x1b[${frame.cursor.y};${frame.cursor.x}H\x1b[?25h` : "");
-    if (text !== lastPaint) {
-      output.write(text);
-      lastPaint = text;
-    }
+    tui.requestRender();
   }
+  async function get(message: PopupRequest) {
+    const response = await client.request(message);
+    if (!ended) snapshot = response.snapshot;
+  }
+  const duration = (value: string) => {
+    const ms = Math.floor(Number(value) * 3600000);
+    validateDuration(ms, Date.now());
+    return ms;
+  };
   async function refresh() {
     if (busy || ended) return;
     busy = true;
+    paint();
     try {
-      await request({ type: "snapshot" });
-      labels = await loadLabels();
-      transportError = "";
-    } catch (e) {
-      transportError = errorMessage(e);
+      await get({ type: "snapshot" });
+      if (ended) return;
+      const next = await loadLabels();
+      if (!ended) {
+        labels = next;
+        transportError = "";
+      }
+    } catch (error) {
+      if (!ended) transportError = errorMessage(error);
     } finally {
       busy = false;
       paint();
@@ -150,14 +149,19 @@ export async function runPopup({
   }
   async function submit(command: Command) {
     busy = true;
+    paint();
     try {
-      await request({ type: "command", command });
-      message = "";
-    } catch (e) {
-      message = errorMessage(e);
-      try {
-        await request({ type: "snapshot" });
-      } catch {}
+      await get({ type: "command", command });
+      if (!ended) message = "";
+    } catch (error) {
+      if (!ended) {
+        message = errorMessage(error);
+        try {
+          await get({ type: "snapshot" });
+        } catch {
+          /* Retain the original command failure. */
+        }
+      }
     } finally {
       busy = false;
       paint();
@@ -170,60 +174,43 @@ export async function runPopup({
     view = next;
     message = "";
     focus = view === "settings" ? "automatic" : "duration";
-    caret = view === "settings" ? settingsHours.length : hours.length;
-    replace = true;
-  }
-  function agents() {
-    message = "";
-    if (view === "picker" && row()) {
-      view = "controls";
-      focus = "duration";
-      caret = hours.length;
-      replace = true;
-    } else {
-      view = "picker";
-      pick = selected ?? snapshot?.agents[0]?.state.occupant;
-    }
   }
   function movePick(delta: number) {
     const rows = snapshot?.agents ?? [];
     if (!rows.length) return;
-    const index = rows.findIndex((a) => a.state.occupant === pick);
+    const index = rows.findIndex((agent) => agent.state.occupant === pick);
     pick =
       rows[
         index < 0 ? (delta < 0 ? rows.length - 1 : 0) : (index + delta + rows.length) % rows.length
       ]?.state.occupant;
   }
-  async function activate(action: Action, hit?: Hit & { clickX: number }) {
+  async function activate(action: Action, occupant?: string) {
     if (action === "close") return end();
-    if (busy || ended) return;
+    if (busy || ended || small()) return;
     try {
-      if (action === "agents") agents();
-      else if (action === "agent-tab" || action === "settings" || action === "about")
-        navigate(action);
-      else if (action === "pick") pick = hit?.occupant;
-      else if (action === "next") movePick(1);
-      else if (action === "open") {
-        const a = snapshot?.agents.find((a) => a.state.occupant === pick);
-        if (a) {
-          selected = a.state.occupant;
+      if (action === "agents") {
+        message = "";
+        if (view === "picker" && row()) {
           view = "controls";
           focus = "duration";
-          caret = hours.length;
-          replace = true;
+        } else {
+          view = "picker";
+          pick = selected ?? snapshot?.agents[0]?.state.occupant;
+        }
+      } else if (action === "agent-tab" || action === "settings" || action === "about")
+        navigate(action);
+      else if (action === "pick") pick = occupant;
+      else if (action === "next") movePick(1);
+      else if (action === "open") {
+        const agent = snapshot?.agents.find((agent) => agent.state.occupant === pick);
+        if (agent) {
+          selected = agent.state.occupant;
+          view = "controls";
+          focus = "duration";
           message = "";
         }
-      } else if (action === "duration" || action === "defaultDuration") {
-        const value = action === "duration" ? hours : settingsHours;
-        replace = focus !== action;
-        focus = action;
-        caret = replace
-          ? value.length
-          : Math.max(
-              0,
-              Math.min(value.length, (hit?.clickX ?? 0) - (hit?.valueX ?? 0) + (hit?.scroll ?? 0)),
-            );
-      } else if (action === "automatic") {
+      } else if (action === "duration" || action === "defaultDuration") focus = action;
+      else if (action === "automatic") {
         automatic = !automatic;
         focus = "automatic";
       } else if (action === "save")
@@ -232,169 +219,120 @@ export async function runPopup({
           config: { automatic, defaultDurationMs: duration(settingsHours) },
         });
       else if (action === "apply" || action === "secondary") {
-        const a = row();
-        if (!a) return;
+        const agent = row();
+        if (!agent) return;
         const guard = {
-          occupant: a.state.occupant,
-          runId: a.state.runId,
-          revision: a.state.revision,
+          occupant: agent.state.occupant,
+          runId: agent.state.runId,
+          revision: agent.state.revision,
         };
         if (action === "apply")
           await submit({ ...guard, type: "set-duration", durationMs: duration(hours) });
-        else if (presentAgent(a, snapshot?.power ?? "unknown").secondaryLabel)
+        else if (presentAgent(agent, snapshot?.power ?? "unknown").secondaryLabel)
           await submit({
             ...guard,
-            type: a.state.armedDurationMs !== null ? "cancel-arm" : "release",
+            type: agent.state.armedDurationMs !== null ? "cancel-arm" : "release",
           });
       }
-    } catch (e) {
-      message = errorMessage(e);
+    } catch (error) {
+      if (!ended) message = errorMessage(error);
     }
     paint();
   }
-  function mouse(event: MouseInput) {
-    if (event.release || ended) return;
-    if (view === "picker" && (event.button === 64 || event.button === 65)) {
-      if (!busy) {
-        movePick(event.button === 64 ? -1 : 1);
-        paint();
-      }
-      return;
-    }
-    if ((event.button & 3) !== 0 || (event.button & 32) !== 0) return;
-    const hit = frame?.hits.find(
-      (h) =>
-        event.x >= h.x && event.x < h.x + h.width && event.y >= h.y && event.y < h.y + h.height,
-    );
-    if (hit) void activate(hit.action, { ...hit, clickX: event.x });
+  function close() {
+    end();
   }
-  function key(str: string | undefined, k: Key = {}) {
-    if (ended) return;
-    if (k.name === "escape" || (k.ctrl && k.name === "c")) return end();
-    if (busy) return;
-    if (str === "a") return void activate("agent-tab");
-    if (str === "s") return void activate("settings");
-    if (str === "?") return void activate("about");
-    if (k.name === "tab") {
-      if (view === "settings") {
-        focus = focus === "automatic" ? "defaultDuration" : "automatic";
-        caret = settingsHours.length;
-        replace = true;
-        paint();
-      } else void activate(view === "about" ? "agent-tab" : "agents");
-      return;
-    }
-    if (view === "about") return;
-    if (view === "picker") {
-      if (k.name === "return") void activate("open");
-      else if (k.name === "down" || k.name === "up") {
-        movePick(k.name === "up" ? -1 : 1);
-        paint();
-      } else if (k.name === "home" || k.name === "end") {
-        pick = snapshot?.agents[k.name === "home" ? 0 : snapshot.agents.length - 1]?.state.occupant;
-        paint();
-      }
-      return;
-    }
-    if (k.name === "return") return void activate(view === "settings" ? "save" : "apply");
-    if (view === "settings" && focus === "automatic" && (k.name === "space" || str === " "))
-      return void activate("automatic");
-    if (view === "controls" && str === "r") return void activate("secondary");
-    if (
-      !(
-        (view === "settings" && focus === "defaultDuration") ||
-        (view === "controls" && focus === "duration" && row())
-      )
-    )
-      return;
-    let value = view === "settings" ? settingsHours : hours;
-    if (k.ctrl && k.name === "u") {
-      value = "";
-      caret = 0;
-      replace = false;
-    } else if (k.name === "left") {
-      caret = Math.max(0, caret - 1);
-      replace = false;
-    } else if (k.name === "right") {
-      caret = Math.min(value.length, caret + 1);
-      replace = false;
-    } else if (k.name === "home") {
-      caret = 0;
-      replace = false;
-    } else if (k.name === "end") {
-      caret = value.length;
-      replace = false;
-    } else if (k.name === "backspace") {
-      if (caret > 0) {
-        value = value.slice(0, caret - 1) + value.slice(caret);
-        caret--;
-      }
-      replace = false;
-    } else if (k.name === "delete") {
-      value = value.slice(0, caret) + value.slice(caret + 1);
-      replace = false;
-    } else if (!k.ctrl && !k.meta && str && /^[0-9.eE+-]+$/.test(str)) {
-      if (replace) {
-        value = "";
-        caret = 0;
-      }
-      if (value.length + str.length <= 100) {
-        value = value.slice(0, caret) + str + value.slice(caret);
-        caret += str.length;
-      }
-      replace = false;
-    }
-    if (view === "settings") settingsHours = value;
-    else hours = value;
-    paint();
-  }
-  let finish: () => void;
-  const done = new Promise<void>((resolve) => {
-    finish = resolve;
-  });
-  function end() {
+  function end(error?: unknown) {
     if (ended) return;
     ended = true;
     clearInterval(timer);
-    decoder?.close();
-    input.off("data", feed);
-    input.off("end", end);
-    output.off("resize", paint);
-    if (entered) {
-      input.setRawMode?.(wasRaw);
-      input.pause();
-      output.write("\x1b[?1000l\x1b[?1006l\x1b[0 q\x1b[0m\x1b[?25h\x1b[?1049l");
-    }
-    client.close();
-    finish();
-  }
-  const feed = (chunk: string | Buffer) => decoder?.feed(chunk);
-  try {
-    await request({ type: "snapshot" });
+    process.stdin.off("end", close);
+    process.stdout.off("close", close);
+    process.off("SIGTERM", close);
+    process.off("SIGINT", close);
     try {
-      labels = await loadLabels();
-    } catch (e) {
-      transportError = `Agent names unavailable: ${errorMessage(e)}`;
+      client.close();
+    } catch (failure) {
+      error ??= failure;
     }
-    automatic = snapshot?.config.automatic ?? true;
-    settingsHours = String((snapshot?.config.defaultDurationMs ?? 28800000) / 3600000);
-    selected = snapshot?.agents.find((a) => a.target === target)?.state.occupant;
-    pick = selected ?? snapshot?.agents[0]?.state.occupant;
-    if (!selected) view = "picker";
-    output.write("\x1b[?1049h\x1b[2J\x1b[?25l\x1b[5 q\x1b[?1000h\x1b[?1006h");
-    entered = true;
-    decoder = createPopupInput({ onKey: key, onMouse: mouse });
-    input.setRawMode(true);
-    input.on("data", feed);
-    input.on("end", end);
-    output.on("resize", paint);
-    input.resume();
-    paint();
-    timer = setInterval(() => {
-      void refresh();
-    }, 1000);
-    await done;
-  } finally {
-    end();
+    const failure = error;
+    void terminal
+      .drainInput()
+      .catch(() => {})
+      .then(() => {
+        try {
+          if (started) tui.stop({ preserveScreen: true });
+        } finally {
+          terminal.start = originalStart;
+        }
+      })
+      .then(() => {
+        if (failure) rejectDone(failure);
+        else resolveDone();
+      }, rejectDone);
   }
+  tui.addInputListener((data) => {
+    if (matchesKey(data, "escape") || matchesKey(data, "ctrl+c")) {
+      end();
+      return { consume: true };
+    }
+    if (ended || busy || small()) return { consume: true };
+    let action: Action | undefined;
+    if (data === "a") action = "agent-tab";
+    else if (data === "s") action = "settings";
+    else if (data === "?") action = "about";
+    else if (matchesKey(data, "tab")) {
+      if (view === "settings") {
+        focus = focus === "automatic" ? "defaultDuration" : "automatic";
+        paint();
+        return { consume: true };
+      }
+      action = view === "about" ? "agent-tab" : "agents";
+    } else if (matchesKey(data, "enter") && view !== "about")
+      action = view === "picker" ? "open" : view === "settings" ? "save" : "apply";
+    else if (view === "settings" && focus === "automatic" && data === " ") action = "automatic";
+    else if (view === "controls" && data === "r") action = "secondary";
+    if (action) {
+      void activate(action);
+      return { consume: true };
+    }
+    return undefined;
+  });
+  tui.setLayoutRoot(component);
+  tui.setFocus(component);
+  process.stdin.on("end", close);
+  process.stdout.on("close", close);
+  process.on("SIGTERM", close);
+  process.on("SIGINT", close);
+  try {
+    paint();
+    started = true;
+    tui.start();
+    void (async () => {
+      await get({ type: "snapshot" });
+      if (ended) return;
+      try {
+        const next = await loadLabels();
+        if (!ended) labels = next;
+      } catch (error) {
+        if (!ended) transportError = `Agent names unavailable: ${errorMessage(error)}`;
+      }
+      if (ended) return;
+      automatic = snapshot?.config.automatic ?? true;
+      settingsHours = String((snapshot?.config.defaultDurationMs ?? 28800000) / 3600000);
+      selected = snapshot?.agents.find((agent) => agent.target === target)?.state.occupant;
+      pick = selected ?? snapshot?.agents[0]?.state.occupant;
+      if (!selected) view = "picker";
+      busy = false;
+      paint();
+      timer = setInterval(() => {
+        void refresh();
+      }, 1000);
+    })().catch((error: unknown) => {
+      if (!ended) end(error);
+    });
+  } catch (error) {
+    end(error);
+  }
+  await done;
 }

@@ -56,10 +56,13 @@ export async function prepareRuntime(packageRoot: string, outputDir: string): Pr
     if (!licenses.length) throw new Error(`No required license text for ${key}`);
     const contents: string[] = [];
     for (const file of [...licenses, ...notices]) {
-      if (isAbsolute(file) || file.split(/[\\/]/).includes(".."))
+      const vendored = file.startsWith("vendor:");
+      const relative = vendored ? file.slice(7) : file;
+      const base = vendored ? await realpath(join(root, "scripts/licenses")) : library;
+      if (isAbsolute(relative) || relative.split(/[\\/]/).includes(".."))
         throw new Error(`Unsafe license path: ${file}`);
-      const location = await realpath(join(library, file));
-      if (!location.startsWith(library + "/")) throw new Error(`License escaped package: ${file}`);
+      const location = await realpath(join(base, relative));
+      if (!location.startsWith(base + "/")) throw new Error(`License escaped package: ${file}`);
       const content = await readFile(location, "utf8");
       if (!content.trim()) throw new Error(`Empty required license/notice: ${file}`);
       contents.push(`${file}\n${content}`);

@@ -9,6 +9,7 @@ export function makeTestTerminal({ columns, rows }: { columns: number; rows: num
   let onResize = () => {};
   let pending = Promise.resolve();
   let stopCount = 0;
+  const writes: string[] = [];
   const terminal: Terminal = {
     get columns() {
       return emulator.cols;
@@ -28,6 +29,7 @@ export function makeTestTerminal({ columns, rows }: { columns: number; rows: num
     },
     async drainInput() {},
     write(data) {
+      writes.push(data);
       pending = pending.then(() => new Promise<void>((resolve) => emulator.write(data, resolve)));
     },
     moveBy(lines) {
@@ -69,11 +71,22 @@ export function makeTestTerminal({ columns, rows }: { columns: number; rows: num
       onResize();
     },
     frame,
+    text: () => writes.join(""),
     foregroundAt: (column: number, row: number) =>
       emulator.buffer.active
         .getLine(emulator.buffer.active.viewportY + row)
         ?.getCell(column)
         ?.getFgColor(),
+    backgroundAt: (column: number, row: number) =>
+      emulator.buffer.active
+        .getLine(emulator.buffer.active.viewportY + row)
+        ?.getCell(column)
+        ?.getBgColor(),
+    async settle() {
+      // pi-tui throttles consumed application shortcuts/mouse paints to 16 ms.
+      await wait(20);
+      await pending;
+    },
     async waitFor(text: string) {
       const until = Date.now() + 2000;
       do {

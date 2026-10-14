@@ -1,5 +1,26 @@
 [
   {
+    "name": "@earendil-works/pi-tui",
+    "version": "1.0.4",
+    "source": "https://github.com/earendil-works/pi/tree/7c10bd4337495ee613f2224843ecdf349b80d1df/packages/tui",
+    "licenseFiles": ["vendor:pi-tui-1.0.4/LICENSE", "vendor:pi-tui-1.0.4/OpenTUI-LICENSE"],
+    "noticeFiles": ["vendor:pi-tui-1.0.4/NOTICE"]
+  },
+  {
+    "name": "get-east-asian-width",
+    "version": "1.6.0",
+    "source": "https://www.npmjs.com/package/get-east-asian-width/v/1.6.0",
+    "licenseFiles": ["license"],
+    "noticeFiles": []
+  },
+  {
+    "name": "marked",
+    "version": "18.0.11",
+    "source": "https://www.npmjs.com/package/marked/v/18.0.11",
+    "licenseFiles": ["LICENSE"],
+    "noticeFiles": []
+  },
+  {
     "name": "rolldown",
     "version": "1.2.12",
     "source": "https://www.npmjs.com/package/rolldown/v/1.2.12",

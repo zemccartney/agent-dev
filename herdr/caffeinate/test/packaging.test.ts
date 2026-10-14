@@ -29,6 +29,18 @@ void test("prepared payload is allowlisted and copies the canonical license", as
       `Missing complete bundler ${file}`,
     );
   }
+  for (const file of [
+    "scripts/licenses/pi-tui-1.0.4/LICENSE",
+    "scripts/licenses/pi-tui-1.0.4/OpenTUI-LICENSE",
+    "scripts/licenses/pi-tui-1.0.4/NOTICE",
+    "node_modules/.pnpm/marked@18.0.11/node_modules/marked/LICENSE",
+    "node_modules/.pnpm/get-east-asian-width@1.6.0/node_modules/get-east-asian-width/license",
+  ]) {
+    assert.ok(
+      notices.includes(await readFile(join(root, file), "utf8")),
+      `Missing complete upstream text: ${file}`,
+    );
+  }
   const pkg: unknown = JSON.parse(await readFile(join(payload, "package.json"), "utf8"));
   assert.deepEqual(pkg, {
     name: "herdr-caffeinate",
@@ -74,4 +86,22 @@ void test("packaging fails closed for missing canonical license and unreviewed o
     ]),
   );
   await assert.rejects(prepareRuntime(fixture, join(dir, "payload")), /LICENSE/);
+  for (const [file, expected] of [
+    ["vendor:missing/LICENSE", /LICENSE/],
+    ["vendor:../../LICENSE", /Unsafe license path/],
+  ] as const) {
+    await writeFile(
+      join(fixture, "scripts/license-policy.json"),
+      JSON.stringify([
+        {
+          name: "example",
+          version: "1.0.0",
+          source: "https://example.invalid/source",
+          licenseFiles: [file],
+          noticeFiles: [],
+        },
+      ]),
+    );
+    await assert.rejects(prepareRuntime(fixture, join(dir, "payload")), expected);
+  }
 });
