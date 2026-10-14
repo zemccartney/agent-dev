@@ -20,6 +20,7 @@
     "typecheck": "tsc --noEmit",
     "check": "pnpm format:check && pnpm typecheck && pnpm lint && pnpm test",
     "test": "pnpm build && node --test --test-reporter=tap test/*.test.ts",
+    "test:herdr": "pnpm build && node --test --test-reporter=tap test/integration/herdr.test.ts",
     "test:runtime": "node --test --test-reporter=tap test/runtime-compatibility.test.mjs",
     "test:integration": "pnpm build && node --test --test-reporter=tap test/end-to-end.test.ts test/runtime.test.ts test/build.test.ts",
     "probe:herdr": "pnpm build && node scripts/probe-herdr.ts",

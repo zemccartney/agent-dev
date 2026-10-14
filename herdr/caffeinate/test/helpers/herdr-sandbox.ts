@@ -1,8 +1,17 @@
 import assert from "node:assert/strict";
 import { execFile, spawn } from "node:child_process";
 import { promisify } from "node:util";
-import { mkdtemp, mkdir, readFile, writeFile, realpath, rm, lstat } from "node:fs/promises";
-import { basename, dirname, join } from "node:path";
+import {
+  mkdtemp,
+  mkdir,
+  readFile,
+  writeFile,
+  realpath,
+  rm,
+  lstat,
+  symlink,
+} from "node:fs/promises";
+import { basename, dirname, join, isAbsolute } from "node:path";
 import { homedir } from "node:os";
 import { createHash } from "node:crypto";
 import { setTimeout as wait } from "node:timers/promises";
@@ -11,12 +20,13 @@ const exec = promisify(execFile);
 export function sandboxEnvironment(root: string, nodeBinary: string): NodeJS.ProcessEnv {
   return {
     HOME: join(root, "home"),
+    TMPDIR: join(root, "t"),
     XDG_CONFIG_HOME: join(root, "c"),
     XDG_STATE_HOME: join(root, "s"),
     XDG_DATA_HOME: join(root, "d"),
     PI_CODING_AGENT_DIR: join(root, "pi"),
     HERDR_CONFIG_PATH: join(root, "c/herdr/config.toml"),
-    PATH: `${dirname(nodeBinary)}:/usr/bin:/bin`,
+    PATH: `${join(root, "bin")}:${dirname(nodeBinary)}:/usr/bin:/bin`,
     TERM: "xterm-256color",
     SHELL: "/bin/sh",
     PS1: "CF_SANDBOX> ",
@@ -27,6 +37,8 @@ export interface HerdrSandbox {
   env: NodeJS.ProcessEnv;
   serverName: string;
   binPath: string;
+  nodeBinary: string;
+  nodeVersion: string;
   cli(args: string[]): Promise<string>;
 }
 async function digest(path: string) {
@@ -62,9 +74,16 @@ export async function withHerdrSandbox(
   const before = await Promise.all(normalFiles.map(digest));
   const normalSocket = process.env.HERDR_SOCKET_PATH ?? join(normal, "herdr.sock");
   const socketBefore = await socketIdentity(normalSocket);
+  const nodeBinary = process.env.CAFFEINATE_TEST_NODE ?? process.execPath;
+  assert.ok(isAbsolute(nodeBinary), "CAFFEINATE_TEST_NODE must be an absolute binary path");
+  const nodeVersion = (
+    await exec(nodeBinary, ["--version"], { timeout: 5000, env: { PATH: "/usr/bin:/bin" } })
+  ).stdout.trim();
+  assert.match(nodeVersion, /^v24\.\d+\.\d+$/);
   // Keep Unix socket paths below macOS's sockaddr_un limit, including /private prefix.
   const root = await realpath(await mkdtemp("/tmp/cf-"));
-  const env = sandboxEnvironment(root, process.execPath);
+  const env = sandboxEnvironment(root, nodeBinary);
+  env.HERDR_BIN_PATH = binPath;
   const serverName = basename(root).toLowerCase();
   let server: ReturnType<typeof spawn> | undefined;
   let serverLog = "";
@@ -79,7 +98,9 @@ export async function withHerdrSandbox(
     ).stdout;
   try {
     await mkdir(join(root, "c/herdr"), { recursive: true, mode: 0o700 });
-    for (const name of ["home", "s", "d", "pi"]) await mkdir(join(root, name), { mode: 0o700 });
+    for (const name of ["home", "s", "d", "pi", "t", "bin"])
+      await mkdir(join(root, name), { mode: 0o700 });
+    await symlink(await realpath(nodeBinary), join(root, "bin/node"));
     await writeFile(
       join(root, "c/herdr/config.toml"),
       [
@@ -135,7 +156,15 @@ export async function withHerdrSandbox(
       await wait(50);
     }
     assert.ok(ready, `Sandbox Herdr did not become ready: ${readinessError}\n${serverLog}`);
-    await run({ root, env, serverName, binPath, cli });
+    await run({
+      root,
+      env,
+      serverName,
+      binPath,
+      nodeBinary: await realpath(nodeBinary),
+      nodeVersion,
+      cli,
+    });
   } finally {
     if (server) {
       try {

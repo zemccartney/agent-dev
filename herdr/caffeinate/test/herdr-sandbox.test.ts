@@ -6,6 +6,7 @@ void test("sandbox environment replaces routing, credentials and user configurat
   const env = sandboxEnvironment("/tmp/cf-example", process.execPath);
   for (const key of [
     "HOME",
+    "TMPDIR",
     "XDG_CONFIG_HOME",
     "XDG_STATE_HOME",
     "XDG_DATA_HOME",
