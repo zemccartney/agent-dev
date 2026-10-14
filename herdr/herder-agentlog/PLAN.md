@@ -189,7 +189,7 @@ Test helper `makeFakeHerdr(initial:HerdrState)` returns `{api:HerdrClient, start
 
 **Produces:** `DiscoveryContext={home:string;env:NodeJS.ProcessEnv;projectCwds:string[];livePaths:string[]}`; `discoverSources(context,knownPaths:string[]):Promise<{files:string[];issues:string[]}>`; `refreshCatalog(store,context,signal?):Promise<{records:SessionRecord[];issues:string[]}>`.
 
-- [ ] **1. Write failing discovery tests**, beginning with `refresh advances user recency but retains labels and pins`, plus tests for default and alternative agent-directory sessions; absolute environment/global-settings `sessionDir`; relative settings resolved against known project cwd, not plugin cwd; explicitly remembered outside paths; existing sessions never previously running in Herdr. No traversal outside known roots or following directory symlinks into arbitrary trees. Opening/importing must not modify lastUserAt.
+- [x] **1. Write failing discovery tests**, beginning with `refresh advances user recency but retains labels and pins`, plus tests for default and alternative agent-directory sessions; absolute environment/global-settings `sessionDir`; relative settings resolved against known project cwd, not plugin cwd; explicitly remembered outside paths; existing sessions never previously running in Herdr. No traversal outside known roots or following directory symlinks into arbitrary trees. Opening/importing must not modify lastUserAt.
 
 ```ts
 store.setPinned(key, true);
@@ -206,10 +206,10 @@ assert.equal(store.get(key).availability, "missing-file");
 
 Add: unchanged files skip parsing; unfinished tails and parse errors remain retryable; a failed scan retains prior metadata; absent cwd is distinguished from absent file; abort after one completed file preserves prior commits; a concurrent user edit survives refresh. A large synthetic transcript must allow a scheduled UI/timer callback and cancellation before the whole scan completes.
 
-- [ ] **2. Run red:** `pnpm build && node --test test/discovery.test.ts`.
-- [ ] **3. Implement bounded-root refresh.** Remember current `livePaths` before scanning, including references whose files do not exist yet. Discover `.jsonl` files only within known roots plus explicit paths. Read global Pi settings as data, never execute config. Derive known project cwds from stored records and current pane cwds. Include both historic default roots and visible overrides. Use fingerprints only after complete, stable reads; recheck availability even for cached files. Commit per file, yield between batches, and check cancellation before DB writes. Keep issue messages concise; do not log transcript content. New invalid files yield issues, not fabricated session identities.
-- [ ] **4. Run green:** `pnpm check`.
-- [ ] **5. Commit:** `feat(agentlog): refresh saved conversations on demand`.
+- [x] **2. Run red:** `pnpm build && node --test test/discovery.test.ts`.
+- [x] **3. Implement bounded-root refresh.** Remember current `livePaths` before scanning, including references whose files do not exist yet. Discover `.jsonl` files only within known roots plus explicit paths. Read global Pi settings as data, never execute config. Derive known project cwds from stored records and current pane cwds. Include both historic default roots and visible overrides. Use fingerprints only after complete, stable reads; recheck availability even for cached files. Commit per file, yield between batches, and check cancellation before DB writes. Keep issue messages concise; do not log transcript content. New invalid files yield issues, not fabricated session identities.
+- [x] **4. Run green:** `pnpm check`.
+- [x] **5. Commit:** `feat(agentlog): refresh saved conversations on demand`.
 
 ## Task 5: Focus or resume exactly the selected conversation
 
