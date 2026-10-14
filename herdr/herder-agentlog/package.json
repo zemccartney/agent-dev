@@ -20,8 +20,12 @@
     "test:integration": "pnpm build && node --test --test-reporter=tap --test-concurrency=1 test/integration/*.test.ts",
     "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test"
   },
+  "dependencies": {
+    "@earendil-works/pi-tui": "1.0.4"
+  },
   "devDependencies": {
     "@types/node": "24.19.1",
+    "@xterm/headless": "5.5.0",
     "oxfmt": "0.72.0",
     "oxlint": "1.87.0",
     "oxlint-tsgolint": "7.0.2003",
