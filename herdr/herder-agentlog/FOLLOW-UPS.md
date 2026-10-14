@@ -64,11 +64,15 @@ Current decisions: [DISCUSSION.md](DISCUSSION.md).
 - Plugin adoption and personal usage can inform an upstream proposal; building a plugin does not rule out reporting the underlying issue sooner.
 - Existing diagnostic evidence and harness are currently in temporary directories referenced by the original investigation; preserve/redact them durably before relying on them for a future report.
 
+## Reassess built-in SQLite stability
+
+The user accepts Node's release-candidate SQLite API for v0, with a 24.15 / 25.7 minimum. Track its graduation to Stable (2) and any compatibility issues on the user's Node 24/26 machines or coworkers' installations. Keep README honest about the current experimental classification. Reconsider a mature binding or native implementation only if actual needs justify it; do not build older-Node compatibility machinery now.
+
 ## Distribution goal: no separately installed runtime
 
-The user raised concern that requiring Node 24+ is friction for end users. Herdr itself does not require Node; it is a dependency of the proposed plugin implementation.
+The user raised concern that requiring Node 24.15+ is friction for end users. Herdr itself does not require Node; it is a dependency of the proposed plugin implementation.
 
-- **Agreed v0:** TypeScript/Node with a separately installed Node 24+ runtime. The package README must acknowledge that prerequisite as a limitation and note investigation of Rust/native alternatives.
+- **Agreed v0:** TypeScript/Node with a separately installed Node 24.15+ runtime (25.x: 25.7+). The package README must acknowledge that prerequisite as a limitation and note investigation of Rust/native alternatives.
 - Before broader distribution, evaluate a self-contained executable, including SQLite facilities.
 - Rust with bundled SQLite is one candidate: no Node/Python runtime for end users, but it adds another toolchain, native UI implementation, platform builds, and release distribution.
 - **Hard constraint: do not bundle a JavaScript runtime.** The user explicitly rejected shipping that additional runtime payload; it is not an alternative to revisit without a change in direction.

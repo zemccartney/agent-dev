@@ -6,7 +6,11 @@ A planned Herdr plugin for finding and reopening saved agent conversations, with
 
 ## Runtime and distribution
 
-V0 will require **a separately installed Node.js 24+** runtime. This is a requirement of this plugin's TypeScript/Node implementation, **not of Herdr itself**.
+V0 requires **a separately installed Node.js 24.15+** runtime (Node 25.x requires **25.7+**; current Node 26 is also an intended target). This is this plugin's prerequisite, **not Herdr's**. Development checks have run on Node 24.16.0; version-boundary tests do not constitute testing on every Node release.
+
+**SQLite stability:** Node's built-in `node:sqlite` became **Stability 1.2 — Release candidate** in Node 24.15 and 25.7. This is still under Node's experimental classification, **not Stable (2)**: breaking API changes remain possible without the normal compatibility guarantee. That trade-off is accepted for this personal-use v0 and will be reassessed later. See [Node's SQLite version history](https://nodejs.org/download/release/v24.16.0/docs/api/sqlite.html) and [stability definitions](https://nodejs.org/api/documentation.html#stability-index).
+
+Older Node 22.13+, 23.4+, 24.0–24.14, and 25.0–25.6 already expose SQLite without an experimental flag. They **might work**, but use the earlier experimental API and are **not supported or validated** by this plugin. The launcher explains this and asks you to upgrade before loading the application. There are no older-runtime workarounds or automatic Node installations.
 
 We recognize that this prerequisite adds installation friction. It is accepted for the first personal-use version while we evaluate native distribution, with **Rust and bundled SQLite** as the preferred direction to investigate. A native rewrite is not scheduled or required for v0.
 

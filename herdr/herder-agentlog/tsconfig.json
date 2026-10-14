@@ -7,8 +7,16 @@
     "noEmit": true,
     "erasableSyntaxOnly": true,
     "allowImportingTsExtensions": true,
+    "allowJs": true,
+    "checkJs": true,
     "types": ["node"]
   },
-  "include": ["src/**/*.ts", "test/**/*.ts", "scripts/**/*.ts", "tsdown.config.ts"],
+  "include": [
+    "src/**/*.ts",
+    "test/**/*.ts",
+    "scripts/**/*.ts",
+    "scripts/**/*.cjs",
+    "tsdown.config.ts"
+  ],
   "exclude": ["node_modules", "dist", ".build"]
 }
