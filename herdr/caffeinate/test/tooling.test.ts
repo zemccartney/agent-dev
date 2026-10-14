@@ -39,6 +39,8 @@ void test("linting retains built-in plugins and type awareness; TypeScript runs 
   assert.equal(ts.strict, true);
   assert.equal(ts.noEmit, true);
   const pkg = config("package.json");
-  assert.equal(pkg.dependencies, undefined);
+  const runtime = pkg.dependencies as Record<string, string>;
+  assert.deepEqual(Object.keys(runtime), ["@earendil-works/pi-tui"]);
+  assert.match(runtime["@earendil-works/pi-tui"], /^\d+\.\d+\.\d+$/);
   assert.match((pkg.scripts as Record<string, string>).typecheck, /\btsc\b.*--noEmit/);
 });

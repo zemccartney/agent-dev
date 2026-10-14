@@ -30,9 +30,12 @@ void test("TypeScript covers every owned source, probe, test, fixture and build 
         );
     }
   }
-  assert.ok(checked.has(join(root, "tsdown.config.ts")));
+  for (const path of (await readdir(root)).filter((name) => /^tsdown.*\.config\.ts$/.test(name)))
+    assert.ok(checked.has(join(root, path)), `Unchecked build config: ${path}`);
   assert.ok(
-    ![...checked].some((path) => path.startsWith(join(root, "dist") + "/")),
+    ![...checked].some((path) =>
+      ["dist", ".build"].some((directory) => path.startsWith(join(root, directory) + "/")),
+    ),
     "Generated output must not enter the source typecheck",
   );
 });

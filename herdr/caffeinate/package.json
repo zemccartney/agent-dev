@@ -12,6 +12,7 @@
   },
   "scripts": {
     "build": "node scripts/preflight.cjs build && tsdown",
+    "build:spike": "node scripts/preflight.cjs build && tsdown --config tsdown.spike.config.ts",
     "format": "oxfmt .",
     "format:check": "oxfmt --check .",
     "lint": "oxlint --type-aware --deny-warnings .",
@@ -23,8 +24,12 @@
     "probe:herdr": "pnpm build && node scripts/probe-herdr.ts",
     "probe:assertions": "pnpm build && node scripts/probe-assertions.ts"
   },
+  "dependencies": {
+    "@earendil-works/pi-tui": "1.0.4"
+  },
   "devDependencies": {
     "@types/node": "24.19.1",
+    "@xterm/headless": "5.5.0",
     "oxfmt": "0.72.0",
     "oxlint": "1.87.0",
     "oxlint-tsgolint": "7.0.2003",

@@ -8,5 +8,5 @@
     "typescript/no-floating-promises": "error",
     "typescript/no-misused-promises": "error"
   },
-  "ignorePatterns": ["dist/**"]
+  "ignorePatterns": ["dist/**", ".build/**"]
 }
