@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { existsSync, readFileSync } from "node:fs";
-import { mkdtemp, writeFile, rm } from "node:fs/promises";
+import { existsSync, readFileSync, realpathSync } from "node:fs";
+import { mkdtemp, writeFile, rm, symlink } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -33,19 +33,32 @@ await test("package policy fails closed rather than inheriting weaker global def
   assert.deepEqual(JSON.parse(result.stdout), {});
 });
 
-await test("quality configuration retains all plugins and covers source, tests and build config", () => {
+await test("quality configuration retains all plugins and covers source, tests and build config through symlinks", async (t) => {
   assert.ok(existsSync(join(root, ".oxlintrc.json")), "lint configuration is required");
   const config: { plugins: string[] } = JSON.parse(
     readFileSync(join(root, ".oxlintrc.json"), "utf8"),
   );
   assert.deepEqual(config.plugins, ["eslint", "typescript", "unicorn", "oxc", "import", "node"]);
-  const result = spawnSync(join(root, "node_modules/.bin/tsc"), ["--listFilesOnly"], {
-    cwd: root,
-    encoding: "utf8",
-  });
-  assert.equal(result.status, 0, result.stdout + result.stderr);
-  for (const path of ["src/cli.ts", "test/tooling.test.ts", "tsdown.config.ts"]) {
-    assert.ok(result.stdout.includes(join(root, path)), path);
+  const dir = await mkdtemp(join(tmpdir(), "agentlog-coverage-"));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  const alias = join(dir, "checkout");
+  await symlink(root, alias, "dir");
+  for (const cwd of [root, alias]) {
+    const result = spawnSync(join(root, "node_modules/.bin/tsc"), ["--listFilesOnly"], {
+      cwd,
+      env: { ...process.env, PWD: cwd },
+      encoding: "utf8",
+    });
+    assert.equal(result.status, 0, result.stdout + result.stderr);
+    const files = new Set(
+      result.stdout
+        .trim()
+        .split(/\r?\n/u)
+        .map((path) => realpathSync(path)),
+    );
+    for (const path of ["src/cli.ts", "test/tooling.test.ts", "tsdown.config.ts"]) {
+      assert.ok(files.has(realpathSync(join(root, path))), path);
+    }
   }
 });
 

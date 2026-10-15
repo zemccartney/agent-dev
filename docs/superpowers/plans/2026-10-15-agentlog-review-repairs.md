@@ -32,22 +32,22 @@
 
 **Interfaces:** Keep `runPopup` unchanged; add `loading: boolean` to internal `ViewState`. A loading view replaces list/editor actions. Mark loading before the first input can arrive; clear it only when refresh settles. Prevent refresh during an editor, destination choice or open.
 
-- [ ] Replace the obsolete cached-interaction test with a deferred-refresh test: cached rows/actions hidden, mutation/open keys and mouse ignored, no buffered search/edit applied after completion; normal edits work afterward. Add manual refresh, changed-filter/neighbor, failure, cancellation and editor-isolation coverage.
-- [ ] Run `pnpm build && node --test test/popup.test.ts`; expect failures proving missing gating before code changes.
-- [ ] Implement the smallest loading state/view and action guards; use a visible loading message without timers. Preserve error information and reload committed cached data if refresh fails.
-- [ ] Update earlier UX requirements to the approved serial interaction. Run popup tests, then `pnpm check`; expect all tests passing.
-- [ ] Commit this task only after its checks pass.
+- [x] Replace the obsolete cached-interaction test with a deferred-refresh test: cached rows/actions hidden, mutation/open keys and mouse ignored, no buffered search/edit applied after completion; normal edits work afterward. Add manual refresh, changed-filter/neighbor, failure, cancellation and editor-isolation coverage.
+- [x] Run `pnpm build && node --test test/popup.test.ts`; expect failures proving missing gating before code changes.
+- [x] Implement the smallest loading state/view and action guards; use a visible loading message without timers. Preserve error information and reload committed cached data if refresh fails.
+- [x] Update earlier UX requirements to the approved serial interaction. Run popup tests, then `pnpm check`; expect all tests passing.
+- [x] Commit this task only after its checks pass.
 
 ### Task 2: Recheck access without an invented cache policy (AL-02)
 
-**Files:** `herdr/herder-agentlog/src/discovery.ts`, `test/discovery.test.ts`, `test/resume.test.ts`; README for the access-observation contract.
+**Files:** `herdr/herder-agentlog/src/discovery.ts`, `src/pi-session.ts` (permission-error clarity), `test/discovery.test.ts`, `test/resume.test.ts`; README for the access-observation contract.
 
 **Interfaces:** Keep discovery/resume signatures and registry schema unchanged. On cache hits, check transcript readability before reporting available. Reuse parser/error classification for unreadable files where possible; never erase organization fields.
 
-- [ ] Add a real permission-loss regression: index, preserve pin/archive/label, remove read permission without changing size/mtime, refresh, assert unreadable and useful error; restore and assert recovery. Add Open-after-refresh permission loss and existing-pane focus tests.
-- [ ] Run `pnpm build && node --test test/discovery.test.ts test/resume.test.ts`; expect the cache-hit availability regression to fail before the fix. Existing operation-time safety may already pass; record that distinction.
-- [ ] Implement readability validation on cache hits; retain actual access errors, without polling or schema expansion.
-- [ ] Run focused tests and `pnpm check`; expect all passing. Commit this task after verification.
+- [x] Add a real permission-loss regression: index, preserve pin/archive/label, remove read permission without changing size/mtime, refresh, assert unreadable and useful error; restore and assert recovery. Add Open-after-refresh permission loss and existing-pane focus tests.
+- [x] Run `pnpm build && node --test test/discovery.test.ts test/resume.test.ts`; expect the cache-hit availability regression to fail before the fix. Existing operation-time safety may already pass; record that distinction.
+- [x] Implement readability validation on cache hits; retain actual access errors, without polling or schema expansion.
+- [x] Run focused tests and `pnpm check`; expect all passing. Commit this task after verification.
 
 ### Task 3: Canonicalize tooling-test file identities (AL-03)
 
@@ -55,7 +55,7 @@
 
 **Interfaces:** No production change. Preserve compiler coverage assertions for source, tests and build config.
 
-- [ ] Run the quality coverage test through a temporary symlink with logical `PWD`; expect the demonstrated path assertion failure before changes.
-- [ ] Canonicalize compiler-listed paths before comparison, and exercise the coverage check with a controlled symlink cwd so it remains a regression test.
-- [ ] Run the same command; expect passing from both logical and physical paths. Run `pnpm check` and the opt-in isolated live integration suite; expect all passing, no real-user configuration/pane changes.
+- [x] Run the quality coverage test through a temporary symlink with logical `PWD`; expect the demonstrated path assertion failure before changes.
+- [x] Canonicalize compiler-listed paths before comparison, and exercise the coverage check with a controlled symlink cwd so it remains a regression test.
+- [x] Run the same command; expect passing from both logical and physical paths. Run `pnpm check` and the opt-in isolated live integration suite; expect all passing, no real-user configuration/pane changes.
 - [ ] Commit verified changes. Capture a new immutable snapshot; use one remaining targeted independent review pass for repair interactions, and return new evidence and explicit decisions to the existing Crit report.
