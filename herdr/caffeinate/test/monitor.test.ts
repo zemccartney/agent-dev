@@ -3,8 +3,9 @@ import assert from "node:assert/strict";
 import { createMonitor, type HerdrPort, type AssertionsPort } from "#caffeinate/monitor";
 import type { Observation, Phase } from "#caffeinate/model";
 import type { Power } from "#caffeinate/power";
-import { deadline as leaseDeadline, deferred } from "./helpers.ts";
-function setup() {
+import { deadline as leaseDeadline, deferred, FakeAssertionChild } from "./helpers.ts";
+import { createAssertions } from "#caffeinate/assertions";
+function setup(assertionOverride?: AssertionsPort) {
   let time = 1_800_000_000_000,
     power: Power = "ac",
     host = { instance: "host", pluginEnabled: true, local: true },
@@ -36,7 +37,8 @@ function setup() {
     publishToken: async (...a) => tokens.push(a),
     close() {},
   };
-  const assertions: AssertionsPort = {
+  const assertions: AssertionsPort = assertionOverride ?? {
+    requestClose() {},
     reconcile: async (desired) => {
       active = new Map(desired);
       return new Map([...desired].map(([id, deadlineAt]) => [id, { deadlineAt, pid: 42 }]));
@@ -194,6 +196,7 @@ void test("confirmed server disappearance releases assertions, unlike a transien
       close() {},
     },
     assertions: {
+      requestClose() {},
       reconcile: async () => new Map(),
       close: async () => {
         closed = true;
@@ -217,7 +220,7 @@ void test("failed save does not acknowledge or alter config; assertion failure n
       publishToken: async () => {},
       close() {},
     },
-    assertions: { reconcile: async () => new Map(), close: async () => {} },
+    assertions: { requestClose() {}, reconcile: async () => new Map(), close: async () => {} },
     readPower: async () => "ac",
     now: () => 100000,
     config: { automatic: true, defaultDurationMs: 28800000 },
@@ -264,7 +267,7 @@ void test("concurrent refresh requests serialize and reread after in-flight inva
       publishToken: async () => {},
       close() {},
     },
-    assertions: { reconcile: async () => new Map(), close: async () => {} },
+    assertions: { requestClose() {}, reconcile: async () => new Map(), close: async () => {} },
     readPower: async () => "ac",
     now: Date.now,
     config: { automatic: true, defaultDurationMs: 28800000 },
@@ -456,6 +459,140 @@ void test("close releases assertions before a held observation completes", async
   await Promise.all([refresh, closing]);
   assert.equal(f.active().size, 0);
   assert.ok(f.m.snapshot().agents.every((row) => !row.state.lease && !row.active));
+});
+
+void test("manual uncertain-activity grants consume earlier idle boundaries and arming", async (t) => {
+  for (const baseline of ["idle", "blocked"] as const) {
+    for (const armed of [false, true]) {
+      for (const duration of [60000, 72000000]) {
+        const f = setup();
+        t.after(() => f.m.close());
+        f.setPhase("a", baseline);
+        await f.m.refresh();
+        if (armed) await f.m.command(f.command("set-duration", 3600000));
+        f.phases.set("a", { phase: "unknown", evidence: "uncertain" });
+        await f.m.refresh();
+        await f.m.command(f.command("set-duration", duration));
+        const deadline = leaseDeadline(f.m.snapshot().agents[0].state);
+        f.phases.set("a", { phase: "working", evidence: "authoritative" });
+        await f.m.refresh();
+        f.advance(10000);
+        await f.m.refresh();
+        assert.equal(
+          leaseDeadline(f.m.snapshot().agents[0].state),
+          deadline,
+          `${baseline}/${armed}/${duration}`,
+        );
+        assert.equal(f.m.snapshot().agents[0].state.armedDurationMs, null);
+        assert.equal(f.m.snapshot().agents[0].state.pending, null);
+        f.setPhase("a", "idle");
+        await f.m.refresh();
+        f.setPhase("a", "working");
+        await f.m.refresh();
+        f.advance(10000);
+        await f.m.refresh();
+        assert.equal(leaseDeadline(f.m.snapshot().agents[0].state), 1_800_028_810_000);
+      }
+    }
+  }
+});
+
+void test("monitor shutdown cancels replacement before an old assertion exit completes", async (t) => {
+  const children: FakeAssertionChild[] = [];
+  const manager = createAssertions({
+    ownerPid: 77,
+    now: () => 1_800_000_000_000,
+    spawn: () => {
+      const child = new FakeAssertionChild(100 + children.length);
+      children.push(child);
+      queueMicrotask(() => child.emit("spawn"));
+      return child;
+    },
+  });
+  const f = setup(manager);
+  await start(f);
+  const stopping = deferred();
+  children[0].kill = (signal) => {
+    children[0].signalCode = signal;
+    stopping.resolve();
+    return true;
+  };
+  const command = f.m.command(f.command("set-duration", 60000));
+  await stopping.promise;
+  const closing = f.m.close();
+  t.after(async () => {
+    children[0].emit("exit");
+    await Promise.all([command, closing]);
+  });
+  children[0].emit("exit");
+  await Promise.all([command, closing]);
+  assert.equal(children.length, 2, "shutdown must not spawn a replacement third child");
+  assert.equal(children[1].signalCode, "SIGTERM");
+});
+
+void test("monitor shutdown interrupts a pending spawn before acquiring another desired child", async () => {
+  const entered = deferred();
+  const children: FakeAssertionChild[] = [];
+  const manager = createAssertions({
+    ownerPid: 77,
+    now: () => 1_800_000_000_000,
+    spawn: () => {
+      const child = new FakeAssertionChild(100 + children.length);
+      children.push(child);
+      if (children.length === 1) entered.resolve();
+      else queueMicrotask(() => child.emit("spawn"));
+      return child;
+    },
+  });
+  const f = setup(manager);
+  const starting = start(f);
+  await entered.promise;
+  const closing = f.m.close();
+  await flush();
+  const earlySignal = children[0].signalCode;
+  // Unblock the old implementation too, so a regression fails rather than hangs.
+  children[0].emit("spawn");
+  await Promise.all([starting, closing]);
+  assert.equal(earlySignal, "SIGTERM", "cleanup must not await the spawn event");
+  assert.equal(children.length, 1);
+});
+
+void test("confirmed disappearance stops its real assertion before held token cleanup, leaving survivor unchanged", async (t) => {
+  const children: FakeAssertionChild[] = [];
+  const manager = createAssertions({
+    ownerPid: 77,
+    now: () => 1_800_000_000_000,
+    spawn: () => {
+      const child = new FakeAssertionChild(100 + children.length);
+      children.push(child);
+      queueMicrotask(() => child.emit("spawn"));
+      return child;
+    },
+  });
+  const f = setup(manager);
+  await start(f);
+  const entered = deferred(),
+    release = deferred();
+  f.phases.delete("a");
+  f.herdr.publishToken = async (target) => {
+    if (target === "a") {
+      entered.resolve();
+      await release.promise;
+    }
+  };
+  const refresh = f.m.refresh();
+  t.after(async () => {
+    release.resolve();
+    await refresh;
+    await f.m.close();
+  });
+  await entered.promise;
+  await flush();
+  assert.equal(children[0].signalCode, "SIGTERM");
+  assert.equal(children[1].signalCode, null);
+  assert.equal(children.length, 2);
+  assert.equal(f.m.snapshot().agents.length, 1);
+  assert.equal(leaseDeadline(f.m.snapshot().agents[0].state), 1_800_028_800_000);
 });
 
 void test("whole-refresh failures cannot promote pending protection; recovery keeps the original deadline", async (t) => {

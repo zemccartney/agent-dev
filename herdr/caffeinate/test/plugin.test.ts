@@ -49,7 +49,7 @@ void test("only active assertions publish a cup; TTL refresh cannot renew lease"
       publishToken: async (...args) => tokens.push(args),
       close() {},
     },
-    assertions: { reconcile: async (d) => d, close: async () => {} },
+    assertions: { requestClose() {}, reconcile: async (d) => d, close: async () => {} },
   });
   await m.refresh();
   assert.deepEqual(tokens.at(-1), ["pane", null, 6000]);

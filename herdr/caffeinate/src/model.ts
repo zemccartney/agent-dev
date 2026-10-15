@@ -104,6 +104,8 @@ export function reduce(
       s.armedDurationMs = duration;
     } else {
       s.pending = null;
+      s.boundaryKnown = false;
+      s.armedDurationMs = null;
       s.lease = { deadlineAt: now + duration, origin: "manual" };
       s.suppressed = false;
     }

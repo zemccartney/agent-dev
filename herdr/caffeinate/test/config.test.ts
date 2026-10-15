@@ -23,7 +23,7 @@ void test("global preferences propagate to another monitor without changing pend
         publishToken: async () => {},
         close() {},
       },
-      assertions: { reconcile: async (d) => d, close: async () => {} },
+      assertions: { requestClose() {}, reconcile: async (d) => d, close: async () => {} },
       readPower: async () => "ac",
       persistConfig: (c) => saveConfig(path, c),
       reloadConfig: () => loadConfig(path),

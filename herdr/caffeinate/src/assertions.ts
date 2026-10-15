@@ -1,6 +1,6 @@
 import { spawn as spawnChild } from "node:child_process";
 import type { EventEmitter } from "node:events";
-export type AssertionChild = Pick<EventEmitter, "on" | "once"> & {
+export type AssertionChild = Pick<EventEmitter, "on" | "once" | "removeListener"> & {
   pid?: number;
   kill(signal: NodeJS.Signals): unknown;
 };
@@ -32,6 +32,11 @@ export function createAssertions({
   if (!Number.isSafeInteger(ownerPid) || ownerPid < 1) throw new Error("Invalid assertion owner");
   const entries = new Map<string, Entry>();
   let closed = false;
+  const shutdown = new AbortController();
+  function requestClose() {
+    closed = true;
+    shutdown.abort();
+  }
   async function stop(key: string) {
     const e = entries.get(key);
     if (!e) return;
@@ -53,6 +58,7 @@ export function createAssertions({
     });
   }
   return {
+    requestClose,
     async reconcile(desired: Map<string, number>) {
       if (closed) return new Map<string, { deadlineAt: number; pid: number | undefined }>();
       await Promise.all(
@@ -95,10 +101,21 @@ export function createAssertions({
           // Own even a not-yet-spawned child so concurrent shutdown can stop it.
           entries.set(key, e);
           await new Promise<void>((resolve, reject) => {
-            child.once("spawn", resolve);
-            child.once("error", reject);
+            const spawned = () => finish();
+            const failed = (error: Error) => finish(error);
+            function finish(error?: Error) {
+              child.removeListener("spawn", spawned);
+              child.removeListener("error", failed);
+              shutdown.signal.removeEventListener("abort", spawned);
+              if (error) reject(error);
+              else resolve();
+            }
+            child.once("spawn", spawned);
+            child.once("error", failed);
+            shutdown.signal.addEventListener("abort", spawned, { once: true });
+            if (shutdown.signal.aborted) finish();
           });
-          if (closed) await stop(key);
+          if (closed) await Promise.all([...entries.keys()].map(stop));
         } catch (error) {
           onExit(key, error);
         }
@@ -110,7 +127,7 @@ export function createAssertions({
       );
     },
     async close() {
-      closed = true;
+      requestClose();
       await Promise.all([...entries.keys()].map(stop));
     },
   };

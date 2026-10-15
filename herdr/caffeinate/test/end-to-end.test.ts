@@ -356,7 +356,7 @@ void test("a known idle baseline across a monitoring gap cannot infer a new star
   };
   const m = createMonitor({
     herdr: h,
-    assertions: { reconcile: async () => new Map(), close: async () => {} },
+    assertions: { requestClose() {}, reconcile: async () => new Map(), close: async () => {} },
     readPower: async () => "ac",
     now: () => 1800000000000,
   });

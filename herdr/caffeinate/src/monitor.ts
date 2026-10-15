@@ -32,6 +32,7 @@ export interface HerdrPort {
   close(): void;
 }
 export interface AssertionsPort {
+  requestClose(): void;
   reconcile(desired: Map<string, number>): Promise<ReadonlyMap<string, unknown>>;
   close(): Promise<void>;
 }
@@ -148,6 +149,7 @@ export function createMonitor({
     if (closePromise) return closePromise;
     stopped = true;
     clearInterval(powerTimer);
+    assertions.requestClose();
     closePromise = (async () => {
       await safetySerial(() => assertions.close());
       for (const row of rows.values()) {
@@ -192,11 +194,15 @@ export function createMonitor({
       instance = host.instance;
       if (reloadConfig) prefs = validateConfig(await reloadConfig());
       if (stopped) return validation;
-      const tracked = await herdr.list(),
-        seen = new Set<string>();
+      const tracked = await herdr.list();
+      if (stopped) return validation;
+      const seen = new Set(tracked.map((agent) => agent.occupant));
+      const removed = [...rows].filter(([occupant]) => !seen.has(occupant));
+      for (const [occupant] of removed) rows.delete(occupant);
+      // Confirmed absence removes eligibility before any further Herdr I/O.
+      if (removed.length) await reconcileSafety();
       if (stopped) return validation;
       for (const agent of tracked) {
-        seen.add(agent.occupant);
         let row = rows.get(agent.occupant);
         if (!row) {
           row = {
@@ -242,11 +248,9 @@ export function createMonitor({
           row.error = errorMessage(e);
         }
       }
-      for (const [occupant, row] of rows)
-        if (!seen.has(occupant)) {
-          await herdr.publishToken(row.target, null, 6000).catch(() => {});
-          rows.delete(occupant);
-        }
+      await Promise.allSettled(
+        removed.map(([, row]) => herdr.publishToken(row.target, null, 6000)),
+      );
       gap = validation.generation !== evidenceGeneration;
       error = null;
     } catch (e) {
