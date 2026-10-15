@@ -1,6 +1,6 @@
 # Automatic agent caffeination — first-version design
 
-Status: implemented trial; Node 24/standalone pi-tui refactor awaits independent review. The policy sections retain the approved product design; the implementation notes and `validation.md` distinguish current code, historical evidence and unverified live behavior. No unattended-reliability claim is implied.
+Status: implemented trial; initial independent review completed and its approved repairs await fresh review. The policy sections retain the approved product design; the implementation notes and `validation.md` distinguish current code, historical evidence and unverified live behavior. No unattended-reliability claim is implied.
 
 ## Intent
 
@@ -112,11 +112,11 @@ For Pi, use Herdr's lifecycle authority and reported working/idle/blocked state.
 
 A reliably observed idle/waiting-to-working transition begins a run. A newly detected agent already working is treated conservatively as discovered ongoing work unless its start was reliably observed. Repeated working reports do not create new runs. Actual terminal/agent exit ends leases and arming; viewing or detaching does not.
 
-On event loss or transient connection failure, keep existing deadlines; reconcile without inventing missed transitions. Known ongoing leases may continue until confirmed end or their original deadline. Uncertain identity must not transfer a lease to a replacement agent. On monitor restart, no deadline is remembered: discovered ongoing runs remain uncaffeinated. On confirmed server exit, disable/unlink, or intentional monitor shutdown, release owned assertions and clear indicators.
+On event loss or transient connection failure, keep existing deadlines; reconcile without inventing missed transitions. Evidence invalidation is immediate, with a generation checked after awaited reads. Whole-refresh failure marks activity uncertain before it can grant protection. Manual grants/arming require a successfully revalidated occupant; verified identity with uncertain activity still permits explicit manual protection. Release/cancel can reduce protection using a matching cached guard. Known ongoing leases may continue until confirmed end or their original deadline. Uncertain identity must not transfer a lease to a replacement agent. On monitor restart, no deadline is remembered: discovered ongoing runs remain uncaffeinated. On confirmed server exit, disable/unlink, or intentional monitor shutdown, release owned assertions and clear indicators.
 
 ### OS assertions and cleanup
 
-Use child `caffeinate` processes with idle-system-sleep assertions only (`-i`), never display-wake flags. Enforce AC-only eligibility explicitly; `-i` itself is not AC-only. Check current external-power status before acquiring assertions and monitor power changes. Unknown power status must not acquire protection. A periodic fallback check should bound unplug detection latency, targeting at most two seconds in normal operation; this is not hard-real-time behavior.
+Use child `caffeinate` processes with idle-system-sleep assertions only (`-i`), never display-wake flags. Enforce AC-only eligibility explicitly; `-i` itself is not AC-only. Check current external-power status before acquiring assertions and monitor power changes. Unknown power status must not acquire protection. A periodic fallback check should bound unplug detection latency, targeting at most two seconds in normal operation; this is not hard-real-time behavior. The monitor owns a coalesced one-second safety timer and a separate serialized assertion/power path, independent of Herdr reads and token publication. That path can expire or suspend existing entitlement but never grant pending automatic protection from cached activity. Shutdown immediately stops polling and releases owned children without waiting for Herdr observation work.
 
 Each assertion must have a finite timeout no longer than its lease's remaining wall-clock duration and an owner-lifetime safeguard. Investigate and verify combining `-w <monitor-pid>` and `-t <remaining-seconds>` without wrapping a utility. Do not assume combined semantics solely from the manual. If that mechanism cannot meet cleanup requirements, choose an equivalent watchdog/native assertion implementation and document it before shipping. No assertion may outlive a monitor crash unboundedly.
 
@@ -158,12 +158,12 @@ The approved design below/above remains the product baseline. Implementation cho
 
 ## Current build and UI boundary
 
-- Node 24.x only, with one strict compiler project and one Node types environment. Application imports are extensionless under ESNext/Bundler and require the build; developer-run files retain Node-resolvable imports.
+- Node 24.x only, minimum 24.11.0 for developers and consumers, with one strict compiler project and one Node types environment. Application imports are extensionless under ESNext/Bundler and require the build; developer-run files retain Node-resolvable imports.
 - Production is one minified ESM `dist/main.js`; focused tests execute separate `.build/test` modules. Artifact and isolated Herdr tests exercise the actual bundle. The prepared `.build/runtime` payload is allowlisted, source-free and independent of consumer npm installs.
 - Standalone pi-tui owns terminal rendering, input/caret handling, mouse dispatch and width/layout primitives. Application adapters own numeric validation/first-edit behavior, persistent tabs/drafts and occupant selection. No agent SDK or shared UI framework is introduced.
 - `runPopup` installs closure handling before its asynchronous snapshot/label initialization; requests remain serialized, late work is ignored after closure, and leaving the popup never stops its monitor or sends agent input.
 - Required upstream texts are generated into notices from the bundle inventory and exact reviewed policy. pi-tui 1.0.4's missing npm LICENSE is supplied as a version-bound, provenance-recorded upstream copy; OpenTUI attribution and Marked's full redistribution terms are retained.
-- The real bundled monitor/popup passed isolated no-agent Herdr acceptance. Real Pi/Claude exits during active protection, actual minimum Node 24.0.0, physical power/display behavior, overnight reliability and independent review remain separate gates. See `review-request.md` before promotion.
+- The real bundled monitor/popup passed isolated no-agent Herdr acceptance. Real Pi/Claude exits during active protection, actual minimum Node 24.11.0, physical power/display behavior, overnight reliability and review of the repairs remain separate gates. See `review-request.md` before promotion.
 
 ## Historical mockup
 

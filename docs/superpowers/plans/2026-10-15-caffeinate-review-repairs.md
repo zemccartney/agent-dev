@@ -50,11 +50,11 @@
 
 **Interfaces:** Keep `check(mode: 'build' | 'runtime'): void` and `prepareRuntime(packageRoot: string, outputDir: string): Promise<void>`. Both metadata ranges become `^24.11.0`; preflight minimum becomes `[24, 11, 0]`. Selected-runtime test probes must enforce the same floor rather than accepting every 24.x version.
 
-- [ ] Add failing checks for rejected 24.0.0/24.10.x/24.11.0-pre/25.x and accepted 24.11.0/24.16.0 in both launcher modes; require `^24.11.0` in source and prepared metadata and error-only devEngines.
-- [ ] Establish RED with the direct installed-tool build and focused tests while pnpm's normal installation is still blocked. Preserve the already reproduced pristine-install failure as baseline evidence.
-- [ ] Update metadata, preflight, shell error text, runtime preparation and selected-binary validation consistently. Preserve every dependency version/security setting. Let pnpm update lock metadata only if necessary; inspect any diff.
-- [ ] Run `pnpm install --frozen-lockfile` in a pristine temporary package/repository layout, then `pnpm check`. Require successful installation and correct minimum-boundary results; record unrelated still-open R6 failure separately if using an aliased temporary path.
-- [ ] Update current README support text and record actual 24.16.0 versus unexecuted 24.11.0. Commit only this coherent R5 change, with verification evidence.
+- [x] Add failing checks for rejected 24.0.0/24.10.x/24.11.0-pre/25.x and accepted 24.11.0/24.16.0 in both launcher modes; require `^24.11.0` in source and prepared metadata and error-only devEngines.
+- [x] Establish RED with the direct installed-tool build and focused tests while pnpm's normal installation is still blocked. Preserve the already reproduced pristine-install failure as baseline evidence.
+- [x] Update metadata, preflight, shell error text, runtime preparation and selected-binary validation consistently. Preserve every dependency version/security setting. Let pnpm update lock metadata only if necessary; inspect any diff.
+- [x] Run `pnpm install --frozen-lockfile` in a pristine temporary package/repository layout, then `pnpm check`. Require successful installation and correct minimum-boundary results; record unrelated still-open R6 failure separately if using an aliased temporary path.
+- [x] Update current README support text and record actual 24.16.0 versus unexecuted 24.11.0. Commit only this coherent R5 change, with verification evidence.
 
 ### Task 2: Make refresh authority explicit (R1, R2, R4)
 
@@ -62,13 +62,13 @@
 
 **Interfaces:** Existing public `refresh(): Promise<void>`, `tick(): Promise<void>`, `markGap(): Promise<void>`, `command(value: unknown): Promise<void>`, `snapshot(): MonitorSnapshot`, `close(): Promise<void>` stay compatible. Internally, refresh supplies `{ generation: number; verifiedOccupants: Set<string> }` for command authorization; public refresh/tick discard that result. `markGap` invalidates the evidence generation synchronously before returning its promise. `observe(target): Promise<Observation>` continues returning matching-occupant uncertainty for uncertain **activity**, but rejects identity mismatch.
 
-- [ ] Port the review's R1/R2/R4 expected-contract reproductions into the existing monitor test fixture and run them RED: failed listing during pending delay yields zero new assertions; an in-flight gap cannot create a pending run; failed target reread rejects a captured duration mutation without changing its deadline.
-- [ ] Add regression assertions for host/config failures; recovery retains the original pending deadline; an already-active lease survives uncertainty; repeated gaps during recovery never infer a fresh start; previously valid pending/active state is not discarded merely because a later gap occurs.
-- [ ] Add adapter/monitor tests distinguishing matching identity with uncertain activity (manual protection allowed) from changed/missing identity (grant rejected), and a failing peer that must not corrupt another agent's deadline. Preserve rejection of stale occupant/run/revision guards.
-- [ ] Implement a monitor-owned evidence generation. Check invalidation after awaited observations, before treating them as authority for new starts, and do not erase a newer gap at refresh completion. Whole-refresh failures apply the existing uncertain-observation transition before any tick can promote pending work.
-- [ ] Track per-refresh identity validation, rejecting grant/extension/arming if the target is not verified or the generation has since changed. In `herdr.ts`, separate final occupant mismatch from same-identity activity-sequence uncertainty. Avoid a blanket ban on manual unknown-activity protection.
-- [ ] Preserve release/cancel behavior under uncertainty when the current cached occupant/run/revision guard matches: these operations only reduce protection. This is a minimal-preservation implementation choice, not a new bypass for grants. Add a regression for that case.
-- [ ] Run `pnpm build && node --test --test-reporter=tap test/monitor.test.ts test/herdr.test.ts test/end-to-end.test.ts`, then typecheck/lint. Require all new counterexamples green and unchanged original deadlines/surviving-agent identity. Commit the evidence-authority correction.
+- [x] Port the review's R1/R2/R4 expected-contract reproductions into the existing monitor test fixture and run them RED: failed listing during pending delay yields zero new assertions; an in-flight gap cannot create a pending run; failed target reread rejects a captured duration mutation without changing its deadline.
+- [x] Add regression assertions for host/config failures; recovery retains the original pending deadline; an already-active lease survives uncertainty; repeated gaps during recovery never infer a fresh start; previously valid pending/active state is not discarded merely because a later gap occurs.
+- [x] Add adapter/monitor tests distinguishing matching identity with uncertain activity (manual protection allowed) from changed/missing identity (grant rejected), and a failing peer that must not corrupt another agent's deadline. Preserve rejection of stale occupant/run/revision guards.
+- [x] Implement a monitor-owned evidence generation. Check invalidation after awaited observations, before treating them as authority for new starts, and do not erase a newer gap at refresh completion. Whole-refresh failures apply the existing uncertain-observation transition before any tick can promote pending work.
+- [x] Track per-refresh identity validation, rejecting grant/extension/arming if the target is not verified or the generation has since changed. In `herdr.ts`, separate final occupant mismatch from same-identity activity-sequence uncertainty. Avoid a blanket ban on manual unknown-activity protection.
+- [x] Preserve release/cancel behavior under uncertainty when the current cached occupant/run/revision guard matches: these operations only reduce protection. This is a minimal-preservation implementation choice, not a new bypass for grants. Add a regression for that case.
+- [x] Run `pnpm build && node --test --test-reporter=tap test/monitor.test.ts test/herdr.test.ts test/end-to-end.test.ts`, then typecheck/lint. Require all new counterexamples green and unchanged original deadlines/surviving-agent identity. Commit the evidence-authority correction.
 
 ### Task 3: Decouple battery safety from Herdr latency (R3)
 
@@ -76,12 +76,12 @@
 
 **Interfaces:** Keep the monitor's public API unchanged. Internally add `reconcileSafety(): Promise<void>` on a separate serialized chain and a monitor-owned, unref'ed 1,000 ms timer. Both status-driven reconciliation and timer work use this same assertion owner. The safety path reads power and reconciles already-established, unexpired leases; it must never promote pending automatic work from cached working status. Herdr token publication remains on the control path, outside the safety chain.
 
-- [ ] Add RED tests using mocked timers/deferred ports: active protection is removed on battery/unknown while a Herdr observation remains unresolved, and while token publication remains unresolved. Verify safety progress without releasing either held promise.
-- [ ] Add tests that a power-only timer cannot grant a pending lease, expiry cannot renew a deadline, valid AC restoration preserves the original deadline, repeated timer firings do not pile up overlapping safety operations, and two agents retain independent identities/deadlines.
-- [ ] Implement the separate safety chain and coalesced one-second timer in the monitor. Serialize power reads and assertion writes, using current state when the operation executes rather than a stale desired-state map captured before another await. Update active flags without awaiting sidebar I/O.
-- [ ] Make close mark shutdown/clear its timer immediately, before awaiting the Herdr control chain. Release assertions through the safety owner; prevent any late refresh/power/spawn completion from reacquiring. In `main.ts`, delegate to monitor shutdown when initialized; direct assertion cleanup remains only for startup before a monitor exists.
-- [ ] Add delayed-child spawn/exit and multiple-removal regressions. Ensure removals are not needlessly serialized into N × 500 ms escalation waits; parallelize independent child removal if needed while retaining a single reconciliation owner. Never allow a completed close to leave a late-spawned entry active.
-- [ ] Run focused monitor/assertion/end-to-end tests, then `pnpm check && pnpm test:integration`. Verify cleanup and non-overlap through actual module interfaces and ordinary subprocess fixtures, not native assertions or source-text assertions. Commit the bounded-safety change.
+- [x] Add RED tests using mocked timers/deferred ports: active protection is removed on battery/unknown while a Herdr observation remains unresolved, and while token publication remains unresolved. Verify safety progress without releasing either held promise.
+- [x] Add tests that a power-only timer cannot grant a pending lease, expiry cannot renew a deadline, valid AC restoration preserves the original deadline, repeated timer firings do not pile up overlapping safety operations, and two agents retain independent identities/deadlines.
+- [x] Implement the separate safety chain and coalesced one-second timer in the monitor. Serialize power reads and assertion writes, using current state when the operation executes rather than a stale desired-state map captured before another await. Update active flags without awaiting sidebar I/O.
+- [x] Make close mark shutdown/clear its timer immediately, before awaiting the Herdr control chain. Release assertions through the safety owner; prevent any late refresh/power/spawn completion from reacquiring. In `main.ts`, delegate to monitor shutdown when initialized; direct assertion cleanup remains only for startup before a monitor exists.
+- [x] Add delayed-child spawn/exit and multiple-removal regressions. Ensure removals are not needlessly serialized into N × 500 ms escalation waits; parallelize independent child removal if needed while retaining a single reconciliation owner. Never allow a completed close to leave a late-spawned entry active.
+- [x] Run focused monitor/assertion/end-to-end tests, then `pnpm check && pnpm test:integration`. Verify cleanup and non-overlap through actual module interfaces and ordinary subprocess fixtures, not native assertions or source-text assertions. Commit the bounded-safety change.
 
 ### Task 4: Make verification portable and deliberately isolated (R6, R7)
 
@@ -89,11 +89,11 @@
 
 **Interfaces:** No application API changes. Canonicalize file identities for the coverage-set comparison and generated-output roots. The relocated-runtime test selects absolute preinstalled Node/Herdr paths, creates private HOME/TMPDIR/bin directories, and passes an explicit environment to both version/preflight probes and the launcher. Keep only intentional test selectors, locale/terminal values as needed, and a controlled system PATH; do not copy `process.env` wholesale.
 
-- [ ] Capture the existing RED coverage test under `/tmp` versus `/private/tmp`; add a regression that equivalent canonical/symlink locations pass while a genuinely excluded owned file still fails. Preserve the negative type-error and floating-promise canaries.
-- [ ] Implement canonical filesystem identity comparison without special-casing macOS path spellings or suppressing missing files. Apply the same normalization to generated-output exclusion checks.
-- [ ] Add a poisoned-environment regression: a parent `NODE_OPTIONS` preload that would fail or leave a sentinel must not affect the selected Node version probe or relocated launcher. Test that intentional Node selection still works and the real Herdr executable is available without inheriting its entire surrounding PATH.
-- [ ] Construct the minimal child environment inline in the existing test harness, resolving executables before sanitizing. No Docker/mise configuration or generalized sandbox framework is needed. Keep the payload source/dependency-free and remove all temporary directories in cleanup.
-- [ ] Run quality canaries through both path spellings; run `pnpm test:runtime` and the negative-environment case. Require real selected Node version output, no sentinel execution, and no skips. Commit the test-isolation correction.
+- [x] Capture the existing RED coverage test under `/tmp` versus `/private/tmp`; add a regression that equivalent canonical/symlink locations pass while a genuinely excluded owned file still fails. Preserve the negative type-error and floating-promise canaries.
+- [x] Implement canonical filesystem identity comparison without special-casing macOS path spellings or suppressing missing files. Apply the same normalization to generated-output exclusion checks.
+- [x] Add a poisoned-environment regression: a parent `NODE_OPTIONS` preload that would fail or leave a sentinel must not affect the selected Node version probe or relocated launcher. Test that intentional Node selection still works and the real Herdr executable is available without inheriting its entire surrounding PATH.
+- [x] Construct the minimal child environment inline in the existing test harness, resolving executables before sanitizing. No Docker/mise configuration or generalized sandbox framework is needed. Keep the payload source/dependency-free and remove all temporary directories in cleanup.
+- [x] Run quality canaries through both path spellings; run `pnpm test:runtime` and the negative-environment case. Require real selected Node version output, no sentinel execution, and no skips. Commit the test-isolation correction.
 
 ### Task 5: Reverify the repaired snapshot and obtain focused independent review
 
@@ -101,9 +101,9 @@
 
 **Interfaces:** No new runtime interfaces. Handoff maps R1–R7 to the new commit(s), test evidence and remaining acceptance limits.
 
-- [ ] Run pristine `pnpm install --frozen-lockfile`, `pnpm check`, `pnpm test:integration`, `pnpm test:runtime`, and `git diff --check` on the repaired snapshot. Record exact counts, binary version and failures; do not substitute direct-tool diagnostics for successful normal commands.
-- [ ] Re-run the original review counterexamples against the new build and require their expected-contract assertions to pass. Keep original RED evidence separately. Verify no tracked implementation or normal Herdr configuration outside the intended worktree changed.
-- [ ] Update current support/validation/handoff documentation with the new common minimum, evidence-authority and power scheduling behavior, explicit approval history and precise remaining gates. Actual 24.11.0, live-agent/native, physical and overnight checks remain unverified unless separately authorized/provided.
+- [x] Run pristine `pnpm install --frozen-lockfile`, `pnpm check`, `pnpm test:integration`, `pnpm test:runtime`, and `git diff --check` on the repaired snapshot. Record exact counts, binary version and failures; do not substitute direct-tool diagnostics for successful normal commands.
+- [x] Re-run the original review counterexamples against the new build and require their expected-contract assertions to pass. Keep original RED evidence separately. Verify no tracked implementation or normal Herdr configuration outside the intended worktree changed.
+- [x] Update current support/validation/handoff documentation with the new common minimum, evidence-authority and power scheduling behavior, explicit approval history and precise remaining gates. Actual 24.11.0, live-agent/native, physical and overnight checks remain unverified unless separately authorized/provided.
 - [ ] Request a fresh-context independent reviewer of the repaired areas and their interactions, supplying the original findings, exact old/new heads, approved contracts, fresh evidence and read-only/no-native constraints. Do not reuse old review approval as verification of the new snapshot. Use the authenticated supported runtime; do not repeat the unavailable Pi model attempt.
 - [ ] Report any unresolved new issues or permission-dependent gates and stop for human direction before broader testing/release/merge. No automatic integration or publication.
 
@@ -118,4 +118,4 @@
 
 ## Execution choice
 
-Recommended: **native execution in this session**, followed by fresh independent review. The evidence and power changes share monitor state/ownership, so parallel implementation would add coordination risk; separate commits and red/green regressions retain reviewable boundaries.
+Approved by the user: **native execution in this session**, followed by fresh independent review. The evidence and power changes share monitor state/ownership, so parallel implementation would add coordination risk; separate commits and red/green regressions retain reviewable boundaries.

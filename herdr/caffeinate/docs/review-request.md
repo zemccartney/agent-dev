@@ -1,40 +1,32 @@
-# Fresh-context whole-package review request
+# Fresh-context review of the approved repairs
 
-**Status: awaiting user-coordinated independent reviewer.** This is a request, not a review result. Review the current complete package, not just the latest UI diff or the author's historical checks.
+**Status: awaiting the repair-phase independent reviewer.** The initial review is complete, not a verdict on the new implementation. No release/merge approval is implied.
 
-## Checkout and scope
+## Target and authority
 
-- Worktree: `/Users/enlow/proj/pi-ext/.worktrees/caffeination`
-- Branch: `feat/herdr-caffeination`
-- Whole-branch comparison base: `c81693a2b4b96551ca0d4db6b8bef4a74742ca2d`
-- Latest implementation checkpoint: `4e1788598029f7a959fa6701276b90416a5b81a9`; documentation handoff follows it. Use current HEAD and inspect any pending/staged changes too.
-- Primary scope: all of `herdr/caffeinate/`, including bootstrap, source, tests, build configurations, dependency/lockfile policy, licensing inputs, runtime payload preparation and documentation. Include the checkpointed TypeScript migration and original lease/transport/assertion implementation, not only the final refactor commits.
-- Execution was approved after planning commit `a958e01`; the plan's original pre-authorization statements are historical. The latest user instruction is to proceed until review, then stop for their coordination.
-- Product authority: `herdr/caffeinate/docs/design.md`; approved execution plan: `docs/superpowers/plans/2026-10-13-caffeinate-prepublication-refactor.md`. Latest decisions are Node **24.x only**, one types/compiler environment, bundled/minified production ESM and standalone pi-tui, with no Pi agent SDK.
-- Read canonical repository `LICENSE`; do not edit other projects, the main checkout's shared TODO, or the agentlog plan.
+- Worktree: `/Users/enlow/proj/pi-ext/.worktrees/caffeination`, branch `feat/herdr-caffeination`.
+- Whole-package base: `c81693a2b4b96551ca0d4db6b8bef4a74742ca2d`.
+- Original reviewed head / repair base: `e764321b39b2e78fc549f676619dae35b341ef7f`.
+- Repair implementation through `d45fdc70a267d61bc8572dcb41dfbd6e059f64e5`; documentation follows. The coordinator supplies an exact exported final head to the reviewer, rather than a moving worktree.
+- Scope: the entire `herdr/caffeinate` package and its contracts, with special attention to repair interactions. Include bootstrap, assertion ownership, transport, popup, build/licensing and tests—not just the diff.
+- Product authority: `docs/design.md` in this package. Approved repairs: repository-root `thinking/code-review-20261015T001624Z.md` and `docs/superpowers/plans/2026-10-15-caffeinate-review-repairs.md`.
+- User approved R1–R7 and native execution followed by one fresh independent review. Node **24.x only, minimum 24.11.0**, common to developers/consumers. No dependency-policy weakening, new runtime provisioning, split compiler environment or Pi agent SDK.
 
-```sh
-git status --short
-git diff c81693a2b4b96551ca0d4db6b8bef4a74742ca2d..HEAD -- herdr/caffeinate
-git diff -- herdr/caffeinate
-git diff --cached -- herdr/caffeinate
-```
+## Invariants and focused questions
 
-## Non-negotiable behavior
+Prevent idle **system** sleep, not display sleep. Never send input/cancel/stop to agents. Keep independent eight-hour absolute defaults, ten-second delay anchored to run start, AC-only eligibility, no automatic renewal from uncertainty or progress, no cold-discovery adoption and no persisted leases/arming. Preferences are global; monitor/IPC ownership is per verified local server. Assertions remain finite and monitor-owned. Preserve occupant/run/revision targeting, UI drafts/navigation and 56×18 minimum.
 
-Prevent idle **system** sleep, not display sleep. Never send input/cancel/stop to agents. Independent eight-hour absolute per-run defaults, ten-second delay anchored to run start, AC-only eligibility, no renewal from uncertainty or progress, no cold-discovery adoption, no persisted leases or arming. Preferences are global; monitor/IPC ownership is per verified local Herdr server. Native assertions are finite and monitor-owned. Preserve captured occupant/run/revision targeting, navigation/drafts, numeric editing and the 56×18 minimum.
+1. Event loss during host/list/observation awaits, including a second gap during recovery: no new authority from stale reads; preserve previously valid deadlines.
+2. Identity mismatch versus activity uncertainty, including one invalid agent among valid peers: reject only grants lacking current target validation; manual unknown-activity protection still works.
+3. Battery/unknown transitions while observation, token publication or shutdown is pending: safety progresses independently and late work cannot reacquire.
+4. Multiple assertions and delayed child exit/spawn during shutdown: no concurrent assertion writers, orphan children or cross-agent lease changes.
+5. Aliased paths and poisoned developer environment: genuine missing coverage still fails; selected Node/Herdr run without inherited preload effects.
 
-## Review focus
+The safety timer must never promote pending automatic work from cached working state. Release/cancel remain guarded operations that reduce protection, including during uncertainty. Evaluate whether these contracts are actually enforced rather than assuming the passing tests are adequate.
 
-1. **Lifecycle/evidence:** Pi authority versus positive Claude evidence; uncertainty and observation gaps; run/occupant replacement; independent deadlines; assertion timeout/owner cleanup; stale-lock/PID safety; disable/server disappearance versus transient failures.
-2. **Popup:** exact selected identity after reorder/remove/replace; stale guards and repeated actions; refresh/draft isolation; safe labels and width handling; mouse selection across refresh/resize; application focus versus widget focus; startup before `runPopup` as well as closing during its initialization, labels, refresh and commands; terminal/client cleanup and late rejection/render suppression.
-3. **Build/runtime:** matching Node-24-major guards and metadata, error-only developer runtime policy, one strict project/types version, extensionless build boundary, independent tsc/type-aware lint, modular tests versus actual bundle execution, no undeclared runtime imports or generated-code checking leak.
-4. **Distribution/licensing:** actual included-package inventory including injected rolldown helpers, exact-version policy, full upstream text/notice retention, safe `vendor:` resolution and provenance for pi-tui's omitted LICENSE/OpenTUI copy, complete Marked terms, canonical root LICENSE and source-free payload allowlist. No optional native helper or consumer compiler requirement.
-5. **Tests/evidence:** negative canaries and real failure oracles, independent terminal widths, genuine relocated-bundle startup, deduplication and popup acceptance, safe sandbox isolation/cleanup. Distinguish historical native evidence, deterministic subprocess substitutions, renderer tests, no-agent real-host acceptance and missing real-agent/physical checks.
+## Verification supplied to the reviewer
 
-## Reproduction and evidence
-
-Safe default verification from `herdr/caffeinate`:
+From `herdr/caffeinate`:
 
 ```sh
 pnpm install --frozen-lockfile
@@ -44,22 +36,18 @@ pnpm test:runtime
 git diff --check
 ```
 
-`test:runtime` consumes the prepared payload, reports the actual binary version, and does not install a runtime. `CAFFEINATE_TEST_NODE=/absolute/path/to/node` selects an already installed Node 24 binary. Actual minimum 24.0.0 is not available here.
+Fresh pristine-layout evidence through `d45fdc7`: frozen install and normal format/type/lint/build gates pass; **122/122 TAP**, **8/8 integration**, **2/2 relocated-runtime tests**, zero skips. Actual Node **24.16.0**, pnpm **11.26.0**. All four original monitor counterexamples now pass against the rebuilt code; they use fake ports, not native assertions. Evidence is in the repair plan's execution workspace; the coordinator provides it separately to the reviewer. Historical results remain in `validation.md`.
 
-Recorded environment: macOS, Node 24.16.0, pnpm 11.26.0, Herdr 0.9.3. Latest default aggregate before this documentation handoff: 107/107 TAP, integration 8/8, actual relocated runtime 1/1. The permissioned relocated real-Herdr test and toolkit spike also passed, without agents or native assertions. The final handoff reruns the default gates rather than treating historical counts as fresh evidence.
+`CAFFEINATE_TEST_NODE=/absolute/path/to/node` selects an already installed binary. Actual minimum **24.11.0** is unavailable/unverified; no binary is downloaded. The runtime test runs with private directories and a deliberately limited child environment, including an explicit Herdr executable. Its hostile-parent test confirms that a developer preload does not leak into the payload.
 
-Local execution evidence: `.superpowers/sdd/2026-10-13-caffeinate-prepublication-refactor/` (`progress.md`, task briefs, RED logs, `task-3-final.log`, `task-4-final.log`, `task-5-final.log`, and final Task 6 verification). This directory is ignored scratch; committed `docs/validation.md` records the distinctions. Generated `.build/runtime/` and `.build/bundle-inventory.json` are reproducible, not committed release assets.
+## Permissions and known limits
 
-## Permissions and unresolved gates
+Read-only review. Do not edit implementation, start live agents/Herdr instances, acquire native assertions, run native probes/demos, restart/relink the normal trial, change global configuration, merge, push, publish or install tooling. The coordinator runs mutating build/test commands in isolated verification copies.
 
-Do not start agents, acquire sleep assertions, run native probes/demos, restart/relink the normal trial, change global configuration, merge, push or publish. Ask before rerunning any live sandbox command in the review session; default verification needs none.
+Real Pi/Claude exits during active caffeination, native assertion/owner/deadline/cup/survivor evidence, physical battery/display transitions and overnight behavior remain unverified. The real-agent scenario is still unimplemented and explicitly refuses execution. Prior isolated bundled-Herdr/native results do not prove this repaired bundle's live acceptance.
 
-- Real Pi and Claude exits **while actively caffeinated**, assertion/owner/deadline/cup evidence and an independently protected survivor remain unverified. No finite real-agent workload has been agreed. The additional native/agent flag currently rejects explicitly; those scenarios are not implemented or passed.
-- Node 24.0.0 runtime compatibility remains unverified, despite simulated boundary checks and declared `^24.0.0` support.
-- Physical battery transitions, display sleep while work continues and overnight behavior remain unverified.
-- Independent review itself is the current gate. Author checks are not a substitute.
-- Main-checkout `TODO.md` still has superseded Node-22/undici and unbundled-build notes; flag these for coordinated reconciliation, do not silently edit them.
+Do not alter other projects, the main checkout's shared TODO or the Agentlog branch. Branch setup is owned by the Agentlog coordinator; this repair stays on its existing branch. Any eventual ordinary PR must explicitly target `dev`; promotion to `main` is separately approved work, not part of this review.
 
 ## Requested result
 
-Return prioritized findings (Critical/Important/Minor) with file/line references, concrete failure scenarios and reproducible tests where possible. Assess safety, correctness, maintainability, licensing and missing validation separately. Identify which issues block this refactor versus release/unattended use. Do not treat acknowledged missing acceptance as passed, and do not provide a release sign-off merely because default tests pass. The user will coordinate any fixes and subsequent acceptance work.
+Report Critical/Important/Minor findings with exact file/line references, concrete conditions, evidence and uncertainty. Lead each finding with what a plugin user or developer would experience and why it matters; explain internals afterward. Distinguish demonstrated defects, code-path inference and missing acceptance. Address the whole package and repair interactions; do not provide a release sign-off merely because unit tests pass. Return any behaviors you declined to judge explicitly so the coordinator can adjudicate them. Do not spawn additional reviewers.

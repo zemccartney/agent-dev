@@ -1,6 +1,6 @@
 # Review status and historical decisions
 
-**Independent whole-package review is open.** No fresh reviewer has been invoked or supplied findings. The user will coordinate that review using [review-request.md](review-request.md). Implementation and permitted validation are checkpointed; there is no release, merge, publication or normal-trial restart/relink authorization.
+**Initial independent review completed; repaired-snapshot review is pending.** Three discovery passes and two follow-ups produced seven accepted findings, documented in `thinking/code-review-20261015T001624Z.md` at repository root. The user approved all repairs and native execution of the 2026-10-15 repair plan. Corrections through `d45fdc7` pass fresh pristine checks (122 TAP, 8 integration, 2 relocated-runtime tests). This does not authorize release, merge, publication or a normal-trial restart/relink.
 
 The sections below record historical author checks, not independent approval. They covered the approved spec, platform evidence, model, monitor/IPC, UI, failure cleanup and tests.
 
@@ -49,7 +49,7 @@ That tooling checkpoint has since been committed and superseded by the Node-24-o
 
 - Implemented: single strict Node 24 project, separate modular test and minified production outputs, graph-derived dependency inventory, fail-closed notices/canonical LICENSE, allowlisted runtime payload, standalone pi-tui popup, and cancellation-safe popup lifecycle.
 - Latest verification is recorded in `validation.md` and the execution ledger; historical counts above are not new evidence. Real bundled no-agent Herdr acceptance passed with Node 24.16.0 and Herdr 0.9.3.
-- Still blocked: fresh independent review, actual Node 24.0.0 execution, actual Pi/Claude exit while caffeinated, independent active-survivor native evidence, physical power/display behavior and overnight reliability. The real-agent/native test flag fails explicitly because an agreed workload and permission remain prerequisites.
+- Still blocked: fresh review of the repairs, actual Node 24.11.0 execution, actual Pi/Claude exit while caffeinated, independent active-survivor native evidence, physical power/display behavior and overnight reliability. The real-agent/native test flag fails explicitly because an agreed workload and permission remain prerequisites.
 - The main checkout's shared TODO still contains superseded Node 22/undici override and unbundled-production notes. It was deliberately not edited; coordinate its update separately. The agentlog plan and other projects were not modified.
 
-No current independent-review verdict or release-readiness approval exists.
+The initial independent recommendation was fix before merge. Repair verification and the subsequent independent assessment are separate from release-readiness approval; native/physical acceptance remains open.

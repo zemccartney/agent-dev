@@ -1,12 +1,14 @@
 # Validation record
 
-## Current review handoff
+## Review repairs — 2026-10-15
 
-Production is now the Node-24-only minified bundle with standalone pi-tui, separate modular test output and a licensed source-free payload. **Independent review has not occurred**; use `review-request.md` for the user-coordinated fresh-context review.
+Three independent discovery passes and two targeted follow-ups reviewed `e764321`; the user approved all seven findings for repair after the Crit discussion. See the repository's `thinking/code-review-20261015T001624Z.md`. Repairs through `d45fdc7` cover stale evidence/commands, independent power safety, the common Node **24.11.0** floor, canonical coverage paths and controlled runtime-test environment. A fresh independent review of this repaired snapshot is pending; the original review is not approval of the new code.
 
-Final non-live verification (`task-6-final.log`): frozen install, formatting, strict TypeScript, type-aware lint, **107/107 TAP**, **8/8 integration**, **1/1 actual relocated-runtime check**, zero skips, and clean `git diff --check`. Actual runtime: Node **24.16.0**. Payload: **225,321 raw bytes**, **69,776 summed per-file gzip bytes** (not an archive size). The latest permitted isolated bundled-Herdr and toolkit runs passed in Task 5; no runtime code changed afterward.
+Fresh pristine-layout verification: frozen install, formatting, strict TypeScript, type-aware lint, **122/122 TAP**, **8/8 integration**, **2/2 actual relocated-runtime tests**, zero skips. Actual runtime: Node **24.16.0**. The second runtime test injects a developer preload and proves it cannot leak into the prepared payload. The path-coverage regression passes through a symlink and still rejects genuinely excluded source. Four original monitor counterexamples now pass against the repaired build; the held-Herdr power case removes its fake assertion during a real 2.3-second wait.
 
-Open gates: independent review; actual Node 24.0.0; real Pi/Claude exits under active caffeination and native survivor evidence; physical battery/display behavior and overnight reliability. No normal-trial restart/relink, real-agent run, sleep-assertion probe, release, merge or publication was performed during this refactor.
+Payload at this repair checkpoint: **226,590 raw bytes**, **70,082 summed per-file gzip bytes** (not an archive size). Exact dependency pins and the lockfile remain unchanged. Earlier isolated bundled-Herdr/native evidence below is historical: no live Herdr or native assertion probe was rerun for these repairs.
+
+Open gates: repaired-snapshot independent review; actual Node **24.11.0** execution (not installed); real Pi/Claude exits under active caffeination and native survivor evidence; physical battery/display behavior and overnight reliability. No runtime provisioning, normal-trial restart/relink, real-agent workload, sleep-assertion probe, merge or publication was performed during repair execution.
 
 The dated sections below are historical checkpoint records, not claims that earlier build layouts or counts remain current.
 

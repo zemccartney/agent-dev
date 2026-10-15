@@ -11,7 +11,7 @@ Automatically caffeinate local Pi and Claude Code runs. No model calls, consumer
 
 The runtime launcher checks Node, macOS, built output, and the Herdr CLI before loading the application. It never installs runtimes/dependencies, sources shell profiles, or changes global configuration. Prebuilt consumers need no pnpm, TypeScript, or compiler. **Release artifacts and a public installer are not published yet**; the current local trial uses a developer-built checkout.
 
-**Start with the [guided demo](docs/demo.md).** A historical real Pi tool-run demo passed. The refactored bundle passed isolated no-agent Herdr acceptance; independent review, real Pi/Claude exits under active protection, minimum-Node execution, laptop power transitions and overnight reliability remain open. See [validation](docs/validation.md) and the [design](docs/design.md).
+**Start with the [guided demo](docs/demo.md).** A historical real Pi tool-run demo passed. The earlier refactored bundle passed isolated no-agent Herdr acceptance. Independent review then identified seven issues, all approved for repair. Fresh review of those repairs, real Pi/Claude exits under active protection, minimum-Node execution, laptop power transitions and overnight reliability remain open. See [validation](docs/validation.md) and the [design](docs/design.md).
 
 ## Local trial from a built checkout
 
@@ -76,6 +76,8 @@ Otherwise invoke the controls action from a Herdr terminal. When no supported ag
 This UI is a first-pass trial. Allow at least 56 × 18 terminal cells inside the popup. Static Gruvbox dark/light colors and simple custom hex overrides are read from Herdr's config when opening; other/auto-switching themes use terminal ANSI colors because Herdr 0.9.3 has no public resolved-theme API. The native Agents sidebar right-click menu has no plugin-action hook yet; keep using the shortcut/action for now.
 
 Automatic is initially on. Default is eight hours from observed run start, with a ten-second start delay. Tools, commentary and retries do not reset that deadline. A confirmed finish/wait ends the lease. Explicit manual actions bypass the delay.
+
+When Herdr status is unavailable, the monitor preserves existing deadlines but does not invent a new automatic allowance. A manual grant asks you to refresh/retry if the target identity cannot be verified; uncertain activity alone does not forbid manual protection. Power checks run separately from Herdr status and sidebar work so those reads cannot hold up battery suspension. These paths have deterministic regression coverage, not physical unplug acceptance.
 
 ## Important boundaries
 
