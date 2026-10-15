@@ -55,10 +55,13 @@ export function createAssertions({
   return {
     async reconcile(desired: Map<string, number>) {
       if (closed) return new Map<string, { deadlineAt: number; pid: number | undefined }>();
-      for (const [key, e] of entries) {
-        if (desired.get(key) !== e.deadlineAt || e.deadlineAt <= now()) await stop(key);
-      }
+      await Promise.all(
+        [...entries]
+          .filter(([key, e]) => desired.get(key) !== e.deadlineAt || e.deadlineAt <= now())
+          .map(([key]) => stop(key)),
+      );
       for (const [key, deadlineAt] of desired) {
+        if (closed) break;
         if (entries.has(key)) continue;
         const seconds = Math.floor((deadlineAt - now()) / 1000);
         if (
@@ -89,11 +92,13 @@ export function createAssertions({
             if (!e.stopping)
               onExit(key, code === 0 ? null : new Error(`caffeinate exited (${code ?? signal})`));
           });
+          // Own even a not-yet-spawned child so concurrent shutdown can stop it.
+          entries.set(key, e);
           await new Promise<void>((resolve, reject) => {
             child.once("spawn", resolve);
             child.once("error", reject);
           });
-          if (!e.dead) entries.set(key, e);
+          if (closed) await stop(key);
         } catch (error) {
           onExit(key, error);
         }

@@ -11,7 +11,9 @@ function setup() {
     fail = false,
     readFault: "host" | "config" | null = null,
     active = new Map<string, number>(),
-    config = { automatic: true, defaultDurationMs: 28800000 };
+    config = { automatic: true, defaultDurationMs: 28800000 },
+    powerReads = 0;
+  let powerReader: () => Promise<Power> = async () => power;
   const phases = new Map<string, Omit<Observation, "occupant">>([
       ["a", { phase: "idle", evidence: "authoritative" }],
       ["b", { phase: "idle", evidence: "positive" }],
@@ -46,7 +48,10 @@ function setup() {
   const m = createMonitor({
     herdr,
     assertions,
-    readPower: async () => power,
+    readPower: () => {
+      powerReads++;
+      return powerReader();
+    },
     now: () => time,
     config,
     reloadConfig: async () => {
@@ -60,6 +65,11 @@ function setup() {
   return {
     m,
     herdr,
+    assertions,
+    powerReads: () => powerReads,
+    setPowerReader: (reader: typeof powerReader) => {
+      powerReader = reader;
+    },
     setReadFault: (fault: typeof readFault) => (readFault = fault),
     phases,
     tokens,
@@ -80,6 +90,10 @@ function setup() {
     },
   };
 }
+async function flush() {
+  await new Promise<void>((done) => setImmediate(done));
+}
+
 async function start(f: ReturnType<typeof setup>) {
   await f.m.refresh();
   for (const p of f.phases.values()) p.phase = "working";
@@ -260,6 +274,188 @@ void test("concurrent refresh requests serialize and reread after in-flight inva
   assert.equal(reads, 2);
   await m.close();
   await f.m.close();
+});
+
+void test("power cadence removes protection while Herdr observations or token writes are held", async (t) => {
+  t.mock.timers.enable({ apis: ["setInterval"] });
+  for (const stage of ["observe", "publish"] as const) {
+    for (const source of ["battery", "unknown"] as const) {
+      const f = setup();
+      await start(f);
+      const entered = deferred(),
+        release = deferred();
+      const originalObserve = f.herdr.observe.bind(f.herdr);
+      if (stage === "observe")
+        f.herdr.observe = async (target) => {
+          entered.resolve();
+          await release.promise;
+          return originalObserve(target);
+        };
+      else
+        f.herdr.publishToken = async () => {
+          entered.resolve();
+          await release.promise;
+        };
+      f.advance(2000);
+      const refresh = f.m.refresh();
+      t.after(async () => {
+        release.resolve();
+        await refresh;
+        await f.m.close();
+      });
+      await entered.promise;
+      f.setPower(source);
+      t.mock.timers.tick(1000);
+      await flush();
+      assert.equal(f.active().size, 0, `${stage}/${source}`);
+      assert.equal(f.m.snapshot().agents[0].active, false);
+      assert.equal(leaseDeadline(f.m.snapshot().agents[0].state), 1_800_028_800_000);
+      release.resolve();
+      await refresh;
+      assert.equal(f.active().size, 0, "late Herdr completion cannot restore AC eligibility");
+      await f.m.close();
+    }
+  }
+});
+
+void test("power-only polling never promotes pending work and expiry or AC return never renews", async (t) => {
+  t.mock.timers.enable({ apis: ["setInterval"] });
+  const f = setup();
+  t.after(() => f.m.close());
+  await f.m.refresh();
+  f.setPhase("a", "working");
+  await f.m.refresh();
+  f.advance(10000);
+  t.mock.timers.tick(1000);
+  await flush();
+  assert.equal(f.active().size, 0, "cached working phase is not a fresh automatic grant");
+  await f.m.refresh();
+  assert.equal(f.active().size, 1);
+  f.setPower("battery");
+  t.mock.timers.tick(1000);
+  await flush();
+  assert.equal(f.active().size, 0);
+  f.setPower("ac");
+  t.mock.timers.tick(1000);
+  await flush();
+  assert.equal(f.active().size, 1);
+  assert.equal(leaseDeadline(f.m.snapshot().agents[0].state), 1_800_028_800_000);
+  f.advance(28800000);
+  t.mock.timers.tick(1000);
+  await flush();
+  assert.equal(f.active().size, 0);
+  f.setPower("battery");
+  t.mock.timers.tick(1000);
+  await flush();
+  f.setPower("ac");
+  t.mock.timers.tick(1000);
+  await flush();
+  assert.equal(f.active().size, 0);
+});
+
+void test("power polling coalesces while a power read is outstanding and close prevents late acquisition", async (t) => {
+  t.mock.timers.enable({ apis: ["setInterval"] });
+  const f = setup();
+  await start(f);
+  f.setPower("battery");
+  await f.m.refresh();
+  const entered = deferred(),
+    release = deferred();
+  f.setPowerReader(async () => {
+    entered.resolve();
+    await release.promise;
+    return "ac";
+  });
+  const before = f.powerReads();
+  t.mock.timers.tick(1000);
+  await flush();
+  // Do not wait on entered before checking: the old implementation has no timer.
+  t.after(async () => {
+    release.resolve();
+    await f.m.close();
+  });
+  assert.equal(f.powerReads(), before + 1);
+  await entered.promise;
+  t.mock.timers.tick(20000);
+  await flush();
+  assert.equal(f.powerReads(), before + 1, "no queued backlog of power polls");
+  const closing = f.m.close();
+  release.resolve();
+  await closing;
+  await flush();
+  assert.equal(f.active().size, 0);
+  const after = f.powerReads();
+  t.mock.timers.tick(10000);
+  await flush();
+  assert.equal(f.powerReads(), after, "close owns and stops the safety timer");
+});
+
+void test("status and timer reconciliation share one assertion writer and retain independent deadlines", async (t) => {
+  t.mock.timers.enable({ apis: ["setInterval"] });
+  const f = setup();
+  await start(f);
+  const originalLeases = new Map(f.active());
+  const entered = deferred(),
+    release = deferred();
+  let writers = 0,
+    maximum = 0;
+  const reconcile = f.assertions.reconcile.bind(f.assertions);
+  f.assertions.reconcile = async (desired) => {
+    maximum = Math.max(maximum, ++writers);
+    entered.resolve();
+    await release.promise;
+    try {
+      return await reconcile(desired);
+    } finally {
+      writers--;
+    }
+  };
+  const refresh = f.m.refresh();
+  t.after(async () => {
+    release.resolve();
+    await refresh;
+    await f.m.close();
+  });
+  await entered.promise;
+  f.setPower("battery");
+  t.mock.timers.tick(1000);
+  await flush();
+  release.resolve();
+  await refresh;
+  await flush();
+  assert.equal(maximum, 1);
+  assert.equal(f.active().size, 0, "queued safety work rereads current power");
+  f.setPower("ac");
+  t.mock.timers.tick(1000);
+  await flush();
+  assert.deepEqual(f.active(), originalLeases);
+});
+
+void test("close releases assertions before a held observation completes", async (t) => {
+  const f = setup();
+  await start(f);
+  const entered = deferred(),
+    release = deferred();
+  const original = f.herdr.observe.bind(f.herdr);
+  f.herdr.observe = async (target) => {
+    entered.resolve();
+    await release.promise;
+    return original(target);
+  };
+  const refresh = f.m.refresh();
+  await entered.promise;
+  const closing = f.m.close();
+  t.after(async () => {
+    release.resolve();
+    await Promise.all([refresh, closing]);
+  });
+  await flush();
+  assert.equal(f.active().size, 0);
+  assert.equal(f.m.snapshot().stopped, true);
+  release.resolve();
+  await Promise.all([refresh, closing]);
+  assert.equal(f.active().size, 0);
+  assert.ok(f.m.snapshot().agents.every((row) => !row.state.lease && !row.active));
 });
 
 void test("whole-refresh failures cannot promote pending protection; recovery keeps the original deadline", async (t) => {

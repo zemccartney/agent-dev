@@ -101,3 +101,59 @@ void test("failed spawn cannot be reported active and does not erase other child
   assert.equal(result.has("b"), true);
   await m.close();
 });
+
+void test("close owns a child whose spawn event has not arrived and never starts later desired children", async () => {
+  const children: FakeAssertionChild[] = [];
+  const manager = createAssertions({
+    ownerPid: 77,
+    now: () => 0,
+    spawn: () => {
+      const child = new FakeAssertionChild(100 + children.length);
+      children.push(child);
+      return child;
+    },
+  });
+  const pending = manager.reconcile(
+    new Map([
+      ["a", 10000],
+      ["b", 20000],
+    ]),
+  );
+  await new Promise<void>((done) => setImmediate(done));
+  const closing = manager.close();
+  children[0].emit("spawn");
+  // Avoid an orphaned promise on the old code's second spawn.
+  await new Promise<void>((done) => setImmediate(done));
+  children[1]?.emit("spawn");
+  await closing;
+  const result = await pending;
+  assert.equal(children.length, 1);
+  assert.equal(children[0].signalCode, "SIGTERM");
+  assert.equal(result.size, 0);
+});
+
+void test("removal signals all independent children before waiting for their exits", async (t) => {
+  t.mock.timers.enable({ apis: ["setTimeout"] });
+  const f = fixture();
+  await f.manager.reconcile(
+    new Map([
+      ["a", 20000],
+      ["b", 30000],
+    ]),
+  );
+  for (const { child } of f.calls)
+    child.kill = (signal) => {
+      child.signalCode = signal;
+      return true;
+    };
+  const removing = f.manager.reconcile(new Map());
+  await new Promise<void>((done) => setImmediate(done));
+  const signalled = f.calls.map(({ child }) => child.signalCode);
+  // Always unblock either implementation before making the assertion.
+  t.mock.timers.tick(500);
+  await new Promise<void>((done) => setImmediate(done));
+  t.mock.timers.tick(500);
+  await removing;
+  await f.manager.close();
+  assert.deepEqual(signalled, ["SIGTERM", "SIGTERM"]);
+});

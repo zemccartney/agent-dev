@@ -22,9 +22,9 @@ async function runMonitor(context: HostContext) {
     if (closing) return;
     closing = true;
     clearTimeout(timer);
-    // Release OS children even if the serialized Herdr control plane is stuck.
-    await assertions.close();
-    await monitor?.close();
+    // The monitor releases children independently of stalled Herdr reads.
+    if (monitor) await monitor.close();
+    else await assertions.close();
     client?.close();
     await ipc?.close();
   }

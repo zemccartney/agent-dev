@@ -67,7 +67,10 @@ export function createMonitor({
     chain = Promise.resolve(),
     error: string | null = null,
     gap = false,
-    evidenceGeneration = 0;
+    evidenceGeneration = 0,
+    safetyChain = Promise.resolve(),
+    polling = false;
+  let closePromise: Promise<void> | undefined;
   const serial = (fn: () => Promise<void>) => {
     const next = chain.then(fn);
     chain = next.catch(() => {});
@@ -93,32 +96,75 @@ export function createMonitor({
       row.state = { ...row.state, boundaryKnown: false };
     }
   }
-  async function clear() {
-    await assertions.close();
-    await Promise.allSettled(
-      [...rows.values()].map((row) => herdr.publishToken(row.target, null, 6000)),
-    );
-    for (const row of rows.values()) {
-      row.active = false;
-      row.state = initialState(row.state.occupant);
-    }
-    herdr.close();
+  function safetySerial(fn: () => Promise<void>) {
+    const next = safetyChain.then(fn);
+    safetyChain = next.catch(() => {});
+    return next;
+  }
+  function reconcileSafety() {
+    return safetySerial(async () => {
+      if (stopped) return;
+      const source = await readPower().catch((): Power => "unknown");
+      if (stopped) return;
+      power = source;
+      const desired = new Map<string, number>();
+      for (const row of rows.values()) {
+        // Power polling can expire entitlement, never grant from cached activity.
+        if (
+          (row.state.lease && row.state.lease.deadlineAt <= now()) ||
+          (row.state.pending && row.state.pending.deadlineAt <= now())
+        )
+          row.state = reduce(row.state, { type: "tick" }, now(), prefs);
+        if (row.state.lease && power === "ac") desired.set(key(row), row.state.lease.deadlineAt);
+      }
+      const active = await assertions.reconcile(desired);
+      for (const row of rows.values()) {
+        row.active = !stopped && active.has(key(row));
+        if (
+          desired.has(key(row)) &&
+          !row.active &&
+          !stopped &&
+          (desired.get(key(row)) ?? 0) - now() >= 1000
+        )
+          row.error = "Could not acquire caffeination assertion";
+        else if (row.error === "Could not acquire caffeination assertion") row.error = null;
+      }
+    });
+  }
+  const powerTimer = setInterval(() => {
+    if (stopped || polling) return;
+    polling = true;
+    void reconcileSafety()
+      .catch((e: unknown) => {
+        error = errorMessage(e);
+      })
+      .finally(() => {
+        polling = false;
+      });
+  }, 1000);
+  powerTimer.unref();
+
+  function clear(): Promise<void> {
+    if (closePromise) return closePromise;
     stopped = true;
+    clearInterval(powerTimer);
+    closePromise = (async () => {
+      await safetySerial(() => assertions.close());
+      for (const row of rows.values()) {
+        row.active = false;
+        row.state = initialState(row.state.occupant);
+      }
+      await Promise.allSettled(
+        [...rows.values()].map((row) => herdr.publishToken(row.target, null, 6000)),
+      );
+      herdr.close();
+    })();
+    return closePromise;
   }
   async function sync() {
+    await reconcileSafety();
     if (stopped) return;
-    power = await readPower().catch((): Power => "unknown");
-    const desired = new Map<string, number>();
     for (const row of rows.values()) {
-      row.state = reduce(row.state, { type: "tick" }, now(), prefs);
-      if (row.state.lease && power === "ac") desired.set(key(row), row.state.lease.deadlineAt);
-    }
-    const active = await assertions.reconcile(desired);
-    for (const row of rows.values()) {
-      row.active = active.has(key(row));
-      if (desired.has(key(row)) && !row.active && (desired.get(key(row)) ?? 0) - now() >= 1000)
-        row.error = "Could not acquire caffeination assertion";
-      else if (row.error === "Could not acquire caffeination assertion") row.error = null;
       // Refresh only every two seconds; otherwise event-driven refreshes can loop
       // through metadata notifications. Clearing a cup is immediate.
       const token = row.active ? "☕" : null;
@@ -138,14 +184,17 @@ export function createMonitor({
     if (stopped) return validation;
     try {
       const host = await herdr.hostStatus();
+      if (stopped) return validation;
       if (!host.local || !host.pluginEnabled || (instance && instance !== host.instance)) {
         await clear();
         return validation;
       }
       instance = host.instance;
       if (reloadConfig) prefs = validateConfig(await reloadConfig());
+      if (stopped) return validation;
       const tracked = await herdr.list(),
         seen = new Set<string>();
+      if (stopped) return validation;
       for (const agent of tracked) {
         seen.add(agent.occupant);
         let row = rows.get(agent.occupant);
@@ -166,6 +215,7 @@ export function createMonitor({
         }
         try {
           const observation = await herdr.observe(agent.target);
+          if (stopped) return validation;
           if (observation.occupant !== agent.occupant)
             throw new Error("Agent identity changed during observation");
           if (validation.generation !== evidenceGeneration) {
@@ -179,6 +229,7 @@ export function createMonitor({
           if (observation.evidence === "uncertain" && agent.kind === "pi" && !row.state.lease)
             row.error = "Pi lifecycle unavailable; install/update Herdr’s Pi integration";
         } catch (e) {
+          if (stopped) return validation;
           row.state = reduce(
             row.state,
             {
@@ -199,6 +250,7 @@ export function createMonitor({
       gap = validation.generation !== evidenceGeneration;
       error = null;
     } catch (e) {
+      if (stopped) return validation;
       if (errorCode(e) === "HOST_GONE") {
         error = errorMessage(e);
         await clear();
@@ -264,9 +316,6 @@ export function createMonitor({
         error,
       })),
     }),
-    close: () =>
-      serial(async () => {
-        if (!stopped) await clear();
-      }),
+    close: clear,
   };
 }
