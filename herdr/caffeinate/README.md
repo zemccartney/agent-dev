@@ -5,7 +5,7 @@ Automatically caffeinate local Pi and Claude Code runs. No model calls, consumer
 ## Prerequisites
 
 - macOS supported by your Herdr installation.
-- **Node 24.x** available on Herdr's launch `PATH`. Declared minimum: 24.0.0; tested: 24.16.0. Other majors are rejected. No particular version manager is required.
+- **Node 24.x** available on Herdr's launch `PATH`. Declared minimum: 24.11.0; tested: 24.16.0. The actual minimum binary remains unverified. Other majors are rejected. No particular version manager is required.
 - **Herdr >=0.9.3**; tested with 0.9.3, newer versions are best-effort rather than a blanket compatibility guarantee. Pi also needs Herdr's Pi integration, as described below.
 - Git for obtaining a source checkout or GitHub-based installation, not for ongoing caffeination.
 

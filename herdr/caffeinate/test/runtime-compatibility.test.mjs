@@ -11,6 +11,7 @@ void test("actual selected Node binary executes the relocated prepared payload",
   const version = spawnSync(node, ["--version"], { encoding: "utf8", timeout: 5000 });
   assert.equal(version.status, 0, version.stderr);
   assert.match(version.stdout.trim(), /^v24\.\d+\.\d+$/);
+  assert.ok(Number(version.stdout.trim().split(".")[1]) >= 11, "Node 24.11.0 minimum");
   t.diagnostic(`Actual runtime binary: ${node}; version: ${version.stdout.trim()}`);
   const root = await mkdtemp(join(tmpdir(), "cf-runtime-"));
   t.after(() => rm(root, { recursive: true, force: true }));

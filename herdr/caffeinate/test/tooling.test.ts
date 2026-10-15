@@ -43,7 +43,7 @@ void test("linting retains built-in plugins and type awareness; TypeScript runs 
   assert.equal(config("tsconfig.json").references, undefined);
   const pkg = config("package.json");
   assert.deepEqual(pkg.devEngines, {
-    runtime: { name: "node", version: "^24.0.0", onFail: "error" },
+    runtime: { name: "node", version: "^24.11.0", onFail: "error" },
   });
   assert.equal((pkg.devDependencies as Record<string, string>)["@types/node"], "24.19.1");
   const lock = readFileSync(new URL("../pnpm-lock.yaml", import.meta.url), "utf8");

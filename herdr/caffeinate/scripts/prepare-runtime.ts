@@ -89,7 +89,7 @@ export async function prepareRuntime(packageRoot: string, outputDir: string): Pr
             version: text(pkg.version),
             type: "module",
             license: "MIT",
-            engines: { node: "^24.0.0" },
+            engines: { node: "^24.11.0" },
           },
           null,
           2,

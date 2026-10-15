@@ -2,7 +2,7 @@
 var fs = require("fs");
 var path = require("path");
 var childProcess = require("child_process");
-var nodeFloor = [24, 0, 0];
+var nodeFloor = [24, 11, 0];
 var herdrFloor = [0, 9, 3];
 
 /** @param {string} version @param {number[]} floor */

@@ -47,7 +47,7 @@ void test("prepared payload is allowlisted and copies the canonical license", as
     version: "0.1.0",
     type: "module",
     license: "MIT",
-    engines: { node: "^24.0.0" },
+    engines: { node: "^24.11.0" },
   });
 });
 void test("packaging fails closed for missing canonical license and unreviewed or missing upstream text", async (t) => {

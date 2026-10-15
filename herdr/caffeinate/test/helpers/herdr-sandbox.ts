@@ -80,6 +80,7 @@ export async function withHerdrSandbox(
     await exec(nodeBinary, ["--version"], { timeout: 5000, env: { PATH: "/usr/bin:/bin" } })
   ).stdout.trim();
   assert.match(nodeVersion, /^v24\.\d+\.\d+$/);
+  assert.ok(Number(nodeVersion.split(".")[1]) >= 11, "Node 24.11.0 minimum");
   // Keep Unix socket paths below macOS's sockaddr_un limit, including /private prefix.
   const root = await realpath(await mkdtemp("/tmp/cf-"));
   const env = sandboxEnvironment(root, nodeBinary);

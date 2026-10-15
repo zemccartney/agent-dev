@@ -87,23 +87,25 @@ void test("missing Node fails clearly before loading output or installing anythi
   const f = await fixture(t, { node: false });
   const result = f.launch(["monitor"]);
   assert.equal(result.status, 127, result.stderr);
-  assert.match(result.stderr, /Node.*24\.0\.0.*PATH/i);
+  assert.match(result.stderr, /Node.*24\.11\.0.*PATH/i);
   assert.equal(existsSync(f.marker), false);
   assert.equal(existsSync(f.installMarker), false);
 });
 void test("unsupported Node versions fail before application parsing; version boundaries are shared by build and runtime", async (t) => {
   for (const version of [
+    "24.0.0",
     "18.20.8",
     "22.18.0",
     "23.11.0",
-    "24.0.0-pre",
+    "24.11.0-pre",
     "invalid",
-    "24.0.0",
+    "24.10.9",
+    "24.11.0",
     "24.16.0",
     "25.0.0",
   ]) {
     const f = await fixture(t, { version });
-    const supported = ["24.0.0", "24.16.0"].includes(version);
+    const supported = ["24.11.0", "24.16.0"].includes(version);
     if (!supported)
       await writeFile(
         join(f.dir, "dist", "main.js"),
@@ -114,7 +116,7 @@ void test("unsupported Node versions fail before application parsing; version bo
     assert.equal(result.status, supported ? 0 : 1, result.stderr);
     assert.equal(existsSync(f.marker), supported);
     if (!supported) {
-      assert.match(result.stderr, /Node.*24\.0\.0/);
+      assert.match(result.stderr, /Node.*24\.11\.0/);
       assert.ok(result.stderr.includes(version));
     }
     const build = spawnSync(
@@ -187,7 +189,7 @@ void test("built consumer launcher and cached-manifest shim work without source 
 });
 void test("package build and all manifest entrypoints use the prerequisite guards", () => {
   const pkg = object(JSON.parse(readFileSync(join(root, "package.json"), "utf8")));
-  assert.equal(object(pkg.engines).node, "^24.0.0");
+  assert.equal(object(pkg.engines).node, "^24.11.0");
   const build = object(pkg.scripts).build;
   assert.ok(typeof build === "string");
   assert.match(build, /node scripts\/preflight\.cjs build && tsdown/);
