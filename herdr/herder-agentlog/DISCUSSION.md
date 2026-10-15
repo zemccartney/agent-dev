@@ -12,9 +12,9 @@ Make it comfortable to close agent processes and panes: saved conversations shou
 
 - Reopen the same saved agent conversation in its original working directory. Exact pane layout, shell environment, development servers, and original process restoration are not initial promises.
 - Closing an agent process or Herdr pane does not retire its registry record. Archive / Unarchive are explicit actions; no separate Completed status in v1. Archived records remain searchable through an explicit archived view/filter.
-- First release: local Pi sessions, implemented in TypeScript/Node with an explicit separately installed Node 24+ prerequisite. **Do not bundle a JavaScript runtime.** The package README must acknowledge the runtime limitation and the Rust/native-distribution follow-up.
+- First release: local Pi sessions, implemented in TypeScript/Node with an explicit separately installed Node 24.15+ prerequisite (25.x requires 25.7+). **Do not bundle a JavaScript runtime.** The package README must acknowledge the runtime limitation and the Rust/native-distribution follow-up.
 - **Fast-follow: Claude Code**, which the user frequently uses at work while transitioning to Pi. Remote-machine support is deferred.
-- **No startup toast, attachment polling, or startup hook in v0.** This supersedes the earlier availability-cue and retry proposals. Show Loading / Refreshing / errors inside the popup when invoked. Let native Herdr restoration happen; do not automatically open registry UI, launch extra agents, or require startup housekeeping.
+- **No startup toast, attachment polling, or startup hook in v0.** This supersedes the earlier availability-cue and retry proposals. Show Loading / Refreshing / errors inside the popup when invoked. Independent-review decision (2026-10-15, AL-01): gate the entire session list during initial/manual refresh, rather than allowing edits against cached rows while refresh runs. The user wants visible loading cost and a simpler serial interaction; close remains available, and refresh does not run during editing/choice/open. Let native Herdr restoration happen; do not automatically open registry UI, launch extra agents, or require startup housekeeping.
 - **Registry surface: on-demand Herdr popup**, selected over a dedicated tab. Escape returns to the previous work; no registry tab to manage. The browser mockup is illustrative, not a functioning registry.
 - Discovery initially uses session names, project/directory, and meaningful conversation recency. Transcript-content search is deferred. Merely restarting a process should not make its conversation newly recent.
 - Manual pin/unpin controls return priority. Pinned sessions sort first, with human-interaction recency within each group. No inferred importance or reuse of Herdr's runtime attention ranking in v1.
@@ -30,6 +30,10 @@ Make it comfortable to close agent processes and panes: saved conversations shou
 - Resume a conversation not open here in a new tab in an unambiguously matching project workspace; create a workspace if no unambiguous match exists. Focus the resumed agent. Never automatically split or replace an occupied pane.
 - Display the native session name by default, with an optional registry-only label override. The label editor must explain that the override is not synced to Pi's native name or usable as its session identifier.
 - **Fast-follow: resolve naming divergence**, investigating native-name updates/synchronization rather than treating the v1 label disclaimer as the permanent solution. The synchronization policy itself is not yet designed.
+
+## SQLite stability reassessment during implementation
+
+The user approved retaining built-in SQLite for now with Node 24.15+ (25.x: 25.7+), acknowledging that Release candidate is still experimental rather than Stable (2). Their machines use current Node 24 or Node 26; accommodating coworkers should remain modest. Document the risk in README, explain that earlier unflagged versions might work but are unsupported, recommend upgrading, and reassess later. Do not add a compatibility framework or change storage engines now.
 
 ## Future direction requested by the user
 

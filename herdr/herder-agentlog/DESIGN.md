@@ -36,7 +36,9 @@ Herdr live pane list ───────────────────�
                                                focus or resume through Herdr
 ```
 
-**Agreed v0 runtime direction:** TypeScript on Node 24 LTS, using built-in `node:sqlite` and standalone `@earendil-works/pi-tui`, selected in [PLAN.md](PLAN.md). Target macOS first, Herdr 0.9.3 and Pi 1.1.0. Node v24.16.0 and `node:sqlite` were verified locally with an in-memory database. **V0 requires separately installed Node 24+; Herdr itself does not require Node. Bundling a JavaScript runtime is explicitly rejected.** The package README must acknowledge this prerequisite as a distribution limitation and point to the Rust/native-binary follow-up. No rewrite is required for v0. Herdr launches ordinary commands; it does not privilege Python, Node, or Rust as its plugin language.
+**Agreed v0 runtime direction:** TypeScript on Node 24 LTS, using built-in `node:sqlite` and standalone `@earendil-works/pi-tui`, selected in [PLAN.md](PLAN.md). Target macOS first, Herdr 0.9.3 and Pi 1.1.0. Node v24.16.0 and `node:sqlite` were verified locally with an in-memory database. **V0 requires separately installed Node 24.15+ (25.x requires 25.7+); Herdr itself does not require Node. Bundling a JavaScript runtime is explicitly rejected.** The package README must acknowledge this prerequisite as a distribution limitation and point to the Rust/native-binary follow-up. No rewrite is required for v0. Herdr launches ordinary commands; it does not privilege Python, Node, or Rust as its plugin language.
+
+**Stability decision after implementation began:** retain `node:sqlite` with the 24.15 / 25.7 release-candidate baseline, not a claim of Stable (2). The user accepts that risk for personal use on current Node 24/26 and requests later reassessment. Earlier unflagged SQLite versions may work but are unsupported; provide an upgrade diagnostic and README disclosure, not compatibility machinery.
 
 The user prefers a TypeScript repository, eventually with a root pnpm workspace and shared lint/format/test tooling. Keep this package workspace-ready and align with the other Herdr plugin's Node direction. Do not create or migrate root tooling as part of this plugin without separate agreement. No daemon, Pi extension, plugin-initiated model calls, or network service. Python/curses was initially recommended for standard-library convenience, but cross-repository consistency now outweighs that local convenience.
 
@@ -64,7 +66,7 @@ Known roots include the default agent directory, an explicitly inherited alterna
 
 Read the session header for identity/original cwd, latest `session_info` for the native name, and user-message entries for recency. Recency is the maximum recorded user-message timestamp across the file, not mtime or active-branch selection. This is a deliberately simple saved-message signal, not an attempt to identify whether every user-role entry came from a human versus automation.
 
-Cache size/mtime fingerprints; stream changed files and keep the popup responsive during refresh. Offer Refresh for newly created outside sessions while the popup is open. Ignore an incomplete trailing JSONL line until the next scan; report malformed files without rewriting them or erasing prior records.
+Cache size/mtime fingerprints and stream changed files. During refresh, show a loading view that can be closed but does not accept list actions or edits. Offer Refresh for newly created outside sessions while the popup is open. Ignore an incomplete trailing JSONL line until the next scan; report malformed files without rewriting them or erasing prior records.
 
 Short `pane.agent_detected` and `pane.agent_status_changed` hooks query the affected pane and remember valid Pi references while it is running. They do not scan all transcripts or spawn any agents. They can run while clients are detached because the server and its panes remain alive; this does not imply that detaching creates new Pi conversations. Popup refresh also captures current pane references. ID-only references resolve against known files; nonexistent/unsaved sessions are not promised resumable.
 
@@ -80,7 +82,7 @@ If startup fails or stops at an approval prompt, show the error/destination and 
 
 ## 6. Readiness inside the popup; no startup cue
 
-On user invocation, open the popup immediately. Show cached rows with **Refreshing…**, or **Loading sessions…** on first use, then show the refreshed list or an actionable error. Keep the Sessions action available so it can explain its own state.
+On user invocation, open the popup immediately with **Loading sessions…**. Gate the whole saved-session list until the refresh attempt finishes, even when cached rows exist. Manual Refresh similarly gates interaction with **Refreshing…**. Discard loading-time actions rather than queueing them; Escape still closes. Do not start another refresh during label editing, destination choice, or an Open request. If refresh is incomplete, expose saved records with an explicit error, not an implication that they were freshly verified. This intentionally makes loading cost visible and serializes refresh with editing (approved independent-review repair AL-01). Keep the Sessions action available so it can explain its own state.
 
 Invoking the action from the interactive Herdr UI already implies an attached client. Do not add client-attachment polling, a startup hook, startup toast, deferred notification state, or a permanent observer. Ordinary detach/reattach does not trigger registry UI. Lifecycle capture hooks may still run without a client, independently of the popup.
 
@@ -88,14 +90,14 @@ A saved conversation not currently open is not a restoration failure. The popup 
 
 ## 7. Trade-offs and alternatives
 
-| Choice | Why this first | Alternative / cost |
-|---|---|---|
-| SQLite | Atomic user edits, concurrent hooks, simple queries | JSON is easier to inspect but requires locking and atomic-write coordination; an event log adds replay/compaction work |
-| TypeScript + Node | Matches the user's repo direction and other plugin; built-in SQLite is available; enables shared tooling | Requires a TUI dependency and separately installed Node. Python/curses creates a second ecosystem. Rust could remove the runtime prerequisite with a native binary and bundled SQLite, but adds Cargo, native UI work, and release builds; deferred rather than rejected. Bundled JavaScript runtimes are out of bounds |
-| Disk scans + small hooks | Survives lost shutdown events; imports older conversations | Continuous event subscriber/daemon improves freshness but needs supervision and event-loss reconciliation; a Pi extension adds another installation surface |
-| Snapshot-style popup refresh | Simple, responsive catalog at human-use boundaries | Continuous live sorting can be fresher but more distracting and operationally complex |
-| On-demand readiness only | No toast, attach polling, startup hook, or pending-cue state | First open may wait for indexing; cached rows and explicit loading/errors make the delay visible. Proactive recovery notifications remain a future option |
-| Registry-only labels | No transcript mutation or synchronization conflicts | Native naming is less confusing; explicitly tracked fast-follow |
+| Choice                       | Why this first                                                                                           | Alternative / cost                                                                                                                                                                                                                                                                                                      |
+| ---------------------------- | -------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| SQLite                       | Atomic user edits, concurrent hooks, simple queries                                                      | JSON is easier to inspect but requires locking and atomic-write coordination; an event log adds replay/compaction work                                                                                                                                                                                                  |
+| TypeScript + Node            | Matches the user's repo direction and other plugin; built-in SQLite is available; enables shared tooling | Requires a TUI dependency and separately installed Node. Python/curses creates a second ecosystem. Rust could remove the runtime prerequisite with a native binary and bundled SQLite, but adds Cargo, native UI work, and release builds; deferred rather than rejected. Bundled JavaScript runtimes are out of bounds |
+| Disk scans + small hooks     | Survives lost shutdown events; imports older conversations                                               | Continuous event subscriber/daemon improves freshness but needs supervision and event-loss reconciliation; a Pi extension adds another installation surface                                                                                                                                                             |
+| Snapshot-style popup refresh | Simple, responsive catalog at human-use boundaries                                                       | Continuous live sorting can be fresher but more distracting and operationally complex                                                                                                                                                                                                                                   |
+| On-demand readiness only     | No toast, attach polling, startup hook, or pending-cue state                                             | First open may wait for indexing; explicit blocking loading and errors make the delay visible. Proactive recovery notifications remain a future option                                                                                                                                                                  |
+| Registry-only labels         | No transcript mutation or synchronization conflicts                                                      | Native naming is less confusing; explicitly tracked fast-follow                                                                                                                                                                                                                                                         |
 
 ## 8. Acceptance evidence before calling it usable
 
@@ -107,7 +109,7 @@ Test with synthetic Pi files and disposable named Herdr servers, never by stoppi
 4. Herdr-first shutdown restores natively; Pi-first shutdown can lose Herdr's reference, but the registry still discovers the conversation and resumes it in the original cwd. Assert a real Pi process and a visible marker in that same conversation.
 5. An already-open or restoring match does not create another Pi process. Multiple matches present destinations rather than spawning.
 6. Interrupted indexing and process termination preserve committed user metadata; malformed files are not changed.
-7. Popup mouse/keyboard operation, first-use Loading, cached Refreshing, errors, escape/draft preservation, and focus transfer receive an actual Herdr smoke test. Verify that server startup and detach/reattach do not display registry UI or send notifications.
+7. Popup mouse/keyboard operation, initial blocking Loading, manual blocking Refreshing, errors, escape/draft preservation, and focus transfer receive an actual Herdr smoke test. Verify that server startup and detach/reattach do not display registry UI or send notifications.
 
 ## Review and evidence
 
@@ -117,4 +119,4 @@ Checked the installed runtime, Pi's session format/manager, and Herdr v0.9.3's [
 
 ## Approval boundary
 
-The user approved the [implementation plan](PLAN.md) through Crit. Confirm an execution approach before product implementation. The material constraints are **an external Node 24+ prerequisite with no bundled JavaScript runtime**, **no startup cue**, and **custom-path discovery depending on observation when outside known roots**. Exact colors, schema migrations, helper names, and test-fixture organization are left to the builder. Claude Code, naming synchronization, automatic morning recovery, and richer ranking remain follow-ups.
+The user approved the [implementation plan](PLAN.md) through Crit. Confirm an execution approach before product implementation. The material constraints are **an external Node 24.15+ prerequisite (25.x: 25.7+) with no bundled JavaScript runtime**, **no startup cue**, and **custom-path discovery depending on observation when outside known roots**. Exact colors, schema migrations, helper names, and test-fixture organization are left to the builder. Claude Code, naming synchronization, automatic morning recovery, and richer ranking remain follow-ups.
