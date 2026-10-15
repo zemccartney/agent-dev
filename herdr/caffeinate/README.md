@@ -1,17 +1,17 @@
 # Caffeinate for Herdr — trial
 
-Automatically caffeinate local Pi and Claude Code runs. No model calls, runtime npm dependencies, SQLite, or changes to agent execution.
+Automatically caffeinate local Pi and Claude Code runs. No model calls, consumer npm installs, SQLite, or changes to agent execution. The self-contained bundle includes standalone pi-tui and its reviewed dependencies—not the Pi agent SDK.
 
 ## Prerequisites
 
 - macOS supported by your Herdr installation.
-- **Node >=24.0.0** available on Herdr's launch `PATH`; current Node 24 LTS is recommended. No particular version manager is required.
-- **Herdr >=0.9.3**. Pi also needs Herdr's Pi integration, as described below.
+- **Node 24.x** available on Herdr's launch `PATH`. Declared minimum: 24.0.0; tested: 24.16.0. Other majors are rejected. No particular version manager is required.
+- **Herdr >=0.9.3**; tested with 0.9.3, newer versions are best-effort rather than a blanket compatibility guarantee. Pi also needs Herdr's Pi integration, as described below.
 - Git for obtaining a source checkout or GitHub-based installation, not for ongoing caffeination.
 
 The runtime launcher checks Node, macOS, built output, and the Herdr CLI before loading the application. It never installs runtimes/dependencies, sources shell profiles, or changes global configuration. Prebuilt consumers need no pnpm, TypeScript, or compiler. **Release artifacts and a public installer are not published yet**; the current local trial uses a developer-built checkout.
 
-**Start with the [guided demo](docs/demo.md).** A real Pi tool-run demo has passed. Claude, laptop power transitions, further UI trials, and overnight reliability remain acceptance checks. See [validation](docs/validation.md) and the [design](docs/design.md).
+**Start with the [guided demo](docs/demo.md).** A historical real Pi tool-run demo passed. The refactored bundle passed isolated no-agent Herdr acceptance; independent review, real Pi/Claude exits under active protection, minimum-Node execution, laptop power transitions and overnight reliability remain open. See [validation](docs/validation.md) and the [design](docs/design.md).
 
 ## Local trial from a built checkout
 
@@ -108,7 +108,7 @@ Settings live in the directory printed by `herdr plugin config-dir agent-dev.caf
 
 ## Development
 
-Provide Node >=24.0.0 and the pinned **pnpm 11.26.0** yourself. Tooling is package-local; this does not change the other projects' workflow.
+Provide Node 24.x and the pinned **pnpm 11.26.0** yourself. Matching `engines` and error-only `devEngines.runtime` checks never provision Node. Tooling is package-local; this does not change the other projects' workflow.
 
 ```sh
 cd "$PLUGIN"
@@ -117,16 +117,31 @@ pnpm install --frozen-lockfile
 pnpm build
 pnpm check
 pnpm test:integration
-# Explicitly opt in to brief, real macOS assertions:
+pnpm test:runtime
+```
+
+- TypeScript in `src/` uses extensionless application imports with one strict ESNext/Bundler compiler project and one Node 24 types version. Raw Node stripping does not resolve those imports: build application code rather than running `src/main.ts` directly. Native-run developer helpers keep `.ts` imports or package aliases.
+- tsdown emits one minified/tree-shaken production ESM entry, `dist/main.js`, without chunks/maps, and separate readable modular test output in `.build/test/`. Build before linking or trying edits. Compilation requires no running Herdr server and performs no install/relink/restart.
+- `pnpm check` runs Oxfmt, independent strict `tsc --noEmit`, type-aware Oxlint, then the built-output tests. `pnpm format` formats owned files. Exact devDependency versions, the pinned manager, and `pnpm-lock.yaml` are checked in.
+- pnpm enforces a seven-day release cooldown, trust-downgrade checks even against the lockfile, no exotic subdependencies, and no unapproved dependency build scripts. Do not bypass a blocked resolution silently.
+- `pnpm test` builds first, then uses the built-in Node test runner with TAP output. Native Node stripping runs developer `.ts` tests/probes; `#caffeinate/*` imports execute `.build/test/*.js` while TypeScript checks source contracts. Tests, fixtures, scripts and build configuration are included in strict checking; isolated negative canaries verify the actual compiler/linter gates.
+- Default tests use injected clocks, fake sockets, ordinary child processes and a real toolkit renderer/terminal emulator; they acquire no OS assertions. Separate artifact tests execute the actual production bundle. `pnpm test:runtime` consumes an already prepared payload and reports the actual selected binary; use `CAFFEINATE_TEST_NODE=/absolute/path/to/node` for another preinstalled Node 24 binary. Simulated version boundaries are not minimum-runtime acceptance.
+- `pnpm build` prepares `.build/runtime/`: only `dist/main.js`, launcher/preflight, runtime manifest, minimal ESM package metadata, the canonical repository LICENSE and `THIRD_PARTY_NOTICES.txt`. It does not contain source, tests, tools, node_modules, devEngines or maps. This local payload is not a published release.
+- Bundle-graph inventory and exact-version `scripts/license-policy.json` drive fail-closed notices. Installed upstream texts are preserved in full, including injected bundler helpers. Explicit version-bound `vendor:` inputs supply pi-tui's omitted root license and copied OpenTUI attribution, with pinned source provenance under `scripts/licenses/`. Unknown versions or missing required text block preparation. The repository LICENSE is copied, not independently maintained.
+- Installer, release archives, checksums and publishing automation remain subsequent work. The [fresh-context review request](docs/review-request.md) covers the whole package; independent review has not occurred.
+- Temporary `src/main.mjs` supports the already-cached trial manifest and forwards through preflight to the build. New manifest registrations use `/bin/sh scripts/launch.sh`. Existing monitors/IPC/leases are not restarted or restored by building; relinking the live trial is intentionally not automatic.
+
+### Separately opted-in validation
+
+```sh
+# Temporary isolated Herdr only; no agents or native assertions:
+CAFFEINATE_RUN_HERDR_TESTS=1 pnpm test:herdr
+# Test-only toolkit spike, also isolated:
+CAFFEINATE_RUN_HERDR_TESTS=1 pnpm probe:tui
+# Separate permission required: briefly acquires real macOS assertions:
 pnpm probe:assertions --allow-system-assertion
 ```
 
-- TypeScript lives in `src/`; tsdown emits stable, unbundled ESM modules in `dist/`. Build before linking or trying edits. Compilation requires no running Herdr server and performs no install/relink/restart.
-- `pnpm check` runs Oxfmt, independent strict `tsc --noEmit`, type-aware Oxlint, then the built-output tests. `pnpm format` formats owned files. Exact devDependency versions, the pinned manager, and `pnpm-lock.yaml` are checked in.
-- pnpm enforces a seven-day release cooldown, trust-downgrade checks even against the lockfile, no exotic subdependencies, and no unapproved dependency build scripts. Do not bypass a blocked resolution silently.
-- `pnpm test` builds first, then uses the built-in Node test runner with TAP output. Native Node stripping runs developer `.ts` tests/probes; `#caffeinate/*` imports execute `dist/*.js` while TypeScript checks source contracts. Tests, fixtures, scripts and build configuration are included in strict checking; isolated negative canaries verify the actual compiler/linter gates.
-- Tests use injected clocks, fake socket servers and child processes, without acquiring real OS assertions. Version tests simulate detection boundaries under the installed Node; they do not prove execution under every accepted Node version. The optional assertion probe does acquire short native assertions.
-- A consumer layout needs `dist/`, `scripts/launch.sh`, `scripts/preflight.cjs`, `package.json`, and the manifest, plus appropriate documentation/license. It does not need source, pnpm, or `node_modules`. Artifact creation, checksums and installation automation are the next release stage.
-- Temporary `src/main.mjs` supports the already-cached trial manifest and forwards through preflight to the build. New manifest registrations use `/bin/sh scripts/launch.sh`. Existing monitors/IPC/leases are not restarted or restored by building; relinking the live trial is intentionally not automatic.
+Do not run native probes or real-agent workloads merely to satisfy default tests. Real-agent exit acceptance needs an agreed finite workload; `CAFFEINATE_RUN_AGENT_EXIT_TESTS=1` currently fails clearly rather than running an unapproved scenario. Building does not restart or relink the normal trial.
 
-The root repository LICENSE applies.
+The root repository LICENSE covers original work; bundled third-party code retains the licenses reproduced in the prepared payload.

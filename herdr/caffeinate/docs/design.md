@@ -1,6 +1,6 @@
 # Automatic agent caffeination — first-version design
 
-Status: approved for implementation planning. The user approved the product rules and recommended implementation direction in the design conversation. UI styling remains experimental. Documentation/source inspection establishes feasibility, not live integration correctness.
+Status: implemented trial; Node 24/standalone pi-tui refactor awaits independent review. The policy sections retain the approved product design; the implementation notes and `validation.md` distinguish current code, historical evidence and unverified live behavior. No unattended-reliability claim is implied.
 
 ## Intent
 
@@ -22,7 +22,7 @@ Remove the need to manually start caffeinate or guess how long unattended agent 
 
 ## Lifecycle interpretation
 
-These are intended semantic rules, not yet a mapping to verified harness events. Conversation messages are not run boundaries. A planning conversation can contain multiple short runs followed by a long implementation run.
+These are the approved semantic rules implemented by the evidence adapter and lease model; protocol/simulator tests do not establish complete real-harness coverage. Conversation messages are not run boundaries. A planning conversation can contain multiple short runs followed by a long implementation run.
 
 | Observation                                                               | Lease behavior                                                                                  |
 | ------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
@@ -52,7 +52,7 @@ Explicit manual caffeination bypasses the start delay and sets a deadline for th
 
 Expiration should remain tracked internally for the ongoing run, even though it has no distinct sidebar appearance, so continuing activity cannot automatically grant a replacement lease. Cleanup of that bookkeeping follows reliable run-end/identity handling; implementation details remain unresolved.
 
-Candidate controls:
+Implemented controls:
 
 - Protect for a custom duration from now, including renewing an expired lease.
 - Release protection for this run without cancelling the run or automatically reacquiring protection.
@@ -61,9 +61,9 @@ Candidate controls:
 - No per-session automatic/manual policy overrides in the first version. Per-run duration changes and release actions do not change the global policy.
 - Manually caffeinating an idle session or an agent confirmed to be waiting for human input arms its next autonomous run instead of immediately preventing sleep. The selected duration starts when work begins or resumes, bypassing the ten-second delay. This is one-shot; subsequent runs follow the global policy.
 
-The armed-next-run state needs feedback distinct from actual caffeination. A coffee cup plus hourglass or plain text are experimental candidates; neither is selected. Arming is cancellable, one-shot, and entirely ephemeral: it survives client detach while the agent session remains live, but is discarded when the agent exits or the Herdr server restarts. Do not persist or restore armed requests.
+The armed-next-run state uses plain text in the popup, distinct from actual caffeination; no second sidebar icon is shown. Arming is cancellable, one-shot, and entirely ephemeral: it survives client detach while the agent session remains live, but is discarded when the agent exits or the Herdr server restarts. Do not persist or restore armed requests.
 
-Coffee-cup indicators, sidebar placement, right-click access, and settings layout remain unverified proposals, not promised Herdr features. Keep the first version simple: do not introduce per-session policy machinery.
+Coffee-cup metadata, opt-in sidebar placement and persistent popup tabs are implemented. Native sidebar right-click integration is not available in Herdr 0.9.3 and is not promised. No per-session policy machinery is introduced.
 
 ## Known platform facts
 
@@ -94,7 +94,7 @@ Verified against versioned Herdr 0.9.3 integrations and socket API documentation
 
 Sources: versioned `integrations.mdx`, `socket-api.mdx`, and `plugins.mdx` linked from https://herdr.dev/llms.txt.
 
-## Recommended implementation (builder's choices, for approval)
+## Approved implementation architecture
 
 ### Package and runtime
 
@@ -156,6 +156,15 @@ The approved design below/above remains the product baseline. Implementation cho
 - The monitor also exposes an explicit private stop command. It never sends stop/input/cancellation commands to agents.
 - OS cleanup and protocol simulations passed; actual agent, physical battery/display behavior and daily usability remain manual acceptance checks. Do not infer unattended reliability from the mockup or simulated reports.
 
-## Mockup
+## Current build and UI boundary
 
-A browser-only simulation will explore the lifecycle and controls. It does not invoke caffeinate, change power settings, or communicate with agents. Mockup interactions and defaults are proposals unless separately agreed.
+- Node 24.x only, with one strict compiler project and one Node types environment. Application imports are extensionless under ESNext/Bundler and require the build; developer-run files retain Node-resolvable imports.
+- Production is one minified ESM `dist/main.js`; focused tests execute separate `.build/test` modules. Artifact and isolated Herdr tests exercise the actual bundle. The prepared `.build/runtime` payload is allowlisted, source-free and independent of consumer npm installs.
+- Standalone pi-tui owns terminal rendering, input/caret handling, mouse dispatch and width/layout primitives. Application adapters own numeric validation/first-edit behavior, persistent tabs/drafts and occupant selection. No agent SDK or shared UI framework is introduced.
+- `runPopup` installs closure handling before its asynchronous snapshot/label initialization; requests remain serialized, late work is ignored after closure, and leaving the popup never stops its monitor or sends agent input.
+- Required upstream texts are generated into notices from the bundle inventory and exact reviewed policy. pi-tui 1.0.4's missing npm LICENSE is supplied as a version-bound, provenance-recorded upstream copy; OpenTUI attribution and Marked's full redistribution terms are retained.
+- The real bundled monitor/popup passed isolated no-agent Herdr acceptance. Real Pi/Claude exits during active protection, actual minimum Node 24.0.0, physical power/display behavior, overnight reliability and independent review remain separate gates. See `review-request.md` before promotion.
+
+## Historical mockup
+
+The browser-only simulation explored lifecycle and controls without invoking caffeinate, changing power settings or communicating with agents. It is not evidence of current runtime acceptance.

@@ -1,13 +1,13 @@
 # Your first caffeine run
 
-This is a hands-on trial, not an overnight reliability claim. Start while plugged in and present. Nothing below requires your agent project to live in this worktree.
+This is a hands-on trial, not an overnight reliability claim. Start while plugged in and present, using Node 24.x. Independent review of the refactor is still pending; the normal trial has not been restarted or relinked automatically. Nothing below requires your agent project to live in this worktree.
 
 ## 1. Link the trial
 
 First check the [prerequisites and development build steps](../README.md). A fresh source checkout needs `pnpm install --frozen-lockfile` and `pnpm build`; Herdr linking does not compile it. For the already-built trial worktree, run these from **any directory in a Herdr terminal**:
 
 ```sh
-PLUGIN=/Users/enlow/proj/pi-ext/.worktrees/caffeination/herdr/caffeinate
+PLUGIN=/absolute/path/to/agent-dev/herdr/caffeinate
 herdr plugin link "$PLUGIN"
 herdr plugin action invoke agent-dev.caffeinate.controls
 ```
@@ -91,11 +91,13 @@ Already-running work needs manual caffeination after that restart. To remove reg
 - **A report being accepted is not proof it took effect.** Herdr requires proper session-start anchoring for authoritative Pi reports. We check the effective authority, not merely a successful API acknowledgement.
 - **Claude's idle is not one thing.** Positive prompt/terminal evidence differs from fallback idle. Fallback alone must not release an existing lease or restart its clock.
 - **Herdr has useful UI primitives, with limits.** The cup is a display-only token; controls are a terminal popup. Popup placement follows the active pane, but the action carries its captured target so focus changes don't retarget commands. No custom right-click integration.
-- **Native cleanup is real, not just an exit handler.** Short timeout, owner exit, owner SIGKILL, actual monitor SIGKILL and server stop were checked against macOS assertions. The monitor's disappearance releases its children even when JavaScript cleanup cannot run.
+- **Historical native cleanup evidence is more than an exit handler.** Before this refactor, short timeout, owner exit, owner SIGKILL, actual monitor SIGKILL and server stop were checked against macOS assertions. The current bundle has not repeated those native checks. The monitor's disappearance releases its children even when JavaScript cleanup cannot run.
 - **Restart recovery trades convenience for safety.** Leases aren't persisted or resurrected. A SIGKILL may leave a stale monitor directory requiring explicit cleanup; the plugin refuses to kill or steal ownership from an arbitrary PID.
 - **You can distinguish caffeine from progress.** Disabling/expiring caffeine left the simulated working agent running. The plugin does not control execution or spending.
 
 ## Still to learn from your use
+
+The refactored bundle passed a source-free, no-agent Herdr test of singleton startup, target propagation, popup editing/navigation, resize and cleanup. That does not substitute for the agent/native checks below, or for the outstanding independent review. The actual minimum Node 24.0.0 binary has not been exercised.
 
 - Actual Pi/Claude behavior across your usual long tools, permission prompts, retries and cancellations. Protocol simulations and unit tests don't establish real-harness reliability.
 - Whether AC-only feels disruptive. Physical battery transitions and display-off work still need hands-on validation.

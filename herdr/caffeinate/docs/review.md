@@ -1,6 +1,8 @@
-# Trial review and decisions
+# Review status and historical decisions
 
-Author self-review; no independent reviewer was available. Review covered the approved spec, platform evidence, model, monitor/IPC, UI, failure cleanup and tests.
+**Independent whole-package review is open.** No fresh reviewer has been invoked or supplied findings. The user will coordinate that review using [review-request.md](review-request.md). Implementation and permitted validation are checkpointed; there is no release, merge, publication or normal-trial restart/relink authorization.
+
+The sections below record historical author checks, not independent approval. They covered the approved spec, platform evidence, model, monitor/IPC, UI, failure cleanup and tests.
 
 ## Fixed
 
@@ -36,9 +38,18 @@ Author self-review only; no independent reviewer tool was available. Reviewed th
 
 - Strict TypeScript, independent type-aware lint, Oxfmt and **83/83** built-output tests pass; integration subset **7/7** passed at the task gate. No blanket `any`, rule suppressions, or excluded tests were added.
 - One Important type-safety finding: the assertion manager's empty return map inferred `Map<any, any>` and erased its result contract. A real compiler canary accepted an invalid string assignment before the fix; explicit map typing now produces TS2322 and accepts the correct result access. Also typed the internal occupant set. The full 83-test aggregate check passed after this fix.
-- Runtime launch checks Node >=24.0.0, macOS, built output and Herdr CLI >=0.9.3 before application loading; build preflight checks only Node. The tiny checked CommonJS bootstrap intentionally uses old syntax for useful unsupported-runtime errors. Version boundaries were simulated, not exercised with historical Node binaries.
+- At this historical checkpoint, runtime launch checked Node >=24.0.0, macOS, built output and Herdr CLI >=0.9.3 before application loading; build preflight checked only Node. The later refactor restricts both paths to Node 24.x. The tiny checked CommonJS bootstrap intentionally uses old syntax for useful unsupported-runtime errors. Version boundaries were simulated, not exercised with historical Node binaries.
 - Node 24 is the user's revised baseline, so Node 22 support is intentionally removed. Optional unsupported `import/no-unresolved` was not enabled in this Oxlint version; the import plugin remains enabled and TypeScript independently checks resolution.
 - Runtime Herdr validation adds a bounded read-only version subprocess per launch and can reject an unrecognized/custom version string. It does not contact/restart the live server or modify its configuration.
 - No new Critical/Important findings remain from this pass. Existing deferred polish above is unchanged; actual release packaging/installer validation and real-Claude/laptop/overnight acceptance are explicitly not supplied by these tests.
 
-Assessment: the scoped tooling work is ready for human/independent review, not a release or unattended-reliability sign-off. Work remains uncommitted, unmerged and unpublished; the linked worktree and execution ledger are retained.
+That tooling checkpoint has since been committed and superseded by the Node-24-only bundled runtime and toolkit popup. The branch remains unmerged/unpublished; the linked worktree and execution ledger are retained.
+
+## Current prepublication handoff
+
+- Implemented: single strict Node 24 project, separate modular test and minified production outputs, graph-derived dependency inventory, fail-closed notices/canonical LICENSE, allowlisted runtime payload, standalone pi-tui popup, and cancellation-safe popup lifecycle.
+- Latest verification is recorded in `validation.md` and the execution ledger; historical counts above are not new evidence. Real bundled no-agent Herdr acceptance passed with Node 24.16.0 and Herdr 0.9.3.
+- Still blocked: fresh independent review, actual Node 24.0.0 execution, actual Pi/Claude exit while caffeinated, independent active-survivor native evidence, physical power/display behavior and overnight reliability. The real-agent/native test flag fails explicitly because an agreed workload and permission remain prerequisites.
+- The main checkout's shared TODO still contains superseded Node 22/undici override and unbundled-production notes. It was deliberately not edited; coordinate its update separately. The agentlog plan and other projects were not modified.
+
+No current independent-review verdict or release-readiness approval exists.
