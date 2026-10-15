@@ -25,7 +25,7 @@ No prebuilt release artifact is available yet: a developer must build before lin
 - Open a session in its original working directory, or visit its existing pane in the current Herdr namespace.
 - Closing Pi or its pane does not remove its registry record.
 - Archive hides a record without deleting its conversation or stopping its process.
-- Loading, refresh progress, and errors appear inside the popup; no startup toast or attachment polling.
+- The whole popup waits for initial loading and manual refresh before enabling the session list. Loading-time keys/clicks are discarded, not queued; Escape still closes. No refresh runs while editing a label, choosing a destination, or opening a session. Incomplete refresh is explained before showing saved records. There is no startup toast or attachment polling.
 
 Pi's JSONL files remain the conversation source. Pins, archive state, and labels live in `HERDR_PLUGIN_STATE_DIR/agentlog.sqlite3`; they are **not transcript backups or native Pi renames**. Nothing deletes transcripts or prunes old records. There is no startup popup, toast, daemon, or attachment polling.
 

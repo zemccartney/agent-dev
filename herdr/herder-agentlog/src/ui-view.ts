@@ -20,6 +20,7 @@ export interface ViewState {
   selected: SessionKey | undefined;
   archived: boolean;
   status: string;
+  loading: boolean;
   busy: boolean;
   editor: boolean;
   choices: Pane[] | undefined;
@@ -171,18 +172,23 @@ export function makeView(
     new HStack([button("Save Enter", actions.saveLabel), button("Cancel Esc", actions.cancel)]),
     text(state.status),
   ]);
-  const content = state.editor
-    ? editor
-    : new VStack([header, { component: listComponent, basis: 0, grow: 1, minSize: 1 }, footer]);
+  const loading = new VStack([text(state.status), text("Please wait · Esc close")]);
+  const content = state.loading
+    ? loading
+    : state.editor
+      ? editor
+      : new VStack([header, { component: listComponent, basis: 0, grow: 1, minSize: 1 }, footer]);
   function fits() {
     return (
       terminal.columns >= 35 &&
       terminal.rows >=
         Math.max(
           8,
-          state.editor
-            ? editor.render(terminal.columns).length
-            : header.render(terminal.columns).length + footer.render(terminal.columns).length + 2,
+          state.loading
+            ? loading.render(terminal.columns).length
+            : state.editor
+              ? editor.render(terminal.columns).length
+              : header.render(terminal.columns).length + footer.render(terminal.columns).length + 2,
         )
     );
   }

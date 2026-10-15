@@ -61,7 +61,8 @@ export async function runPopup(options: PopupOptions): Promise<void> {
     rows: [],
     selected: undefined,
     archived: false,
-    status: store.list().length ? "Refreshing…" : "Loading sessions…",
+    status: "Loading sessions…",
+    loading: true,
     busy: false,
     editor: false,
     choices: undefined,
@@ -94,7 +95,7 @@ export async function runPopup(options: PopupOptions): Promise<void> {
     paint();
   }
   function edit(write: (row: SessionRecord) => void, message: string) {
-    if (closed || state.busy || !state.selected) return;
+    if (closed || state.loading || state.busy || !state.selected) return;
     try {
       write(store.get(state.selected));
       reload();
@@ -105,7 +106,7 @@ export async function runPopup(options: PopupOptions): Promise<void> {
     }
   }
   function open(paneId?: string) {
-    if (closed || state.busy || !state.selected) return;
+    if (closed || state.loading || state.busy || !state.selected) return;
     state.busy = true;
     state.status = "Opening…";
     paint();
@@ -179,22 +180,32 @@ export async function runPopup(options: PopupOptions): Promise<void> {
     const result = await refreshCatalog(store, fresh, signal);
     signal.throwIfAborted();
     reload();
-    state.status =
-      warning ||
-      result.issues.join("; ") ||
-      `${store.list().length} saved conversations · This Herdr namespace only`;
-    paint();
+    const issues = [warning, ...result.issues].filter(Boolean).join("; ");
+    state.status = issues
+      ? `Refresh incomplete: ${issues} · Showing saved records`
+      : `${store.list().length} saved conversations · This Herdr namespace only`;
   }
   function requestRefresh() {
-    if (closed || pendingRefresh) return;
-    state.status = store.list().length ? "Refreshing…" : "Loading sessions…";
+    if (closed || pendingRefresh || state.editor || state.choices || state.busy) return;
+    state.status = state.loading ? "Loading sessions…" : "Refreshing…";
+    state.loading = true;
     paint();
     pendingRefresh = refresh()
       .catch((error: unknown) => {
-        if (!signal.aborted) report(error);
+        if (!signal.aborted)
+          report(
+            new Error(
+              `Refresh incomplete: ${error instanceof Error ? error.message : String(error)} · Showing saved records`,
+            ),
+          );
       })
       .finally(() => {
         pendingRefresh = undefined;
+        state.loading = false;
+        if (!closed) {
+          reload();
+          paint();
+        }
       });
   }
   const actions: ViewActions = {
@@ -208,7 +219,7 @@ export async function runPopup(options: PopupOptions): Promise<void> {
       edit((row) => store.setPinned(row.key, !row.pinned), "Pin saved");
     },
     label() {
-      if (state.busy || !state.selected) return;
+      if (state.loading || state.busy || !state.selected) return;
       state.editor = true;
       label.setValue(safeDisplay(store.get(state.selected).labelOverride ?? ""));
       label.handleInput("\x05"); // Ctrl+E: edit existing labels from their end.
@@ -219,7 +230,7 @@ export async function runPopup(options: PopupOptions): Promise<void> {
       edit((row) => store.setArchived(row.key, !row.archived), "Archive state saved");
     },
     filter() {
-      if (state.busy) return;
+      if (state.loading || state.busy) return;
       state.archived = !state.archived;
       state.choices = undefined;
       state.choice = undefined;
@@ -251,7 +262,7 @@ export async function runPopup(options: PopupOptions): Promise<void> {
       cancel();
       return { consume: true };
     }
-    if (!view.fits()) return { consume: true };
+    if (state.loading || !view.fits()) return { consume: true };
     if (state.editor) {
       if (matchesKey(data, "enter")) actions.saveLabel();
       else {

@@ -1,6 +1,8 @@
 import test, { type TestContext } from "node:test";
 import assert from "node:assert/strict";
 import { join } from "node:path";
+import { appendFile, unlink } from "node:fs/promises";
+import type { HerdrState } from "#agentlog/herdr";
 import { setTimeout } from "node:timers/promises";
 import { Input, visibleWidth } from "@earendil-works/pi-tui";
 import { makeView } from "#agentlog/ui-view";
@@ -50,6 +52,19 @@ async function setup(t: TestContext, options: FixtureOptions = {}, cached = true
     },
   };
 }
+function holdRefresh(s: Awaited<ReturnType<typeof setup>>) {
+  let resolve!: (state: HerdrState) => void;
+  let reject!: (error: unknown) => void;
+  const promise = new Promise<HerdrState>((done, fail) => {
+    resolve = done;
+    reject = fail;
+  });
+  s.fake.api.state = (signal) => {
+    signal?.addEventListener("abort", () => reject(signal.reason), { once: true });
+    return promise;
+  };
+  return { resolve, reject };
+}
 function click(screen: ReturnType<typeof makeTestTerminal>, text: string) {
   const lines = screen.frame().split("\n");
   const row = lines.findIndex((line) => line.includes(text));
@@ -69,6 +84,7 @@ await test("navigation works before the replacement view has rendered", async (t
       selected,
       archived: false,
       status: "",
+      loading: false,
       busy: false,
       editor: false,
       choices: undefined,
@@ -117,16 +133,33 @@ await test("Escape stops a loading popup and aborts its outstanding refresh", as
   await setTimeout(30);
   assert.equal(s.screen.output.length, writes);
 });
-await test("cached rows remain usable while refreshing; keyboard actions persist, labels stay registry-only", async (t) => {
+await test("initial loading hides cached rows and drops input until refresh settles", async (t) => {
   const s = await setup(t, { userTimes: [] });
-  s.fake.api.state = async (signal) => {
-    await setTimeout(150, undefined, { signal });
-    return { panes: [], workspaces: [] };
-  };
+  const gate = holdRefresh(s);
   const done = s.start();
-  await s.screen.waitFor("Refreshing…");
-  assert.match(s.screen.frame(), /Current/);
+  s.screen.send("\x0c"); // Even input before the first refresh cannot open an editor.
+  await s.screen.waitFor("Loading sessions…");
+  assert.doesNotMatch(s.screen.frame(), /Current|\[Label|\[Open/);
+  for (const input of [
+    "queued search",
+    "\x10",
+    "\x18",
+    "\x0c",
+    "\r",
+    "\t",
+    "\x12",
+    "\x1b[<0;2;10M",
+    "\x1b[<0;2;10m",
+  ])
+    s.screen.send(input);
+  assert.equal(s.store.get(s.key).pinned, false);
+  assert.equal(s.store.get(s.key).archived, false);
+  assert.equal(s.store.get(s.key).labelOverride, null);
+  assert.equal(s.fake.startedPaths.length, 0);
+  gate.resolve({ panes: [], workspaces: [] });
   await s.screen.waitFor("No submissions");
+  assert.match(s.screen.frame(), /Current/);
+  assert.doesNotMatch(s.screen.frame(), /queued search|Registry only/);
   s.screen.send("\x10");
   assert.equal(s.store.get(s.key).pinned, true);
   await s.screen.waitFor("Unpin");
@@ -146,6 +179,83 @@ await test("cached rows remain usable while refreshing; keyboard actions persist
   assert.equal(s.store.get(s.key).pinned, true);
   s.screen.send("\x1b");
   await done;
+});
+await test("manual refresh blocks stale edits when a result disappears and never queues a neighbor write", async (t) => {
+  for (const retainNeighbor of [true, false]) {
+    const s = await setup(t, { nativeNames: ["quartz A"] });
+    const b = {
+      ...s.record,
+      sessionPath: s.file + ".second",
+      sessionId: "second",
+      nativeName: retainNeighbor ? "quartz B" : "Other B",
+      lastUserAt: 1000,
+    };
+    s.store.upsert(b, null);
+    const done = s.start();
+    await s.screen.waitFor("quartz A");
+    s.screen.send("quartz");
+    const gate = holdRefresh(s);
+    s.screen.send("\x12");
+    await s.screen.waitFor("Refreshing…");
+    assert.doesNotMatch(s.screen.frame(), /quartz A|\[Label/);
+    s.screen.send("\x0c");
+    s.screen.send("Draft intended for A");
+    s.screen.send("\r");
+    await appendFile(s.file, JSON.stringify({ type: "session_info", name: "Elsewhere" }) + "\n");
+    gate.resolve({ panes: [], workspaces: [] });
+    await s.screen.waitFor(retainNeighbor ? "quartz B" : "No matching");
+    assert.equal(s.store.get(s.key).labelOverride, null);
+    assert.equal(s.store.get(sessionKey(b)).labelOverride, null);
+    assert.doesNotMatch(s.screen.frame(), /Registry only|Draft intended/);
+    s.screen.send("\x1b");
+    await done;
+  }
+});
+await test("a failed refresh exits loading with an explanation and usable saved rows", async (t) => {
+  const s = await setup(t);
+  const gate = holdRefresh(s);
+  const done = s.start();
+  await s.screen.waitFor("Loading sessions…");
+  gate.reject(new Error("server unavailable"));
+  await s.screen.waitFor("Refresh incomplete");
+  assert.match(s.screen.frame(), /server unavailable|Current/);
+  await s.screen.waitFor("Live status unknown");
+  s.screen.send("\x10");
+  assert.equal(s.store.get(s.key).pinned, true);
+  s.screen.send("\x1b");
+  await done;
+});
+await test("label editing cannot start a concurrent list refresh", async (t) => {
+  const s = await setup(t);
+  const done = s.start();
+  await s.screen.waitFor("Current");
+  let reads = 0;
+  s.fake.api.state = () => {
+    reads++;
+    return Promise.resolve({ panes: [], workspaces: [] });
+  };
+  s.screen.send("\x0c");
+  await s.screen.waitFor("Registry only");
+  s.screen.send("\x12");
+  s.screen.send("Stable target");
+  s.screen.send("\r");
+  assert.equal(reads, 0);
+  assert.equal(s.store.get(s.key).labelOverride, "Stable target");
+  s.screen.send("\x1b");
+  await done;
+});
+await test("Escape cancels a manual refresh without applying loading-time actions", async (t) => {
+  const s = await setup(t);
+  const done = s.start();
+  await s.screen.waitFor("Current");
+  holdRefresh(s);
+  s.screen.send("\x12");
+  await s.screen.waitFor("Refreshing…");
+  s.screen.send("\x18");
+  s.screen.send("\x1b");
+  await done;
+  assert.equal(s.screen.stopped, true);
+  assert.equal(s.store.get(s.key).archived, false);
 });
 await test("a prefilled label opens at its end so Ctrl+U can restore the native title", async (t) => {
   const s = await setup(t);
@@ -292,6 +402,7 @@ await test("pending, duplicate choices and failed opens stay actionable, and rep
 await test("an invalid cached timestamp cannot prevent the popup from opening", async (t) => {
   const s = await setup(t);
   s.store.upsert({ ...s.record, lastUserAt: 1e30 }, null);
+  await unlink(s.file); // Failed refresh must safely display the retained cached value.
   s.fake.api.state = async (signal) => {
     await setTimeout(150, undefined, { signal });
     return { panes: [], workspaces: [] };
