@@ -123,7 +123,7 @@ export async function readPiSession(path: string, signal?: AbortSignal): Promise
         code === "ENOENT"
           ? "Session file is missing"
           : code === "EACCES" || code === "EPERM"
-            ? "Session file is unreadable"
+            ? "Session file is unreadable: permission denied"
             : "Session file is malformed or cannot be read",
     };
   }

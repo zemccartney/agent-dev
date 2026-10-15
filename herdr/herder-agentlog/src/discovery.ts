@@ -1,4 +1,5 @@
-import { readdir, readFile, realpath, stat } from "node:fs/promises";
+import { access, readdir, readFile, realpath, stat } from "node:fs/promises";
+import { constants } from "node:fs";
 import { isAbsolute, join, resolve } from "node:path";
 import { setImmediate } from "node:timers/promises";
 import { readPiSession } from "./pi-session.js";
@@ -120,6 +121,7 @@ export async function refreshCatalog(
     if (row?.stamp) {
       try {
         const current = await stat(path);
+        await access(path, constants.R_OK);
         cached =
           current.isFile() &&
           current.size === row.stamp.size &&

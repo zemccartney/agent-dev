@@ -1,6 +1,7 @@
 import test, { type TestContext } from "node:test";
 import assert from "node:assert/strict";
-import { unlink, rename } from "node:fs/promises";
+import { unlink, rename, chmod } from "node:fs/promises";
+import { refreshCatalog } from "#agentlog/discovery";
 import { join } from "node:path";
 import { openSession } from "#agentlog/resume";
 import { openStore, sessionKey } from "#agentlog/store";
@@ -81,6 +82,42 @@ await test("path and exact ID matches focus without another process, even if bac
     assert.equal(s.fake.startedPaths.length, 0);
     assert.equal(s.fake.createdCwds.length, 0);
     assert.equal(s.fake.calls.find((c) => c.method === "focus")?.args[0], "w1:p1");
+  }
+});
+await test("access lost after refresh fails Open usefully without a destination and recovers after restoration", async (t) => {
+  const s = await setup(t);
+  s.store.setLabel(s.key, "Keep label");
+  await refreshCatalog(s.store, { home: s.root, env: {}, projectCwds: [], livePaths: [s.file] });
+  assert.equal(s.store.get(s.key).availability, "available");
+  await chmod(s.file, 0);
+  try {
+    const outcome = await openSession(s.key, { store: s.store, herdr: s.fake.api });
+    assert.equal(outcome.kind, "error");
+    if (outcome.kind !== "error") throw new Error("Expected an access error");
+    assert.match(outcome.message, /EACCES|permission denied/iu);
+    assert.ok(outcome.message.includes(s.record.sessionPath));
+    assert.equal(s.fake.createdCwds.length, 0);
+    assert.equal(s.fake.startedPaths.length, 0);
+    assert.equal(s.store.get(s.key).archived, true);
+    assert.equal(s.store.get(s.key).pinned, true);
+    assert.equal(s.store.get(s.key).labelOverride, "Keep label");
+  } finally {
+    await chmod(s.file, 0o600);
+  }
+  const recovered = await openSession(s.key, { store: s.store, herdr: s.fake.api });
+  assert.equal(recovered.kind, "opened");
+});
+await test("an unreadable transcript does not prevent focusing its already running pane", async (t) => {
+  const s = await setup(t);
+  s.fake.setState({ panes: [s.live], workspaces: [] });
+  await chmod(s.file, 0);
+  try {
+    const outcome = await openSession(s.key, { store: s.store, herdr: s.fake.api });
+    assert.deepEqual(outcome, { kind: "opened", paneId: "w1:p1" });
+    assert.equal(s.fake.startedPaths.length, 0);
+    assert.equal(s.fake.createdCwds.length, 0);
+  } finally {
+    await chmod(s.file, 0o600);
   }
 });
 await test("multiple matches require a destination choice and stale choices never trigger a new launch", async (t) => {

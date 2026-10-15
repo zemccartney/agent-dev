@@ -2,7 +2,18 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import { syncBuiltinESMExports } from "node:module";
-import { mkdir, cp, writeFile, appendFile, unlink, rename, realpath } from "node:fs/promises";
+import {
+  mkdir,
+  cp,
+  writeFile,
+  appendFile,
+  unlink,
+  rename,
+  realpath,
+  chmod,
+  access,
+  stat,
+} from "node:fs/promises";
 import { join, dirname } from "node:path";
 import { discoverSources, refreshCatalog, type DiscoveryContext } from "#agentlog/discovery";
 import { openStore } from "#agentlog/store";
@@ -112,6 +123,43 @@ await test("unchanged files skip parsing; incomplete tails and malformed files r
   assert.equal(store.get(key).lastUserAt, 3000);
   await refreshCatalog(store, ctx);
   assert.equal(reads, 5);
+});
+await test("cached transcript access is rechecked without losing organization and recovers on refresh", async (t) => {
+  const { root, file } = await makeFixture(t);
+  const store = openStore(join(root, "state"));
+  t.after(() => store.close());
+  const ctx = context(root, [], [file]);
+  const first = await refreshCatalog(store, ctx);
+  const row = first.records[0];
+  assert.ok(row);
+  store.setPinned(row.key, true);
+  store.setArchived(row.key, true);
+  store.setLabel(row.key, "Keep this label");
+  const before = await stat(file);
+  await chmod(file, 0);
+  try {
+    await assert.rejects(access(file, fs.constants.R_OK));
+    const after = await stat(file);
+    assert.equal(after.size, before.size);
+    assert.equal(after.mtimeMs, before.mtimeMs);
+    const refreshed = await refreshCatalog(store, ctx);
+    const unavailable = store.get(row.key);
+    assert.equal(unavailable.availability, "unreadable");
+    assert.match(unavailable.error ?? "", /EACCES|permission denied/iu);
+    assert.ok(refreshed.issues.some((issue) => issue.includes(row.sessionPath)));
+    assert.equal(unavailable.pinned, true);
+    assert.equal(unavailable.archived, true);
+    assert.equal(unavailable.labelOverride, "Keep this label");
+  } finally {
+    await chmod(file, before.mode & 0o777);
+  }
+  await refreshCatalog(store, ctx);
+  const recovered = store.get(row.key);
+  assert.equal(recovered.availability, "available");
+  assert.equal(recovered.error, null);
+  assert.equal(recovered.labelOverride, "Keep this label");
+  assert.equal(recovered.archived, true);
+  assert.equal(recovered.pinned, true);
 });
 await test("missing original directory is distinct and rechecked even when transcript is unchanged", async (t) => {
   const { root, cwd, file } = await makeFixture(t);
