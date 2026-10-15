@@ -1,13 +1,13 @@
 # Fresh-context review of the approved repairs
 
-**Status: awaiting the repair-phase independent reviewer.** The initial review is complete, not a verdict on the new implementation. No release/merge approval is implied.
+**Status: completed at `b8815ac`.** This packet is retained as the request supplied to the independent reviewer. Its three additional Important findings were corrected in `5d28824` and verified with tests, without another reviewer pass. See repository-root `thinking/code-review-repairs-20261015.md` for the result, current verification and rulings. No release/merge approval is implied.
 
 ## Target and authority
 
 - Worktree: `/Users/enlow/proj/pi-ext/.worktrees/caffeination`, branch `feat/herdr-caffeination`.
 - Whole-package base: `c81693a2b4b96551ca0d4db6b8bef4a74742ca2d`.
 - Original reviewed head / repair base: `e764321b39b2e78fc549f676619dae35b341ef7f`.
-- Repair implementation through `d45fdc70a267d61bc8572dcb41dfbd6e059f64e5`; documentation follows. The coordinator supplies an exact exported final head to the reviewer, rather than a moving worktree.
+- Repair implementation through `d45fdc70a267d61bc8572dcb41dfbd6e059f64e5`; documentation follows. The coordinator supplied the exact exported `b8815ac2d1f8fcef25427dd7ed7dfb11b773de81` head, rather than a moving worktree.
 - Scope: the entire `herdr/caffeinate` package and its contracts, with special attention to repair interactions. Include bootstrap, assertion ownership, transport, popup, build/licensing and tests—not just the diff.
 - Product authority: `docs/design.md` in this package. Approved repairs: repository-root `thinking/code-review-20261015T001624Z.md` and `docs/superpowers/plans/2026-10-15-caffeinate-review-repairs.md`.
 - User approved R1–R7 and native execution followed by one fresh independent review. Node **24.x only, minimum 24.11.0**, common to developers/consumers. No dependency-policy weakening, new runtime provisioning, split compiler environment or Pi agent SDK.
@@ -36,7 +36,7 @@ pnpm test:runtime
 git diff --check
 ```
 
-Fresh pristine-layout evidence through `d45fdc7`: frozen install and normal format/type/lint/build gates pass; **122/122 TAP**, **8/8 integration**, **2/2 relocated-runtime tests**, zero skips. Actual Node **24.16.0**, pnpm **11.26.0**. All four original monitor counterexamples now pass against the rebuilt code; they use fake ports, not native assertions. Evidence is in the repair plan's execution workspace; the coordinator provides it separately to the reviewer. Historical results remain in `validation.md`.
+Fresh pristine-layout evidence through `d45fdc7`: frozen install and normal format/type/lint/build gates pass; **122/122 TAP**, **8/8 integration**, **2/2 relocated-runtime tests**, zero skips. Actual Node **24.16.0**, pnpm **11.26.0**. All four original monitor counterexamples now pass against the rebuilt code; they use fake ports, not native assertions. At review time the coordinator supplied the execution-workspace evidence separately. Completion records now live in the committed repair review and `validation.md`; temporary execution scratch is not a permanent artifact.
 
 `CAFFEINATE_TEST_NODE=/absolute/path/to/node` selects an already installed binary. Actual minimum **24.11.0** is unavailable/unverified; no binary is downloaded. The runtime test runs with private directories and a deliberately limited child environment, including an explicit Herdr executable. Its hostile-parent test confirms that a developer preload does not leak into the payload.
 

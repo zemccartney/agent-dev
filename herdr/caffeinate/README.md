@@ -11,7 +11,7 @@ Automatically caffeinate local Pi and Claude Code runs. No model calls, consumer
 
 The runtime launcher checks Node, macOS, built output, and the Herdr CLI before loading the application. It never installs runtimes/dependencies, sources shell profiles, or changes global configuration. Prebuilt consumers need no pnpm, TypeScript, or compiler. **Release artifacts and a public installer are not published yet**; the current local trial uses a developer-built checkout.
 
-**Start with the [guided demo](docs/demo.md).** A historical real Pi tool-run demo passed. The earlier refactored bundle passed isolated no-agent Herdr acceptance. Independent review then identified seven issues, all approved for repair. Fresh review of those repairs, real Pi/Claude exits under active protection, minimum-Node execution, laptop power transitions and overnight reliability remain open. See [validation](docs/validation.md) and the [design](docs/design.md).
+**Start with the [guided demo](docs/demo.md).** A historical real Pi tool-run demo passed. The earlier refactored bundle passed isolated no-agent Herdr acceptance. Independent review identified seven issues; a fresh review of their repairs found three further interactions. All reported issues were corrected with regressions (126 TAP, 8 integration, 2 relocated-runtime tests). The final corrective pass was not independently re-reviewed. Real Pi/Claude exits under active protection, minimum-Node execution, laptop power transitions and overnight reliability remain open. See [validation](docs/validation.md) and the [design](docs/design.md).
 
 ## Local trial from a built checkout
 

@@ -1,14 +1,22 @@
 # Validation record
 
-## Review repairs — 2026-10-15
+## Repair completion — 2026-10-15
 
-Three independent discovery passes and two targeted follow-ups reviewed `e764321`; the user approved all seven findings for repair after the Crit discussion. See the repository's `thinking/code-review-20261015T001624Z.md`. Repairs through `d45fdc7` cover stale evidence/commands, independent power safety, the common Node **24.11.0** floor, canonical coverage paths and controlled runtime-test environment. A fresh independent review of this repaired snapshot is pending; the original review is not approval of the new code.
+One fresh read-only independent reviewer assessed the whole package at `b8815ac`, finding three additional Important interactions and no Critical/Minor issues. All three were reproduced RED and corrected in `5d28824`: uncertain-activity manual deadlines retain precedence, shutdown cancels in-flight acquisition before queued cleanup, and confirmed disappearance releases assertions before metadata I/O. There was no second review of those corrections; final verification is test-based, not a new independent approval.
+
+A fresh pristine export of the corrected implementation passes frozen installation and the normal checks: **126/126 TAP**, **8/8 integration**, **2/2 relocated-runtime**, zero skips, actual Node **24.16.0**. Original monitor counterexamples replay **4/4**. Final payload: **227,024 raw bytes**, **70,234 summed per-file gzip bytes** (not archive size). See repository-root `thinking/code-review-repairs-20261015.md` for findings, evidence, exact review provenance and all coordinator rulings.
+
+Remaining gates: actual minimum **24.11.0**, real Pi/Claude/native assertion and survivor acceptance, physical battery/display behavior, overnight reliability and subsequent distribution acceptance. No provisioning, native/live workload, normal-trial restart/relink, merge, push or publication was performed.
+
+## Initial repair checkpoint — 2026-10-15 (historical)
+
+Three independent discovery passes and two targeted follow-ups reviewed `e764321`; the user approved all seven findings for repair after the Crit discussion. See the repository's `thinking/code-review-20261015T001624Z.md`. Repairs through `d45fdc7` cover stale evidence/commands, independent power safety, the common Node **24.11.0** floor, canonical coverage paths and controlled runtime-test environment. At this checkpoint fresh independent review was pending; its subsequent outcome is recorded above. The original review was not approval of the new code.
 
 Fresh pristine-layout verification: frozen install, formatting, strict TypeScript, type-aware lint, **122/122 TAP**, **8/8 integration**, **2/2 actual relocated-runtime tests**, zero skips. Actual runtime: Node **24.16.0**. The second runtime test injects a developer preload and proves it cannot leak into the prepared payload. The path-coverage regression passes through a symlink and still rejects genuinely excluded source. Four original monitor counterexamples now pass against the repaired build; the held-Herdr power case removes its fake assertion during a real 2.3-second wait.
 
 Payload at this repair checkpoint: **226,590 raw bytes**, **70,082 summed per-file gzip bytes** (not an archive size). Exact dependency pins and the lockfile remain unchanged. Earlier isolated bundled-Herdr/native evidence below is historical: no live Herdr or native assertion probe was rerun for these repairs.
 
-Open gates: repaired-snapshot independent review; actual Node **24.11.0** execution (not installed); real Pi/Claude exits under active caffeination and native survivor evidence; physical battery/display behavior and overnight reliability. No runtime provisioning, normal-trial restart/relink, real-agent workload, sleep-assertion probe, merge or publication was performed during repair execution.
+Open gates at that checkpoint: repaired-snapshot independent review; actual Node **24.11.0** execution (not installed); real Pi/Claude exits under active caffeination and native survivor evidence; physical battery/display behavior and overnight reliability. No runtime provisioning, normal-trial restart/relink, real-agent workload, sleep-assertion probe, merge or publication was performed during repair execution.
 
 The dated sections below are historical checkpoint records, not claims that earlier build layouts or counts remain current.
 

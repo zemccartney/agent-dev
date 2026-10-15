@@ -592,6 +592,7 @@ void test("confirmed disappearance stops its real assertion before held token cl
   assert.equal(children[1].signalCode, null);
   assert.equal(children.length, 2);
   assert.equal(f.m.snapshot().agents.length, 1);
+  assert.equal(f.m.snapshot().agents[0].state.occupant, "b");
   assert.equal(leaseDeadline(f.m.snapshot().agents[0].state), 1_800_028_800_000);
 });
 

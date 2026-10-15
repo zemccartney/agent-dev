@@ -1,6 +1,6 @@
 # Review status and historical decisions
 
-**Initial independent review completed; repaired-snapshot review is pending.** Three discovery passes and two follow-ups produced seven accepted findings, documented in `thinking/code-review-20261015T001624Z.md` at repository root. The user approved all repairs and native execution of the 2026-10-15 repair plan. Corrections through `d45fdc7` pass fresh pristine checks (122 TAP, 8 integration, 2 relocated-runtime tests). This does not authorize release, merge, publication or a normal-trial restart/relink.
+**Initial review and the fresh repair review are complete.** The seven original findings and three further Important interactions have been corrected with RED→GREEN regressions. The fresh reviewer assessed `b8815ac`; its additional findings were fixed in `5d28824` and verified by tests, not a second reviewer pass. Fresh pristine checks pass (126 TAP, 8 integration, 2 relocated-runtime tests). See repository-root `thinking/code-review-repairs-20261015.md` for outcomes/rulings and the initial `thinking/code-review-20261015T001624Z.md` for approval history. This does not authorize release, merge, publication or a normal-trial restart/relink.
 
 The sections below record historical author checks, not independent approval. They covered the approved spec, platform evidence, model, monitor/IPC, UI, failure cleanup and tests.
 
@@ -43,13 +43,13 @@ Author self-review only; no independent reviewer tool was available. Reviewed th
 - Runtime Herdr validation adds a bounded read-only version subprocess per launch and can reject an unrecognized/custom version string. It does not contact/restart the live server or modify its configuration.
 - No new Critical/Important findings remain from this pass. Existing deferred polish above is unchanged; actual release packaging/installer validation and real-Claude/laptop/overnight acceptance are explicitly not supplied by these tests.
 
-That tooling checkpoint has since been committed and superseded by the Node-24-only bundled runtime and toolkit popup. The branch remains unmerged/unpublished; the linked worktree and execution ledger are retained.
+That tooling checkpoint has since been committed and superseded by the Node-24-only bundled runtime and toolkit popup. The branch remains unmerged/unpublished; the linked worktree is retained. Completed repair evidence and rulings are summarized in the committed review record.
 
 ## Current prepublication handoff
 
 - Implemented: single strict Node 24 project, separate modular test and minified production outputs, graph-derived dependency inventory, fail-closed notices/canonical LICENSE, allowlisted runtime payload, standalone pi-tui popup, and cancellation-safe popup lifecycle.
-- Latest verification is recorded in `validation.md` and the execution ledger; historical counts above are not new evidence. Real bundled no-agent Herdr acceptance passed with Node 24.16.0 and Herdr 0.9.3.
-- Still blocked: fresh review of the repairs, actual Node 24.11.0 execution, actual Pi/Claude exit while caffeinated, independent active-survivor native evidence, physical power/display behavior and overnight reliability. The real-agent/native test flag fails explicitly because an agreed workload and permission remain prerequisites.
+- Latest verification is recorded in `validation.md` and the committed repair review; historical counts above are not new evidence. Real bundled no-agent Herdr acceptance passed with Node 24.16.0 and Herdr 0.9.3.
+- Still blocked: actual Node 24.11.0 execution, actual Pi/Claude exit while caffeinated, independent active-survivor native evidence, physical power/display behavior and overnight reliability. The real-agent/native test flag fails explicitly because an agreed workload and permission remain prerequisites.
 - The main checkout's shared TODO still contains superseded Node 22/undici override and unbundled-production notes. It was deliberately not edited; coordinate its update separately. The agentlog plan and other projects were not modified.
 
 The initial independent recommendation was fix before merge. Repair verification and the subsequent independent assessment are separate from release-readiness approval; native/physical acceptance remains open.

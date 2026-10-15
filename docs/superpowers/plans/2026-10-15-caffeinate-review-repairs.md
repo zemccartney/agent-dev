@@ -99,13 +99,17 @@
 
 **Files:** current sections of `herdr/caffeinate/{README.md,docs/design.md,docs/review.md,docs/validation.md,docs/review-request.md,docs/demo.md}`; `thinking/code-review-20261015T001624Z.md` decision/outcome links; this plan's checkboxes. Preserve historical result/version text as history rather than replacing every occurrence of 24.0.0.
 
-**Interfaces:** No new runtime interfaces. Handoff maps R1–R7 to the new commit(s), test evidence and remaining acceptance limits.
+**Interfaces:** Documentation initially required no new runtime interfaces. Final-review ruling: add required synchronous `AssertionsPort.requestClose()` to cancel in-flight acquisition before serialized cleanup; the reason and regression evidence are in `thinking/code-review-repairs-20261015.md`. Handoff maps R1–R7 to the new commit(s), test evidence and remaining acceptance limits.
 
 - [x] Run pristine `pnpm install --frozen-lockfile`, `pnpm check`, `pnpm test:integration`, `pnpm test:runtime`, and `git diff --check` on the repaired snapshot. Record exact counts, binary version and failures; do not substitute direct-tool diagnostics for successful normal commands.
 - [x] Re-run the original review counterexamples against the new build and require their expected-contract assertions to pass. Keep original RED evidence separately. Verify no tracked implementation or normal Herdr configuration outside the intended worktree changed.
 - [x] Update current support/validation/handoff documentation with the new common minimum, evidence-authority and power scheduling behavior, explicit approval history and precise remaining gates. Actual 24.11.0, live-agent/native, physical and overnight checks remain unverified unless separately authorized/provided.
-- [ ] Request a fresh-context independent reviewer of the repaired areas and their interactions, supplying the original findings, exact old/new heads, approved contracts, fresh evidence and read-only/no-native constraints. Do not reuse old review approval as verification of the new snapshot. Use the authenticated supported runtime; do not repeat the unavailable Pi model attempt.
-- [ ] Report any unresolved new issues or permission-dependent gates and stop for human direction before broader testing/release/merge. No automatic integration or publication.
+- [x] Request a fresh-context independent reviewer of the repaired areas and their interactions, supplying the original findings, exact old/new heads, approved contracts, fresh evidence and read-only/no-native constraints. Do not reuse old review approval as verification of the new snapshot. Use the authenticated supported runtime; do not repeat the unavailable Pi model attempt.
+- [x] Report any unresolved new issues or permission-dependent gates and stop for human direction before broader testing/release/merge. No automatic integration or publication.
+
+## Completion
+
+All five tasks completed. Original R1–R7 and fresh-review F1–F3 were corrected with regressions; final pristine checks pass 126 TAP / 8 integration / 2 runtime on Node24.16.0. The fresh reviewer assessed `b8815ac`; final corrections at `5d28824` were test-verified without a second review. See `thinking/code-review-repairs-20261015.md` for complete outcomes, rulings and unverified acceptance gates. Branch/worktree retained; no merge, push or release.
 
 ## Plan self-review
 

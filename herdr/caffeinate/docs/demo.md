@@ -97,7 +97,7 @@ Already-running work needs manual caffeination after that restart. To remove reg
 
 ## Still to learn from your use
 
-The refactored bundle passed a source-free, no-agent Herdr test of singleton startup, target propagation, popup editing/navigation, resize and cleanup. That historical run does not substitute for the agent/native checks below or acceptance of the later review repairs. The initial independent review produced seven accepted findings; repairs receive a separate fresh review. The raised minimum Node 24.11.0 binary has not been exercised; current execution evidence is on 24.16.0.
+The refactored bundle passed a source-free, no-agent Herdr test of singleton startup, target propagation, popup editing/navigation, resize and cleanup. That historical run does not substitute for the agent/native checks below or acceptance of the later review repairs. The initial independent review produced seven accepted findings. A fresh repair review raised three further interactions; all were corrected with regressions, without a second reviewer pass. The raised minimum Node 24.11.0 binary has not been exercised; current execution evidence is on 24.16.0.
 
 - Actual Pi/Claude behavior across your usual long tools, permission prompts, retries and cancellations. Protocol simulations and unit tests don't establish real-harness reliability.
 - Whether AC-only feels disruptive. Physical battery transitions and display-off work still need hands-on validation.
