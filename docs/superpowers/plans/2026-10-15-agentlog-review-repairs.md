@@ -58,4 +58,13 @@
 - [x] Run the quality coverage test through a temporary symlink with logical `PWD`; expect the demonstrated path assertion failure before changes.
 - [x] Canonicalize compiler-listed paths before comparison, and exercise the coverage check with a controlled symlink cwd so it remains a regression test.
 - [x] Run the same command; expect passing from both logical and physical paths. Run `pnpm check` and the opt-in isolated live integration suite; expect all passing, no real-user configuration/pane changes.
-- [ ] Commit verified changes. Capture a new immutable snapshot; use one remaining targeted independent review pass for repair interactions, and return new evidence and explicit decisions to the existing Crit report.
+- [x] Commit verified changes. Capture a new immutable snapshot; use one remaining targeted independent review pass for repair interactions, and return new evidence and explicit decisions to the existing Crit report.
+
+## Execution evidence
+
+- AL-01: four expected popup regression failures before implementation; 14/14 popup tests and 62/62 package tests afterward. Commit `13eec6b`.
+- AL-02: cached permission-loss test failed with `available` instead of `unreadable`; 65/65 package tests afterward. Existing Open-time safety already passed its new tests. Commit `25218f6`.
+- AL-03: controlled symlink/compiler test failed on `src/cli.ts` before canonicalization, passed afterward. Commit `e98c58b`. Full `pnpm check` also passed through a temporary symlink.
+- Isolated real integration: 1/1 passing with Node 24.16.0, Herdr 0.9.3 and Pi 1.2.0, including all three shutdown/recovery orders and unchanged real-user configuration fingerprints.
+- Fresh read-only follow-up reviewed immutable `e98c58b`: no consequential production defect found. Its static AL-F1 concern that the symlink regression might not exercise different spellings was adjudicated using a disposable-copy mutation: original test PASS, remove canonicalization FAIL on `src/cli.ts`, restore PASS. The regression protects the current pinned compiler; reassess when changing that toolchain.
+- One targeted follow-up used, one remains in the original review budget. Human Crit review continues in session `1e9b95b10eb3`; no merge/push/install/branch configuration performed.

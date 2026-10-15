@@ -16,7 +16,7 @@ We recognize that this prerequisite adds installation friction. It is accepted f
 
 **We will not bundle a JavaScript runtime.** The build bundles, tree-shakes, and minifies the plugin's JavaScript, including pi-tui. **Consumers do not install pi-tui, pnpm, a compiler, or npm dependencies.** Their prerequisites are Node, Herdr, and Pi, with Herdr's official Pi integration for reliable live-session references. Missing Node is reported by Herdr when launching the command; there is no fallback installation.
 
-No prebuilt release artifact is available yet: a developer must build before linking this source checkout. The tested clean runtime contains only `dist/cli.js`, `scripts/run.cjs`, `herdr-plugin.toml`, minimal ESM package metadata, and `THIRD_PARTY_NOTICES.txt`. No source, node_modules, optional native helpers, or JavaScript runtime is needed. The current bundle is about 194 KB (59 KB gzip); the complete runtime is about 202 KB (62 KB tar.gz). Tests print exact sizes. See the notices file for the included libraries' complete licenses.
+No prebuilt release artifact is available yet: a developer must build before linking this source checkout. The tested clean runtime contains only `dist/cli.js`, `scripts/run.cjs`, `herdr-plugin.toml`, minimal ESM package metadata, and `THIRD_PARTY_NOTICES.txt`. No source, node_modules, optional native helpers, or JavaScript runtime is needed. The current bundle is about 195 KB (59 KB gzip); the complete runtime is about 203 KB (63 KB tar.gz). Tests print exact sizes. See the notices file for the included libraries' complete licenses.
 
 ## Behavior
 
