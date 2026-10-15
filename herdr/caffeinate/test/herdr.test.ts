@@ -155,3 +155,34 @@ void test("client filters unsupported/locality and invalidates rather than repla
   await client.list();
   assert.equal((await client.observe("w2:p1")).phase, "working");
 });
+
+void test("identity changes reject observation while same-identity activity changes remain uncertain", async (t) => {
+  let identityChanged = false,
+    reads = 0;
+  const path = await server(t, (q, c) => {
+    let result = {};
+    if (q.method === "events.subscribe") result = { type: "subscription_started" };
+    if (q.method === "pane.process_info") result = { process_info: {} };
+    if (q.method === "agent.explain") result = { explain: f.pi.explain };
+    if (q.method === "agent.get") {
+      const last = ++reads % 2 === 0;
+      result = {
+        agent: {
+          ...f.pi.agent,
+          state_change_seq: last ? 2 : 1,
+          ...(last && identityChanged ? { terminal_id: "replacement" } : {}),
+        },
+      };
+    }
+    c.write(JSON.stringify({ id: q.id, result }) + "\n");
+  });
+  const client = await connectHerdr({
+    socketPath: path,
+    verifyHost: async () => ({ instance: "s", local: true, pluginEnabled: true }),
+    verifyProcess: async () => "42:start",
+  });
+  t.after(() => client.close());
+  assert.equal((await client.observe("w2:p1")).evidence, "uncertain");
+  identityChanged = true;
+  await assert.rejects(client.observe("w2:p1"), /identity/i);
+});

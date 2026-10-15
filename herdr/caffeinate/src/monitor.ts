@@ -66,13 +66,33 @@ export function createMonitor({
     stopped = false,
     chain = Promise.resolve(),
     error: string | null = null,
-    gap = false;
+    gap = false,
+    evidenceGeneration = 0;
   const serial = (fn: () => Promise<void>) => {
     const next = chain.then(fn);
     chain = next.catch(() => {});
     return next;
   };
   const key = (row: AgentRow) => `${row.state.occupant}:${row.state.runId}`;
+  function uncertain(row: InternalRow) {
+    row.state = reduce(
+      row.state,
+      {
+        type: "observe",
+        observation: { occupant: row.state.occupant, phase: "unknown", evidence: "uncertain" },
+      },
+      now(),
+      prefs,
+    );
+  }
+  function invalidate() {
+    evidenceGeneration++;
+    gap = true;
+    for (const row of rows.values()) {
+      uncertain(row);
+      row.state = { ...row.state, boundaryKnown: false };
+    }
+  }
   async function clear() {
     await assertions.close();
     await Promise.allSettled(
@@ -114,12 +134,13 @@ export function createMonitor({
     }
   }
   async function refresh() {
-    if (stopped) return;
+    const validation = { generation: evidenceGeneration, verifiedOccupants: new Set<string>() };
+    if (stopped) return validation;
     try {
       const host = await herdr.hostStatus();
       if (!host.local || !host.pluginEnabled || (instance && instance !== host.instance)) {
         await clear();
-        return;
+        return validation;
       }
       instance = host.instance;
       if (reloadConfig) prefs = validateConfig(await reloadConfig());
@@ -147,7 +168,13 @@ export function createMonitor({
           const observation = await herdr.observe(agent.target);
           if (observation.occupant !== agent.occupant)
             throw new Error("Agent identity changed during observation");
+          if (validation.generation !== evidenceGeneration) {
+            uncertain(row);
+            row.state = { ...row.state, boundaryKnown: false };
+            continue;
+          }
           row.state = reduce(row.state, { type: "observe", observation }, now(), prefs);
+          validation.verifiedOccupants.add(agent.occupant);
           row.error = null;
           if (observation.evidence === "uncertain" && agent.kind === "pi" && !row.state.lease)
             row.error = "Pi lifecycle unavailable; install/update Herdr’s Pi integration";
@@ -169,26 +196,32 @@ export function createMonitor({
           await herdr.publishToken(row.target, null, 6000).catch(() => {});
           rows.delete(occupant);
         }
-      gap = false;
+      gap = validation.generation !== evidenceGeneration;
       error = null;
     } catch (e) {
       if (errorCode(e) === "HOST_GONE") {
         error = errorMessage(e);
         await clear();
-        return;
+        return validation;
       }
-      gap = true;
+      invalidate();
+      validation.verifiedOccupants.clear();
       error = errorMessage(e);
     }
     await sync();
+    return validation;
   }
+  const refreshPublic = () =>
+    serial(async () => {
+      await refresh();
+    });
   return {
-    refresh: () => serial(refresh),
-    tick: () => serial(refresh),
-    markGap: () =>
-      serial(async () => {
-        gap = true;
-      }),
+    refresh: refreshPublic,
+    tick: refreshPublic,
+    markGap: () => {
+      invalidate();
+      return Promise.resolve();
+    },
     command: (value: unknown) =>
       serial(async () => {
         if (stopped) throw new Error("Monitor stopped");
@@ -200,11 +233,17 @@ export function createMonitor({
           return;
         }
         // Re-read before honoring UI intent; a completed/replaced run rejects old guards.
-        await refresh();
+        const validation = await refresh();
         if (stopped) throw new Error("Monitor stopped");
         const row = rows.get(command.occupant);
         if (!row || row.state.runId !== command.runId || row.state.revision !== command.revision)
           throw new Error("Agent changed; refresh controls and try again");
+        if (
+          command.type === "set-duration" &&
+          (validation.generation !== evidenceGeneration ||
+            !validation.verifiedOccupants.has(command.occupant))
+        )
+          throw new Error("Cannot verify agent identity; refresh controls and try again");
         const event =
           command.type === "set-duration"
             ? { type: "manual" as const, durationMs: command.durationMs }

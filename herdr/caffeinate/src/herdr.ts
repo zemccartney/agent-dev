@@ -239,11 +239,9 @@ export async function connectHerdr({
         return { occupant, phase: "unknown", evidence: "uncertain" };
       }
       const last = object((await request(socketPath, "agent.get", { target })).agent);
-      if (
-        !last ||
-        occupantKey(host.instance, last, id) !== occupant ||
-        last.state_change_seq !== first.state_change_seq
-      )
+      if (occupantKey(host.instance, last, id) !== occupant)
+        throw new Error("Agent identity changed during observation");
+      if (last.state_change_seq !== first.state_change_seq)
         return { occupant, phase: "unknown", evidence: "uncertain" };
       return classifyAgent({ ...last, occupant }, explain);
     },

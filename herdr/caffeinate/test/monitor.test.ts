@@ -3,12 +3,13 @@ import assert from "node:assert/strict";
 import { createMonitor, type HerdrPort, type AssertionsPort } from "#caffeinate/monitor";
 import type { Observation, Phase } from "#caffeinate/model";
 import type { Power } from "#caffeinate/power";
-import { deadline as leaseDeadline } from "./helpers.ts";
+import { deadline as leaseDeadline, deferred } from "./helpers.ts";
 function setup() {
   let time = 1_800_000_000_000,
     power: Power = "ac",
     host = { instance: "host", pluginEnabled: true, local: true },
     fail = false,
+    readFault: "host" | "config" | null = null,
     active = new Map<string, number>(),
     config = { automatic: true, defaultDurationMs: 28800000 };
   const phases = new Map<string, Omit<Observation, "occupant">>([
@@ -17,7 +18,10 @@ function setup() {
     ]),
     tokens: Parameters<HerdrPort["publishToken"]>[] = [];
   const herdr: HerdrPort = {
-    hostStatus: async () => host,
+    hostStatus: async () => {
+      if (readFault === "host") throw Error("host read unavailable");
+      return host;
+    },
     list: async () => {
       if (fail) throw Error("disconnected");
       return [...phases.keys()].map((occupant) => ({ occupant, target: occupant, kind: "pi" }));
@@ -45,12 +49,18 @@ function setup() {
     readPower: async () => power,
     now: () => time,
     config,
+    reloadConfig: async () => {
+      if (readFault === "config") throw Error("config read unavailable");
+      return config;
+    },
     persistConfig: async (next) => {
       config = next;
     },
   });
   return {
     m,
+    herdr,
+    setReadFault: (fault: typeof readFault) => (readFault = fault),
     phases,
     tokens,
     active: () => active,
@@ -250,4 +260,153 @@ void test("concurrent refresh requests serialize and reread after in-flight inva
   assert.equal(reads, 2);
   await m.close();
   await f.m.close();
+});
+
+void test("whole-refresh failures cannot promote pending protection; recovery keeps the original deadline", async (t) => {
+  for (const failure of ["host", "config", "list"] as const) {
+    const f = setup();
+    t.after(() => f.m.close());
+    await f.m.refresh();
+    f.setPhase("a", "working");
+    await f.m.refresh();
+    if (failure === "list") f.setFail(true);
+    else f.setReadFault(failure);
+    f.advance(10000);
+    await f.m.refresh();
+    assert.equal(f.active().size, 0, failure);
+    assert.equal(f.m.snapshot().agents[0].state.pending?.deadlineAt, 1_800_028_800_000);
+    f.advance(20000);
+    f.setFail(false);
+    f.setReadFault(null);
+    await f.m.refresh();
+    assert.equal(leaseDeadline(f.m.snapshot().agents[0].state), 1_800_028_800_000);
+    assert.equal(f.active().size, 1);
+  }
+});
+
+void test("gaps during host, list or observation awaits invalidate run-start authority immediately", async (t) => {
+  for (const stage of ["host", "list", "observe"] as const) {
+    const f = setup();
+    t.after(() => f.m.close());
+    await f.m.refresh();
+    f.setPhase("a", "working");
+    const entered = deferred(),
+      release = deferred();
+    async function held<T>(work: () => Promise<T>): Promise<T> {
+      entered.resolve();
+      await release.promise;
+      return work();
+    }
+    const original = { ...f.herdr };
+    if (stage === "host") f.herdr.hostStatus = () => held(() => original.hostStatus());
+    if (stage === "list") f.herdr.list = () => held(() => original.list());
+    if (stage === "observe") f.herdr.observe = (target) => held(() => original.observe(target));
+    const refresh = f.m.refresh();
+    await entered.promise;
+    const gap = f.m.markGap(),
+      secondGap = f.m.markGap();
+    release.resolve();
+    await Promise.all([refresh, gap, secondGap]);
+    Object.assign(f.herdr, original);
+    f.advance(10000);
+    await f.m.refresh();
+    assert.equal(f.active().size, 0, stage);
+    assert.equal(f.m.snapshot().agents[0].state.pending, null, stage);
+    // A newly observed real boundary after recovery is still usable.
+    f.setPhase("a", "idle");
+    await f.m.refresh();
+    f.setPhase("a", "working");
+    await f.m.refresh();
+    f.advance(10000);
+    await f.m.refresh();
+    assert.equal(f.active().size, 1);
+  }
+});
+
+void test("a later gap preserves an already valid pending deadline and active peer", async (t) => {
+  const f = setup();
+  t.after(() => f.m.close());
+  await f.m.refresh();
+  f.setPhase("b", "working");
+  await f.m.refresh();
+  f.advance(10000);
+  await f.m.refresh();
+  f.setPhase("a", "working");
+  await f.m.refresh();
+  await f.m.markGap();
+  f.advance(10000);
+  await f.m.refresh();
+  assert.equal(f.active().size, 2);
+  assert.equal(leaseDeadline(f.m.snapshot().agents[0].state), 1_800_028_810_000);
+  assert.equal(leaseDeadline(f.m.snapshot().agents[1].state), 1_800_028_800_000);
+});
+
+void test("failed identity revalidation rejects repeated duration intents without altering either deadline", async (t) => {
+  const f = setup();
+  t.after(() => f.m.close());
+  await start(f);
+  const deadlines = f.m.snapshot().agents.map((row) => leaseDeadline(row.state));
+  f.setPhase("a", "idle");
+  f.setFail(true);
+  await f.m.refresh();
+  await assert.rejects(
+    f.m.command(f.command("set-duration", 72000000)),
+    /verify|changed|unavailable/i,
+  );
+  assert.deepEqual(
+    f.m.snapshot().agents.map((row) => leaseDeadline(row.state)),
+    deadlines,
+  );
+  // Reducing protection remains possible with the current cached guard.
+  await f.m.command(f.command("release"));
+  assert.equal(f.active().size, 1);
+});
+
+void test("failed rereads cannot arm idle work and cached cancel-arm still reduces protection", async (t) => {
+  const f = setup();
+  t.after(() => f.m.close());
+  await f.m.refresh();
+  f.setReadFault("host");
+  await f.m.refresh();
+  await assert.rejects(f.m.command(f.command()), /verify|changed|unavailable/i);
+  assert.equal(f.m.snapshot().agents[0].state.armedDurationMs, null);
+  assert.equal(f.active().size, 0);
+  f.setReadFault(null);
+  await f.m.refresh();
+  await f.m.command(f.command("set-duration", 60000));
+  assert.equal(f.m.snapshot().agents[0].state.armedDurationMs, 60000);
+  f.setFail(true);
+  await f.m.refresh();
+  await f.m.command(f.command("cancel-arm"));
+  assert.equal(f.m.snapshot().agents[0].state.armedDurationMs, null);
+});
+
+void test("manual unknown-activity protection requires successful occupant observation, not a failing peer", async (t) => {
+  const f = setup();
+  t.after(() => f.m.close());
+  await start(f);
+  f.phases.set("a", { phase: "unknown", evidence: "uncertain" });
+  await f.m.refresh();
+  await f.m.command(f.command("set-duration", 60000));
+  assert.equal(leaseDeadline(f.m.snapshot().agents[0].state), 1_800_000_070_000);
+  const original = f.herdr.observe.bind(f.herdr);
+  f.herdr.observe = async (target) => {
+    if (target === "a") throw Error("identity cannot be established");
+    return original(target);
+  };
+  await f.m.refresh();
+  await assert.rejects(
+    f.m.command(f.command("set-duration", 72000000)),
+    /verify|changed|unavailable/i,
+  );
+  assert.equal(leaseDeadline(f.m.snapshot().agents[1].state), 1_800_028_800_000);
+  const b = f.m.snapshot().agents[1].state;
+  await f.m.command({
+    type: "set-duration",
+    occupant: b.occupant,
+    runId: b.runId,
+    revision: b.revision,
+    durationMs: 120000,
+  });
+  assert.equal(leaseDeadline(f.m.snapshot().agents[1].state), 1_800_000_130_000);
 });
