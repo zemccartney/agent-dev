@@ -1,11 +1,12 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { mkdtemp, readdir, rm, writeFile } from "node:fs/promises";
-import { join, resolve } from "node:path";
+import { mkdtemp, readdir, rm, writeFile, mkdir, cp, symlink, realpath } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const root = fileURLToPath(new URL("../", import.meta.url));
+const root = await realpath(fileURLToPath(new URL("../", import.meta.url)));
 function tool(name: "tsc" | "oxlint", args: string[], cwd = root) {
   const result = spawnSync(join(root, "node_modules", ".bin", name), args, {
     cwd,
@@ -20,24 +21,79 @@ function tool(name: "tsc" | "oxlint", args: string[], cwd = root) {
 void test("TypeScript covers every owned source, probe, test, fixture and build config", async () => {
   const result = tool("tsc", ["--listFilesOnly"]);
   assert.equal(result.status, 0, result.output);
-  const checked = new Set(result.output.trim().split(/\r?\n/));
+  const checked = new Set(
+    await Promise.all(
+      result.output
+        .trim()
+        .split(/\r?\n/)
+        .map((path) => realpath(path)),
+    ),
+  );
   for (const directory of ["src", "scripts", "test"]) {
     for (const path of await readdir(join(root, directory), { recursive: true })) {
       if (/\.[cm]?[jt]s$/.test(path))
         assert.ok(
-          checked.has(resolve(root, directory, path)),
+          checked.has(await realpath(join(root, directory, path))),
           `Unchecked file: ${directory}/${path}`,
         );
     }
   }
   for (const path of (await readdir(root)).filter((name) => /^tsdown.*\.config\.ts$/.test(name)))
-    assert.ok(checked.has(join(root, path)), `Unchecked build config: ${path}`);
+    assert.ok(checked.has(await realpath(join(root, path))), `Unchecked build config: ${path}`);
+  const generated = await Promise.all(
+    ["dist", ".build"].map(async (directory) => {
+      const path = join(root, directory);
+      try {
+        return await realpath(path);
+      } catch (e) {
+        if (e instanceof Error && "code" in e && e.code === "ENOENT") return path;
+        throw e;
+      }
+    }),
+  );
   assert.ok(
-    ![...checked].some((path) =>
-      ["dist", ".build"].some((directory) => path.startsWith(join(root, directory) + "/")),
-    ),
+    ![...checked].some((path) => generated.some((directory) => path.startsWith(directory + "/"))),
     "Generated output must not enter the source typecheck",
   );
+});
+
+void test("coverage canary accepts a symlinked checkout but rejects a genuinely excluded source", async (t) => {
+  const dir = await mkdtemp(join(tmpdir(), "cf-coverage-"));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  const alias = join(dir, "alias");
+  await symlink(root, alias, "dir");
+  const check = (cwd: string, file: string) =>
+    spawnSync(
+      process.execPath,
+      ["--test", "--test-reporter=tap", "--test-name-pattern=^TypeScript covers", file],
+      {
+        cwd,
+        env: { ...process.env, PWD: cwd, NODE_TEST_CONTEXT: undefined },
+        encoding: "utf8",
+        timeout: 30000,
+      },
+    );
+  const equivalent = check(alias, join(alias, "test/quality-canaries.test.ts"));
+  assert.equal(equivalent.status, 0, equivalent.stdout + equivalent.stderr);
+  assert.match(equivalent.stdout, /# tests 1\b/);
+  const fixture = join(dir, "excluded");
+  for (const name of ["src", "scripts", "test", "dist", ".build"])
+    await mkdir(join(fixture, name), { recursive: true });
+  await symlink(join(root, "node_modules"), join(fixture, "node_modules"), "dir");
+  await writeFile(join(fixture, "package.json"), '{"type":"module"}');
+  await writeFile(
+    join(fixture, "tsconfig.json"),
+    JSON.stringify({ files: ["src/included.ts"], include: [] }),
+  );
+  await writeFile(join(fixture, "src/included.ts"), "export {};\n");
+  await writeFile(join(fixture, "src/missing.ts"), "export {};\n");
+  await cp(
+    new URL("./quality-canaries.test.ts", import.meta.url),
+    join(fixture, "test/quality-canaries.test.ts"),
+  );
+  const missing = check(fixture, join(fixture, "test/quality-canaries.test.ts"));
+  assert.notEqual(missing.status, 0);
+  assert.match(missing.stdout + missing.stderr, /Unchecked file: src\/missing\.ts/);
 });
 
 void test("real inherited tools reject type errors and floating promises, then accept corrected canaries", async (t) => {
