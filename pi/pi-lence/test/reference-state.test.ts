@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { collectReferences, PIN_ENTRY_TYPE } from "./reference-state.ts";
+import { collectReferences, PIN_ENTRY_TYPE } from "../src/reference-state.ts";
 
 const response = (id: string, text: string) => ({
   type: "message", id, timestamp: "2026-01-01T10:00:00Z",

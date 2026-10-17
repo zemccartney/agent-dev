@@ -286,7 +286,9 @@ const policy = {
 
 **Prerequisite:** settle the SDK target/cooldown choice above. Do not install the proposed 1.3.0 dependency graph until it is eligible or its specific exceptions are explicitly approved.
 
-**Files:** `pi/pi-lence/package.json`, new package tsconfigs extending F3, `quiet-mode.ts`, `quiet-renderers.ts`, `reference-browser.ts`, `reference-ui.ts`, `quiet-label.smoke.mjs`, new `lifecycle.test.ts`; update root lockfile and quality tests.
+**Files:** `pi/pi-lence/package.json`, new package tsconfigs extending F3, `src/quiet-mode.ts`, `src/quiet-renderers.ts`, `src/reference-browser.ts`, `src/reference-ui.ts`, `test/quiet-label.smoke.mjs`, new `test/lifecycle.test.ts`; update root lockfile and quality tests.
+
+**Layout follow-up:** production modules now live in `pi/pi-lence/src/`; state tests and the smoke check live in `test/`. Package discovery points only to `./src/reference-ui.ts`. This move is independent of the pending SDK decision.
 
 **Consumes:** F3 shared checks and a reviewed SDK target. **Produces:** the same package script contract as F3, reproducible development SDK resolution, and lifecycle tests that correspond to the selected host's documented events. Runtime Pi dependencies remain wildcard peers.
 
@@ -298,14 +300,16 @@ const policy = {
 
 ### Task 5: F5 — One check path for local work, hooks, and CI
 
-**Files:** finalize `mise.toml`, root scripts, `hk.pkl`, `taplo.toml`, `.github/workflows/ci.yml`; create `scripts/check-projects.mjs` and its test; add a short `DEVELOPMENT.md`; update only stale setup/project entries in root/package READMEs. Final prose review remains phase 2.
+**Files:** finalize `mise.toml`, commit `mise.lock`, root scripts, `hk.pkl`, `taplo.toml`, `.github/workflows/ci.yml`; create `scripts/check-projects.mjs` and its test; add a short `DEVELOPMENT.md`; update only stale setup/project entries in root/package READMEs. Final prose review remains phase 2.
+
+**Reference:** follow `/Users/enlow/proj/house/mise.toml` and `hk.pkl` for the owner's conventions: `[settings] pin = true`, `lockfile = true`, `minimum_release_age = "7d"`; pinned tools; descriptive tasks; one shared hk step mapping reused for check/fix/pre-commit; file-local formatting and whole-affected-project checks; fail on missing tools; partial-staging preservation. Keep the existing explicit setup/hooks-install policy unless the owner approves House's automatic `enter` installation behavior. Adapt tool versions and project commands, not House-specific Go/database tasks. Add `mise run fix` alongside the existing format task.
 
 **Consumes:** F2–F4 package scripts. **Produces:** `mise run setup`, `mise run check`, `mise run test`, `mise run format`, and opt-in `mise run hooks:install`. Setup performs frozen dependency installation, not hook installation or plugin registration. CI runs `mise run check` too.
 
 - [ ] Implement selection tests before the runner. Export `selectProjects(files, projects)` where `files` is repository-relative paths and `projects` contains `{ name, path, dependencies }`; return sorted names including transitive workspace dependents. Root/shared/unknown/deleted-package paths conservatively select all projects; an empty changed-file list selects none. Example assertions:
 
 ```js
-assert.deepEqual(selectProjects(["pi/pi-lence/quiet-mode.ts"], projects), ["@grepco/pi-lence"]);
+assert.deepEqual(selectProjects(["pi/pi-lence/src/quiet-mode.ts"], projects), ["@grepco/pi-lence"]);
 assert.deepEqual(selectProjects(["pnpm-lock.yaml"], projects), allNames);
 assert.deepEqual(selectProjects(["herdr/deleted-project/src/a.ts"], projects), allNames);
 assert.deepEqual(selectProjects([], projects), []);
@@ -313,6 +317,7 @@ assert.deepEqual(selectProjects([], projects), []);
 
 - [ ] Run `node --test scripts/check-projects.test.mjs`; expect RED before implementation. Add fixtures for a dependent package, deleted/renamed files, and paths containing spaces. Implement the small runner using discovered workspace metadata and argv arrays, never shell-concatenated filenames. Its CLI accepts `--all`, `--staged`, or explicit paths after `--`, and runs each selected package's `check:project`; propagate failures. Use NUL-separated Git output, and account for both sides of renames.
 - [ ] Define root scripts: `test:repo` runs `node --test scripts/*.test.mjs`; `check:repo` runs root formatting/lint/type checks and `test:repo`; `check` runs `check:repo`, the project runner with `--all`, and infrastructure validation. Pin hk/zizmor/taplo via mise. Configure hk's changed-file formatting with the root Oxfmt configuration and whole-affected-project checks through the runner; pass hk's selected paths through structured argv. Reuse those commands for full checks; avoid `mise → hk → mise` recursion. Validate Pkl with `hk validate`, TOML with taplo plus tool-specific validation, and workflows with zizmor. Keep hook installation opt-in and repository-scoped; test installation/partial-staging behavior in a disposable Git fixture before touching real shared worktree hooks. Do not replace existing hooks without permission.
+- [ ] Add a read-only cooldown-exception audit: permit only reviewed exact-version exclusions with a reason; use registry publication timestamps and the configured release age to flag exclusions that have aged out. Keep `minimumReleaseAgeExcludePrune: true` for exclusions no longer in the resolved graph; it is not an age-expiry check. Fail clearly on unavailable/invalid age metadata rather than silently accepting an exception. No actual SDK exception is approved by this audit requirement.
 - [ ] Add read-only CI for PRs and pushes to `dev`/`main`, with full checks on a pinned macOS runner and Pi checks on Linux. Pin actions by full reviewed commit SHA, set `contents: read`, disable checkout credential persistence, and provide no release credentials. Test normal checks with a clean HOME and live-host opt-in flags unset. Document developer setup/task/protocol conventions and the distinction from consumer prerequisites; do not claim every later release facility exists yet.
 - [ ] Verify `mise run setup`, `mise run check`, `mise exec -- hk validate`, and `mise exec -- hk check --all --plan`. In a disposable fixture, verify an unrelated unstaged edit survives pre-commit, root config changes select every project, and a deliberate type/test failure blocks the hook and CI command. Recompare normal host registrations with F0. Commit: `ci: share local hooks and repository verification`.
 

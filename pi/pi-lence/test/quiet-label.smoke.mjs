@@ -16,11 +16,11 @@ const { InteractiveMode } = await load("modes/interactive/interactive-mode.js");
 const { WorkingStatusIndicator, RetryStatusIndicator, CompactionStatusIndicator } =
   await load("modes/interactive/components/status-indicator.js");
 initTheme("dark", false);
-const cwd = resolve(fileURLToPath(new URL(".", import.meta.url)));
+const cwd = resolve(fileURLToPath(new URL("../", import.meta.url)));
 const manager = new DefaultPackageManager({ cwd, agentDir: cwd, settingsManager: SettingsManager.inMemory() });
 const resources = await manager.resolveExtensionSources([cwd]);
 const entryPoints = resources.extensions.filter(resource => resource.enabled).map(resource => resource.path);
-assert.deepEqual(entryPoints, [join(cwd, "reference-ui.ts")], "installing the package loads only its entry point, not helpers or tests");
+assert.deepEqual(entryPoints, [join(cwd, "src/reference-ui.ts")], "installing the package loads only its entry point, not helpers or tests");
 for (const type of ["skills", "prompts", "themes"]) assert.deepEqual(resources[type], []);
 const loaded = await loadExtensions(entryPoints, cwd);
 assert.deepEqual(loaded.errors, []);

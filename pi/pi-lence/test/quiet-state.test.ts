@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { QuietActivity } from "./quiet-state.ts";
+import { QuietActivity } from "../src/quiet-state.ts";
 
 test("ordinary work stays quiet; a warning appears only after 60 seconds without updates", () => {
   const activity = new QuietActivity();

@@ -16,7 +16,7 @@ pi
 Or from this package directory, run `pi install .`. This registers the package
 in your personal pi settings and loads it on future launches, regardless of
 working directory. No build or `npm install` is needed: pi provides the runtime
-libraries listed as peer dependencies. Only `reference-ui.ts` is an extension
+libraries listed as peer dependencies. Only `src/reference-ui.ts` is an extension
 entry point; helper modules and tests are not independently loaded.
 
 To install on another machine, first clone
@@ -53,7 +53,7 @@ extension. Do not use `--no-session` if you want pins to survive exit.
 From the repository root:
 
 ```sh
-pi --tui-mode fullscreen -e ./pi/pi-lence/reference-ui.ts
+pi --tui-mode fullscreen -e ./pi/pi-lence/src/reference-ui.ts
 ```
 
 Use this alternative only when the package is not already installed.
