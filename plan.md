@@ -185,7 +185,7 @@ Start with **pi-lence**, then publish whichever Herdr plugin clears its release 
 
 Choose exact script names, shared config layout, artifact filenames, safe extraction implementation, readable bundle/module layout, CI job structure, and npm/GitHub approval mechanics after checking current tool support. Respect the contracts above; surface any change in scope, supported behavior, security policy, or approval guarantees rather than silently deciding it.
 
-Foundation tasks F0–F5 cover phases 0–1. Proposed Pi-lence tasks P1–P4 cover its payload and real-host readiness within phase 2. Product redesign, Herdr installers, Changesets/release workflows, marketplace registration, and final repository documentation consolidation remain later work. No additional trial-period gate is introduced for pi-lence or auto-caffeinator.
+Foundation tasks F0–F5 cover phases 0–1. Approved Pi-lence tasks P1–P4 cover its payload and real-host readiness within phase 2. Product redesign, Herdr installers, Changesets/release workflows, marketplace registration, and final repository documentation consolidation remain later work. No additional trial-period gate is introduced for pi-lence or auto-caffeinator.
 
 ## Approved Pi-lence readiness wave
 
@@ -296,6 +296,8 @@ declare function startTui(
 - [x] Update the README with consumer Node floor, tested Pi/runtime/platform matrix, local candidate command clearly labeled prerelease, normal eventual `pi install npm:@grepco/pi-lence` command clearly not yet available, package limitations and no pnpm requirement for consumers. Do not claim public installation, all-host compatibility, or reviewed release security yet.
 - [x] Put one disposable hands-on demo in `DEVELOPMENT.md`: create/print a temp root, pack there, create private HOME/agent/cwd/npm state, install using the pinned host CLI and exact tarball, open regular/fullscreen Pi with the test fixture, try references/pins/new/resume/fork/reload, exit and remove only that printed temp root. Show expected screens/state restoration and cleanup. Never use or relink the normal installation; do not require a new soak period.
 - [ ] Obtain a fresh-context whole-branch review covering P1–P4 and the inherited deletion-selection repair, reproduce findings before fixing, and re-review material fixes. Run fresh verification after fixes; preserve existing edits/trials/registrations. Push/open a `dev` PR and obtain hosted results only when authorized. Commit named files: `ci(pi-lence): gate packed host behavior across supported runtimes`.
+
+**Local execution checkpoint (2026-10-17):** P1–P3 and P4 implementation are committed through `0c4c1bb`. Fresh clean-HOME frozen setup/full checks passed: 273 tests plus SDK smoke; actual packed-host suites passed 12/12 on macOS ARM64 with both Node 22.19.0 and 24.16.0. Read-only fresh-context review covered this branch through `a011558` plus inherited hook repair; its Important RPC false-green finding was reproduced and repaired test-first in `0c4c1bb`, then all suites rerun. Two Minor test-harness follow-ups remain: earlier cleanup registration for failed TUI setup, and permanent coverage of cleanup after private allocation (manually verified). Linux jobs are configured but unexecuted. Task 9 remains open pending authorization to push/open a dev PR and capture hosted evidence. This is not publication readiness or permission.
 
 ### Readiness handoff and remaining release gates
 
