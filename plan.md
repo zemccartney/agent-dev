@@ -10,7 +10,7 @@
 
 **Spec:** The approved release scope and sequence in this document, preceding the foundation tasks.
 
-**Status:** approved for inline foundation execution. On 2026-10-17 the owner explicitly approved both the seven exact Pi SDK age exceptions and the separate Undici trust exception. Execution progress lives in `.worktrees/release-foundation/plan.md` and its ignored execution ledger; this original checkout is not the implementation workspace. Publication and changes to live installations still require explicit approval.
+**Status:** approved for inline foundation execution. On 2026-10-17 the owner explicitly approved both the seven exact Pi SDK age exceptions and the separate Undici trust exception. At the owner's subsequent request, implementation now runs in the primary checkout `/Users/enlow/proj/agent-dev` on `chore/release-foundation`; the old implementation worktree is retained detached as a recovery copy. Original planning edits were backed up/stashed, unrelated local files were preserved, and `main` was not promoted. This file and `.superpowers/sdd/plan/progress.md` track progress. Publication and changes to live installations still require explicit approval.
 
 **Standing handoff requirement:** for this and future work, provide a concrete manual demo: commands to run, expected results and things to notice, plus cleanup/reversal where applicable. Record this convention in the repository protocol.
 
@@ -346,7 +346,7 @@ assert.deepEqual(selectProjects([], projects), []);
 - No plugin was published, no default-branch promotion occurred, and no new trial waiting period was imposed.
 - Review the foundation changes before beginning phase 2. Independent release review remains mandatory later even if foundation work is implemented inline.
 
-**Execution:** native/inline, as approved. Arrange a separate fresh-context reviewer for the resulting branch; do not present author self-review as independent review.
+**Execution:** native/inline, as approved. A separate fresh-context Pi CLI reviewer completed the foundation review below; it is distinct from author self-review and does not replace later independent release review.
 
 ## Execution evidence
 
@@ -354,7 +354,9 @@ assert.deepEqual(selectProjects([], projects), []);
 
 **F4:** approved SDK/trust selectors are explicit; two nonessential install scripts are explicitly denied, not authorized. All original 144 package records and snapshots remain unchanged. Pi uses public host contracts and separate Node-22 source/developer-tooling types; full library checking required one age-eligible MCP SDK development peer. Typed lifecycle tests caught and fixed stale post-shutdown render callbacks. Checks passed: Pi 17 plus an isolated pinned-host smoke, auto-caffeinator 131, agentlog 65, root 17. npm dry-run bundles no dependencies; payload allowlist/LICENSE work and deeper real-host/mode acceptance remain phase 2. Original checkout/trial contents and registrations remain unchanged.
 
-**F5:** shared runner, explicit mise setup, protected opt-in hooks, read-only CI, exception audit and `DEVELOPMENT.md` are implemented. Actual hook fixtures cover partial staging, special filenames, blocked type/test failures, existing/shared/symlinked-hook refusal and inherited Git-environment isolation. Full setup/check passed with a clean HOME and live-host opt-ins unset; fixtures set only their own local Git identity. hk validation/full-plan and offline zizmor checks passed. Hosted CI has not run, and a fresh-context branch review remains outstanding; no publication, promotion or normal-host registration occurred.
+**F5:** shared runner, explicit mise setup, protected opt-in hooks, read-only CI, exception audit and `DEVELOPMENT.md` are implemented. Actual hook fixtures cover partial staging, special filenames, blocked type/test failures, existing/shared/symlinked-hook refusal and inherited Git-environment isolation. Full setup/check passed with a clean HOME and live-host opt-ins unset; fixtures set only their own local Git identity. hk validation/full-plan and offline zizmor checks passed. Hosted CI has not run; no publication, promotion or normal-host registration occurred.
+
+**Independent foundation review:** a fresh Pi 1.3.0 `--print` process reviewed `5bfc63f..8d143be` against F0–F5 using disposable base/head snapshots and the full 182-file change inventory. Only read/grep/find/ls were enabled; no inherited conversation, extensions, MCP, skills or context files. Verdict: ready for `dev` integration on static review, with no critical/important findings and one minor stale auto-caffeinator development-guide finding, verified and repaired in `e124add`. The reviewer did not execute tests; the coordinator reran clean-HOME setup/full checks afterward: root 33, agentlog 65, auto-caffeinator 131, Pi 17 plus smoke, all passing. Report/transcript: ignored `.superpowers/sdd/plan/cli-review-8d143be/`. Recommended follow-up before integration: exercise deletion-only and cross-package rename commits through the installed hook itself, in disposable fixtures, and capture both hosted CI jobs. Publication and broader host/runtime/security acceptance remain outside this review.
 
 **Existing setup warnings:** Pi and Herdr still register paths beneath the former `~/proj/pi-ext`; Herdr reports its trial manifest unavailable. Repairing Git metadata does not repair those registrations. Do not reload/restart expecting those old paths to resolve; relinking is a separate owner-approved action. npm authentication is absent, so `@grepco` publication access is unverified. No release environment exists in GitHub yet; none was created.
 
