@@ -1,0 +1,55 @@
+name: Checks
+
+on:
+  pull_request:
+  push:
+    branches: [dev, main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: checks-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  full:
+    name: Full checks (macOS ARM64)
+    runs-on: macos-15
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: jdx/mise-action@2d8d4cafcbd33be2ea37d2b6f5ad595363d1f1ca # v5.1.1
+        with:
+          version: 2026.9.1
+          install_args: --locked
+          cache: false
+          persist_github_token: false
+      - name: Frozen developer setup
+        run: mise run setup
+      - name: Keep work-branch scratch out of main
+        if: github.ref == 'refs/heads/main' || github.base_ref == 'main'
+        run: mise exec -- node scripts/check-release-tree.mjs
+      - name: Shared checks
+        run: mise run check
+
+  pi-linux:
+    name: Pi contracts (Linux x64)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: jdx/mise-action@2d8d4cafcbd33be2ea37d2b6f5ad595363d1f1ca # v5.1.1
+        with:
+          version: 2026.9.1
+          install_args: --locked
+          cache: false
+          persist_github_token: false
+      - name: Frozen developer setup
+        run: mise run setup
+      - name: Pi source, tooling, lifecycle and isolated pinned-host smoke
+        run: mise exec -- pnpm --filter @grepco/pi-lence check

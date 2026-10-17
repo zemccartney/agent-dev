@@ -1,8 +1,10 @@
 # pi-lence
 
 A quieter pi conversation, with a response browser and session-local named pins.
-First trial release (0.1.0), tested with **pi 1.1.0's fullscreen TUI in Herdr**.
-Styling remains provisional. The source tests require Node.js 22.18 or later.
+Unpublished 0.1.0; the initial daily-use trial used **pi 1.1.0's fullscreen TUI in Herdr**.
+Development checks now pin **Pi 1.3.0**. Node.js **22.19.0 or later** aligns with that
+host's minimum; checks run on the repository's pinned developer Node, not every
+supported runtime/mode combination. Styling remains provisional.
 
 ## Install once, then launch normally
 
@@ -16,7 +18,7 @@ pi
 Or from this package directory, run `pi install .`. This registers the package
 in your personal pi settings and loads it on future launches, regardless of
 working directory. No build or `npm install` is needed: pi provides the runtime
-libraries listed as peer dependencies. Only `reference-ui.ts` is an extension
+libraries listed as peer dependencies. Only `src/reference-ui.ts` is an extension
 entry point; helper modules and tests are not independently loaded.
 
 To install on another machine, first clone
@@ -53,7 +55,7 @@ extension. Do not use `--no-session` if you want pins to survive exit.
 From the repository root:
 
 ```sh
-pi --tui-mode fullscreen -e ./pi/pi-lence/reference-ui.ts
+pi --tui-mode fullscreen -e ./pi/pi-lence/src/reference-ui.ts
 ```
 
 Use this alternative only when the package is not already installed.
@@ -174,15 +176,23 @@ This feedback determines the next interaction change, not visual polish yet.
 
 ## Verification
 
-From `pi/pi-lence`:
+After the repository's frozen workspace install, from its root:
 
 ```sh
-npm test
+pnpm --filter @grepco/pi-lence check
 ```
+
+This runs formatting, isolated source/tooling typechecks, lint, tests, and the
+focused host smoke. SDK pins and declaration dependencies are development-only;
+Pi-provided runtime libraries remain wildcard peers and are not bundled. The
+MCP SDK development pin satisfies an optional peer referenced by Google's SDK
+declarations, without enabling peer auto-installation or skipping library checks.
 
 State tests cover filtering, identity, metadata replay, unpinning, branch scope,
 and the 60-second warning threshold, activity reset, dialog suppression, settlement,
-and a sleep-sized gap.
+and a sleep-sized gap. Typed lifecycle tests cover startup, reload, new, resume,
+and fork; one timer after start, none after shutdown; branch-state resets; and
+no terminal callbacks or timers in RPC, JSON, or print mode, even after a TUI session.
 Additional development smoke checks exercised busy-state guards, labels, both
 lists, full-text/name search, scroll position, active tabs, blank naming, and
 fixed-height rendering with 120 responses and pane resizing, spaced-row click
@@ -200,8 +210,13 @@ a controlled clock. It covers warning color, normal-label restoration,
 retry/compaction precedence, and timer/override cleanup:
 
 ```sh
-npm run test:integration -- /path/to/node_modules/@earendil-works/pi-coding-agent
+pnpm --filter @grepco/pi-lence test:integration
 ```
+
+The smoke resolves the pinned workspace SDK by default, creates a disposable HOME,
+and removes it afterward. It uses some private host components and manually emits
+typed events: it is version-coupled evidence, not full host-driven lifecycle or
+normal/fullscreen acceptance. Those deeper checks remain outstanding.
 
 A fullscreen pseudoterminal trial verified Quiet/Raw clicks, intact transcripts,
 a native permission dialog, stored tool/provider failures, and draft preservation.

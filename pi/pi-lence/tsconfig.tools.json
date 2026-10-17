@@ -1,0 +1,15 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "composite": true,
+    "rootDir": ".",
+    "tsBuildInfoFile": "./node_modules/.cache/agent-dev/tools.tsbuildinfo",
+    "types": ["node"],
+    "typeRoots": ["../../node_modules/@types"],
+    "disableSourceOfProjectReferenceRedirect": true
+  },
+  "references": [{ "path": "./tsconfig.core.json" }],
+  "include": ["test/**/*.ts", "test/**/*.mjs"]
+}
