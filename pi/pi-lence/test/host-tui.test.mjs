@@ -180,6 +180,8 @@ for (const mode of modes) {
         ui.send("\x1b");
         await ui.waitWithout("Tab switches");
       }
+      // The overlay can disappear before the next frame restores the controls.
+      await ui.waitFor("View: Quiet");
       assert.equal((await ui.screen()).join("\n").split("View: Quiet").length - 1, 1);
       ui.send("/fixture-dialog\r");
       await ui.waitFor("Fixture confirmation");

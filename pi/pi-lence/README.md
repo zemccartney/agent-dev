@@ -114,11 +114,15 @@ identified pinned-SDK smoke, and real-host tests against the packed artifact.
 Expect roughly two minutes for the real elapsed-time warning cases.
 `check:contracts` is the faster subset, **not** the complete acceptance gate.
 
-| Actual-host target                         | Evidence on this branch                        |
-| ------------------------------------------ | ---------------------------------------------- |
-| macOS ARM64, Node 22.19.0 and 24.16.0      | Local packed-host suites passed on Pi 1.3.0    |
-| Ubuntu 24.04 x64, Node 22.19.0 and 24.16.0 | Advisory CI configured; hosted results pending |
-| Other hosts/platforms/runtimes             | Not verified                                   |
+| Actual-host target                         | Evidence on this branch                         |
+| ------------------------------------------ | ----------------------------------------------- |
+| macOS ARM64, Node 22.19.0 and 24.16.0      | Local packed-host suites passed on Pi 1.3.0     |
+| Ubuntu 24.04 x64, Node 22.19.0 and 24.16.0 | Packed-host suites passed on Pi 1.3.0; advisory |
+| Other hosts/platforms/runtimes             | Not verified                                    |
+
+[Hosted CI results](https://github.com/zemccartney/agent-dev/actions/workflows/ci.yml)
+identify the tested revision and any current failures; passing Linux checks do not
+create a distro-support or ongoing maintenance commitment.
 
 Real-host tests cover managed tarball install/reinstall/removal, print/JSON/RPC,
 regular/fullscreen UI, keyboard and fullscreen mouse access, saved pins,
