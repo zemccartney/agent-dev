@@ -36,7 +36,10 @@ void test("effective pnpm policy fails closed on fresh, undated, exotic, downgra
     encoding: "utf8",
   });
   assert.equal(r.status, 0, r.stderr);
-  assert.deepEqual(JSON.parse(r.stdout), {});
+  assert.deepEqual(JSON.parse(r.stdout), {
+    "@google/genai@2.21.0": false,
+    "protobufjs@7.6.6": false,
+  });
 });
 void test("linting retains built-in plugins and type awareness; TypeScript runs independently", () => {
   const lint = effective("oxlint", ["--print-config"]);

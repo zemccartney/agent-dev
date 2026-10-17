@@ -2,17 +2,18 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { QuietActivity } from "../src/quiet-state.ts";
 
-test("ordinary work stays quiet; a warning appears only after 60 seconds without updates", () => {
+await test("ordinary work stays quiet; a warning appears only after 60 seconds without updates", () => {
   const activity = new QuietActivity();
   activity.start(1_000);
   assert.equal(activity.status(1_000), undefined);
   assert.equal(activity.status(60_999), undefined);
   assert.deepEqual(activity.status(61_000), {
-    text: "Working · no updates for 60s", kind: "warning",
+    text: "Working · no updates for 60s",
+    kind: "warning",
   });
 });
 
-test("real activity clears the warning; polling and a sleep-sized gap do not reset the clock", () => {
+await test("real activity clears the warning; polling and a sleep-sized gap do not reset the clock", () => {
   const activity = new QuietActivity();
   activity.start(1_000);
   activity.toolStart("a", "bash", 2_000);
@@ -23,7 +24,7 @@ test("real activity clears the warning; polling and a sleep-sized gap do not res
   assert.match(activity.status(3_694_000)!.text, /3600s/);
 });
 
-test("open dialogs suppress warnings, including nested dialogs", () => {
+await test("open dialogs suppress warnings, including nested dialogs", () => {
   const activity = new QuietActivity();
   activity.start(0);
   activity.dialogOpened();
@@ -34,7 +35,7 @@ test("open dialogs suppress warnings, including nested dialogs", () => {
   assert.match(activity.status(91_000)!.text, /91s/);
 });
 
-test("settlement and session reset remove warnings rather than add duplicate terminal notices", () => {
+await test("settlement and session reset remove warnings rather than add duplicate terminal notices", () => {
   const activity = new QuietActivity();
   activity.start(0);
   assert.ok(activity.status(60_000));
@@ -47,7 +48,7 @@ test("settlement and session reset remove warnings rather than add duplicate ter
   assert.equal(activity.status(200_000), undefined);
 });
 
-test("warnings identify outstanding tools, but no tool name persists after it finishes", () => {
+await test("warnings identify outstanding tools, but no tool name persists after it finishes", () => {
   const activity = new QuietActivity();
   activity.start(0);
   activity.toolStart("a", "bash", 1_000);

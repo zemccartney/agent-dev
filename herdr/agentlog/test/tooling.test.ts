@@ -34,7 +34,10 @@ await test("package policy fails closed rather than inheriting weaker global def
     encoding: "utf8",
   });
   assert.equal(result.status, 0, result.stderr);
-  assert.deepEqual(JSON.parse(result.stdout), {});
+  assert.deepEqual(JSON.parse(result.stdout), {
+    "@google/genai@2.21.0": false,
+    "protobufjs@7.6.6": false,
+  });
 });
 
 await test("quality configuration retains all plugins and covers source, tests and build config through symlinks", async (t) => {

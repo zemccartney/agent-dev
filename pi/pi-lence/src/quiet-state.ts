@@ -15,12 +15,27 @@ export class QuietActivity {
     this.lastActivity = now;
     this.tools.clear();
   }
-  touch(now: number) { if (this.active) this.lastActivity = now; }
-  toolStart(id: string, name: string, now: number) { this.tools.set(id, name); this.touch(now); }
-  toolEnd(id: string, now: number) { this.tools.delete(id); this.touch(now); }
-  dialogOpened() { this.dialogs++; }
-  dialogClosed() { this.dialogs = Math.max(0, this.dialogs - 1); }
-  settle() { this.active = false; this.tools.clear(); }
+  touch(now: number) {
+    if (this.active) this.lastActivity = now;
+  }
+  toolStart(id: string, name: string, now: number) {
+    this.tools.set(id, name);
+    this.touch(now);
+  }
+  toolEnd(id: string, now: number) {
+    this.tools.delete(id);
+    this.touch(now);
+  }
+  dialogOpened() {
+    this.dialogs++;
+  }
+  dialogClosed() {
+    this.dialogs = Math.max(0, this.dialogs - 1);
+  }
+  settle() {
+    this.active = false;
+    this.tools.clear();
+  }
 
   status(now: number): { text: string; kind: "warning" } | undefined {
     if (!this.active || this.dialogs) return undefined;

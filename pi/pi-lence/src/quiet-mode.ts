@@ -41,30 +41,61 @@ export function installQuietMode(pi: ExtensionAPI, repaint: () => void) {
   }
 
   pi.on("session_start", (_event, ctx) => install(ctx));
-  pi.on("session_switch", (_event, ctx) => install(ctx));
   pi.on("session_shutdown", () => {
-    stopTimer(); clearLabel(); ui = undefined; renderers.dispose();
+    stopTimer();
+    clearLabel();
+    ui = undefined;
+    renderers.dispose();
   });
-  pi.on("agent_start", () => { activity.start(Date.now()); updateLabel(); });
-  pi.on("message_update", () => { activity.touch(Date.now()); updateLabel(); });
-  pi.on("message_end", event => {
-    if (event.message.role === "assistant") { activity.touch(Date.now()); updateLabel(); }
+  pi.on("agent_start", () => {
+    activity.start(Date.now());
+    updateLabel();
   });
-  pi.on("tool_execution_start", event => {
-    activity.toolStart(event.toolCallId, event.toolName, Date.now()); updateLabel();
+  pi.on("message_update", () => {
+    activity.touch(Date.now());
+    updateLabel();
   });
-  pi.on("tool_execution_update", () => { activity.touch(Date.now()); updateLabel(); });
-  pi.on("tool_execution_end", event => {
-    activity.toolEnd(event.toolCallId, Date.now()); updateLabel();
+  pi.on("message_end", (event) => {
+    if (event.message.role === "assistant") {
+      activity.touch(Date.now());
+      updateLabel();
+    }
   });
-  pi.on("ui_prompt_start", () => { activity.dialogOpened(); updateLabel(); });
-  pi.on("ui_prompt_end", () => { activity.dialogClosed(); updateLabel(); });
-  pi.on("agent_settled", () => { activity.settle(); updateLabel(); });
+  pi.on("tool_execution_start", (event) => {
+    activity.toolStart(event.toolCallId, event.toolName, Date.now());
+    updateLabel();
+  });
+  pi.on("tool_execution_update", () => {
+    activity.touch(Date.now());
+    updateLabel();
+  });
+  pi.on("tool_execution_end", (event) => {
+    activity.toolEnd(event.toolCallId, Date.now());
+    updateLabel();
+  });
+  pi.on("ui_prompt_start", () => {
+    activity.dialogOpened();
+    updateLabel();
+  });
+  pi.on("ui_prompt_end", () => {
+    activity.dialogClosed();
+    updateLabel();
+  });
+  pi.on("agent_settled", () => {
+    activity.settle();
+    updateLabel();
+  });
 
-  const toggle = () => { quiet = !quiet; renderers.invalidate(); repaint(); };
+  const toggle = () => {
+    quiet = !quiet;
+    renderers.invalidate();
+    repaint();
+  };
   pi.registerShortcut("ctrl+alt+q", {
     description: "Toggle Quiet/Raw tool display",
-    handler: ctx => { if (ctx.mode === "tui") toggle(); },
+    handler: (ctx) => {
+      if (ctx.mode === "tui") toggle();
+    },
   });
-  return { label: () => quiet ? "View: Quiet" : "View: Raw", toggle };
+  return { label: () => (quiet ? "View: Quiet" : "View: Raw"), toggle };
 }

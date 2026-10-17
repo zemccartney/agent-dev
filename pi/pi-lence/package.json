@@ -2,29 +2,50 @@
   "name": "@grepco/pi-lence",
   "version": "0.1.0",
   "description": "A quieter pi conversation with a response browser, named pins, and a delayed activity warning.",
-  "type": "module",
+  "keywords": [
+    "pi-package"
+  ],
   "license": "MIT",
-  "keywords": ["pi-package"],
   "repository": {
     "type": "git",
     "url": "https://github.com/zemccartney/agent-dev.git",
     "directory": "pi/pi-lence"
   },
-  "engines": {
-    "node": ">=22.18.0"
-  },
+  "type": "module",
   "scripts": {
-    "test": "node --test test/*.test.ts",
-    "test:integration": "node test/quiet-label.smoke.mjs"
+    "format": "oxfmt .",
+    "format:check": "oxfmt --check .",
+    "types:core": "tsc --build tsconfig.core.json",
+    "typecheck": "tsc --build",
+    "lint": "pnpm types:core && oxlint --type-aware --deny-warnings --tsconfig tsconfig.core.json src && oxlint --type-aware --deny-warnings --tsconfig tsconfig.tools.json test",
+    "test": "tsc --build tsconfig.core.json && node --test test/*.test.ts",
+    "test:integration": "node test/run-smoke.mjs",
+    "check:project": "pnpm typecheck && pnpm lint && pnpm test && pnpm test:integration",
+    "check": "pnpm format:check && pnpm check:project"
+  },
+  "devDependencies": {
+    "@earendil-works/pi-coding-agent": "1.3.0",
+    "@earendil-works/pi-tui": "1.3.0",
+    "@modelcontextprotocol/sdk": "1.32.1",
+    "@types/node": "22.19.19"
   },
   "peerDependencies": {
     "@earendil-works/pi-coding-agent": "*",
     "@earendil-works/pi-tui": "*"
   },
   "devEngines": {
-    "runtime": { "name": "node", "version": "24.16.0", "onFail": "error" }
+    "runtime": {
+      "name": "node",
+      "version": "24.16.0",
+      "onFail": "error"
+    }
+  },
+  "engines": {
+    "node": ">=22.19.0"
   },
   "pi": {
-    "extensions": ["./src/reference-ui.ts"]
+    "extensions": [
+      "./src/reference-ui.ts"
+    ]
   }
 }

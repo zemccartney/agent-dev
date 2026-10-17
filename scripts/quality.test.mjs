@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { existsSync, realpathSync } from "node:fs";
 import { mkdtemp, readdir, rm, writeFile } from "node:fs/promises";
-import { join } from "node:path";
+import { basename, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
 import test from "node:test";
@@ -38,6 +38,7 @@ async function ownedFiles(cwd) {
   /** @type {string[]} */
   const files = [];
   for (const directory of ["src", "scripts", "test"]) {
+    if (!existsSync(join(cwd, directory))) continue;
     for (const path of await readdir(join(cwd, directory), { recursive: true })) {
       if (/\.[cm]?[jt]s$/.test(path)) files.push(join(directory, path));
     }
@@ -58,8 +59,9 @@ test("shared quality defaults exist and root tooling independently typechecks", 
   succeeds(tool("tsc", ["-p", "tsconfig.tools.json"]));
 });
 
-for (const name of ["auto-caffeinator", "agentlog"]) {
-  const cwd = join(root, "herdr", name);
+for (const relative of ["herdr/auto-caffeinator", "herdr/agentlog", "pi/pi-lence"]) {
+  const name = basename(relative);
+  const cwd = join(root, relative);
   test(`${name}: effective projects cover owned files without rechecking source as tooling`, async () => {
     assert.ok(existsSync(join(cwd, "tsconfig.core.json")), "separate source project required");
     assert.ok(existsSync(join(cwd, "tsconfig.tools.json")), "separate tooling project required");

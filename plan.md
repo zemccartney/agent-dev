@@ -10,7 +10,7 @@
 
 **Spec:** The approved release scope and sequence in this document, preceding the foundation tasks.
 
-**Status:** approved for inline execution of F0–F3. F4 retains its explicit SDK/cooldown prerequisite. Execution progress lives in `.worktrees/release-foundation/plan.md` and its ignored execution ledger; this original checkout is not the implementation workspace. Publication and changes to live installations still require explicit approval.
+**Status:** approved for inline foundation execution. On 2026-10-17 the owner explicitly approved both the seven exact Pi SDK age exceptions and the separate Undici trust exception. Execution progress lives in `.worktrees/release-foundation/plan.md` and its ignored execution ledger; this original checkout is not the implementation workspace. Publication and changes to live installations still require explicit approval.
 
 **Standing handoff requirement:** for this and future work, provide a concrete manual demo: commands to run, expected results and things to notice, plus cleanup/reversal where applicable. Record this convention in the repository protocol.
 
@@ -52,7 +52,7 @@ Keep project code, tests, manifests, and READMEs together. Centralize shared dev
 - **hk + CI:** reuse check implementations; changed-file formatting/linting where valid, affected-project checks where necessary, and a full-repo verification path. Hooks are convenience, not the release gate.
 - **Changesets:** independent package versions/changelogs and release intent. Release-affecting changes need entries; intentional non-release changes receive explicit review.
 - **Infrastructure checks:** zizmor for workflows, taplo for TOML; evaluate actionlint and dependency/secret/artifact security scanning without silently treating unevaluated tools as safeguards.
-- **Cooldown exceptions:** reviewed exact-version exceptions can accommodate urgent fixes; keep trust/build-script controls intact. pnpm 11.26 supports `minimumReleaseAgeExcludePrune` for entries absent from the lockfile, not age expiry. Proposed follow-up: enable native pruning and add a read-only stale-age CI check, with reasons recorded beside exceptions. No SDK exception has been approved.
+- **Cooldown exceptions:** reviewed exact-version exceptions can accommodate urgent fixes; keep trust/build-script controls intact. pnpm 11.26 supports `minimumReleaseAgeExcludePrune` for entries absent from the lockfile, not age expiry. Proposed follow-up: enable native pruning and add a read-only stale-age CI check, with reasons recorded beside exceptions. The seven exact Pi 1.3.0 exceptions below were explicitly approved on 2026-10-17; no broader exceptions are authorized.
 
 Developer Node/pnpm requirements must not leak into consumer installation. Retain error-only developer runtime checks, no automatic Node downloads. Test actual built code on the claimed consumer runtimes; compiler targets and version-string tests are insufficient.
 
@@ -209,17 +209,17 @@ The following tasks cover phases 0–1 only. Product redesign, public installers
 
 New paths/config splits here are implementation recommendations, not user-imposed names. Keep this file as the single working plan.
 
-## Verified inputs and pending dependency approvals
+## Verified inputs and reviewed dependency approvals
 
 - Base: local `dev` at `5bfc63fad553a75eb0c1a2c05c81742b7c18a150`; main checkout is dirty. Recheck before execution and stop if the baseline has materially changed.
 - Existing tools: Node **24.16.0**, pnpm **11.26.0**, mise **2026.9.1**. Start with these rather than gratuitously upgrading them.
 - Reuse existing JS tooling pins: TypeScript **7.0.2**, Oxlint **1.87.0**, oxlint-tsgolint **7.0.2003**, Oxfmt **0.72.0**, tsdown **0.23.0**. Preserve package-specific runtime dependencies.
 - Proposed additional tool pins: hk **2.7.0**, zizmor **1.31.1**, taplo **0.10.0**. Their releases and mise backends were checked. hk 2.7 uses its embedded Pkl evaluator; do not add the Pkl CLI merely to load `hk.pkl`. Actionlint remains optional, not a prerequisite for this wave.
 - GitHub repo is public, current credentials have admin permission, and no release environments are configured. These are observations, not permission to change settings. npm scope access still needs checking.
-- **Proposed Pi SDK target: 1.3.0**, matching the installed/current released host. Registry timestamps are 2026-10-15 19:13:30Z for coding-agent and 19:14:02Z for pi-tui. They become seven days old on **2026-10-22 after 19:14:03Z**; transitive dependencies need their own eligibility checks. Both declare Node `>=22.19.0`.
-- **F4 is gated:** either wait for the target and its dependency graph to meet the existing cooldown, approve a reviewed exact-version exception list, or choose an age-eligible older SDK and recheck its contracts. Pi **1.1.0**, published October 7, is an older candidate—not a silently selected fallback. Do not set a broad scope exemption, disable trust checks, or use another installer to evade the policy. F0–F3 can proceed independently of this choice.
+- **Approved Pi SDK target: 1.3.0**, matching the installed/current released host. Registry timestamps are 2026-10-15 19:13:30Z for coding-agent and 19:14:02Z for pi-tui. They become seven days old on **2026-10-22 after 19:14:03Z**; transitive dependencies need their own eligibility checks. Both declare Node `>=22.19.0`.
+- **F4 approval gate satisfied:** the owner's “approve both, proceed” authorizes only the seven exact age selectors below and `undici-types@6.21.0`'s trust exception. Stop on additional policy failures; do not add broad scope exemptions, disable trust checks, authorize dependency scripts, or switch installers to evade policy.
 
-**SDK audit, 2026-10-17 (not approved):** a separate ignored, metadata-only pnpm resolution succeeded for the SDK graph: **118 resolved, zero downloaded/added**, with all other policy controls retained. It requires these seven exact release-age exclusions, solely to test against the installed 1.3.0 host before the cooldown expires—not as a CVE hotfix:
+**SDK audit, 2026-10-17 (subsequently approved):** a separate ignored, metadata-only pnpm resolution succeeded for the SDK graph: **118 resolved, zero downloaded/added**, with all other policy controls retained. It requires these seven exact release-age exclusions, solely to test against the installed 1.3.0 host before the cooldown expires—not as a CVE hotfix:
 
 ```yaml
 minimumReleaseAgeExclude:
@@ -232,9 +232,9 @@ minimumReleaseAgeExclude:
   - '@earendil-works/pi-telemetry@1.3.0'
 ```
 
-All seven age out by **2026-10-22 19:14:03 UTC**. The actual workspace config has no exclusions.
+All seven age out by **2026-10-22 19:14:03 UTC**. The workspace now contains exactly those approved exclusions; F5 adds their read-only age-expiry audit.
 
-**Separate blocker:** the SDK's Node typing pin `@types/node@22.19.19` depends on `undici-types@6.21.0`, which fails `trustPolicy: no-downgrade`. npm records it as a declaration package from November 2024 with no provenance attestation, while earlier releases had provenance. The newest eligible Node 22 typings (`22.20.5`) request the same Undici range. Waiting for the Pi cooldown does not solve this trust issue. An exact `trustPolicyExclude: ['undici-types@6.21.0']` needs separate approval; alternatively investigate and test a scoped override to a trusted compatible declaration release. Do not silently use Node 24 source types or raise the consumer floor instead. No trust exception, package installation, or script execution occurred in the audit. Full sourced evidence and registry integrity are in `.superpowers/sdd/plan/sdk-proposal.md`; metadata inspection is not an independent tarball/source security audit.
+**Separately approved trust exception:** the SDK's Node typing pin `@types/node@22.19.19` depends on `undici-types@6.21.0`, which fails `trustPolicy: no-downgrade`. npm records it as a declaration package from November 2024 with no provenance attestation, while earlier releases had provenance. The newest eligible Node 22 typings (`22.20.5`) request the same Undici range. Waiting for the Pi cooldown does not solve this trust issue. The owner separately approved exact `trustPolicyExclude: ['undici-types@6.21.0']`; it does not age out and still needs replacement/removal review. Do not silently use Node 24 source types or raise the consumer floor instead. No trust exception, package installation, or script execution occurred in the audit. Full sourced evidence and registry integrity are in `.superpowers/sdd/plan/sdk-proposal.md`; metadata inspection is not an independent tarball/source security audit.
 
 Sources: [npm coding-agent metadata](https://registry.npmjs.org/@earendil-works%2fpi-coding-agent), [Pi package contracts](https://github.com/earendil-works/pi/blob/main/packages/coding-agent/docs/packages.md), [hk 2.7 setup](https://github.com/jdx/hk/blob/v2.7.0/docs/getting_started.md), [hk/mise integration](https://github.com/jdx/hk/blob/v2.7.0/docs/mise_integration.md), [mise tasks](https://mise.jdx.dev/tasks/toml-tasks.html).
 
@@ -279,7 +279,7 @@ const policy = {
   blockExoticSubdeps: "true", trustPolicy: "no-downgrade",
   trustLockfile: "false", strictDepBuilds: "true", saveExact: "true",
   autoInstallPeers: "false",
-}; // Also assert `pnpm config get allowBuilds --json` equals {}.
+}; // Assert allowBuilds contains only reviewed false entries (initially {}).
 ```
 
 - [x] Run `node --test scripts/workspace-policy.test.mjs`; expect failure before root configuration exists. Add packaging regressions: valid workspace-store dependencies are accepted; an outside-store symlink or mismatched inventory name/version is rejected.
@@ -301,19 +301,19 @@ const policy = {
 
 ### Task 4: F4 — Make Pi-lence a properly checked host extension
 
-**Prerequisite:** settle the SDK target/cooldown choice above. Do not install the proposed 1.3.0 dependency graph until it is eligible or its specific exceptions are explicitly approved.
+**Prerequisite satisfied:** the owner approved the seven exact age exceptions and separate Undici trust exception above. No additional security exceptions or dependency-script execution are authorized.
 
 **Files:** `pi/pi-lence/package.json`, new package tsconfigs extending F3, `src/quiet-mode.ts`, `src/quiet-renderers.ts`, `src/reference-browser.ts`, `src/reference-ui.ts`, `test/quiet-label.smoke.mjs`, new `test/lifecycle.test.ts`; update root lockfile and quality tests.
 
-**Layout follow-up:** production modules now live in `pi/pi-lence/src/`; state tests and the smoke check live in `test/`. Package discovery points only to `./src/reference-ui.ts`. This move is independent of the pending SDK decision.
+**Layout follow-up:** production modules now live in `pi/pi-lence/src/`; state tests and the smoke check live in `test/`. Package discovery points only to `./src/reference-ui.ts`. That move preceded and was independent of SDK approval.
 
 **Consumes:** F3 shared checks and a reviewed SDK target. **Produces:** the same package script contract as F3, reproducible development SDK resolution, and lifecycle tests that correspond to the selected host's documented events. Runtime Pi dependencies remain wildcard peers.
 
-- [ ] Add the selected exact SDK development dependencies alongside wildcard peers and configure checks. For the proposed 1.3.0 target, align pi-lence's consumer minimum with the host's `>=22.19.0`, not its old test-only 22.18 floor. Document that this is a host-alignment change, not proof of all older-runtime/mode combinations.
-- [ ] Run package typechecking and capture the current invalid `session_switch` registrations/missing type exports. Add typed lifecycle tests using `session_start` reasons `startup`, `reload`, `new`, `resume`, `fork`, with idempotent shutdown: one activity timer after start, none after shutdown, reset branch state, and no timer/custom-terminal UI for non-TUI contexts. A typed handler fake must reject unknown event names rather than accept arbitrary strings.
-- [ ] Use the current public interfaces: remove obsolete post-switch handlers; derive renderer context with `Parameters<NonNullable<ToolRenderers["renderCall"]>>[2]`; use `TuiMouseEventResult` instead of nonexistent `TuiMouseDispatchResult`. Do not replace missing exports with private deep imports or unchecked assertions. Keep tool execution and stored pin formats unchanged.
-- [ ] Make the existing smoke script default to resolving the pinned development SDK via package resolution, not an absolute personal installation path. Replace fabricated `session_switch` emission with the current shutdown/start lifecycle. Clearly retain its status as a focused, version-coupled smoke test, not full host-driven acceptance. Run package `check` and `test:integration` with the pinned SDK from an isolated HOME; the deeper real-host/mode suite remains phase 2.
-- [ ] Run `pnpm -r run check` plus root policy/quality tests; inspect npm dry-run output to ensure the new development SDK is not bundled. Commit: `fix(pi-lence): enforce public host contracts and checked development`.
+- [x] Add the selected exact SDK development dependencies alongside wildcard peers and configure checks. For the proposed 1.3.0 target, align pi-lence's consumer minimum with the host's `>=22.19.0`, not its old test-only 22.18 floor. Document that this is a host-alignment change, not proof of all older-runtime/mode combinations.
+- [x] Run package typechecking and capture the current invalid `session_switch` registrations/missing type exports. Add typed lifecycle tests using `session_start` reasons `startup`, `reload`, `new`, `resume`, `fork`, with idempotent shutdown: one activity timer after start, none after shutdown, reset branch state, and no timer/custom-terminal UI for non-TUI contexts. A typed handler fake must reject unknown event names rather than accept arbitrary strings.
+- [x] Use the current public interfaces: remove obsolete post-switch handlers; derive renderer context with `Parameters<NonNullable<ToolRenderers["renderCall"]>>[2]`; use `TuiMouseEventResult` instead of nonexistent `TuiMouseDispatchResult`. Do not replace missing exports with private deep imports or unchecked assertions. Keep tool execution and stored pin formats unchanged.
+- [x] Make the existing smoke script default to resolving the pinned development SDK via package resolution, not an absolute personal installation path. Replace fabricated `session_switch` emission with the current shutdown/start lifecycle. Clearly retain its status as a focused, version-coupled smoke test, not full host-driven acceptance. Run package `check` and `test:integration` with the pinned SDK from an isolated HOME; the deeper real-host/mode suite remains phase 2.
+- [x] Run `pnpm -r run check` plus root policy/quality tests; inspect npm dry-run output to ensure the new development SDK is not bundled. Commit: `fix(pi-lence): enforce public host contracts and checked development`.
 
 ### Task 5: F5 — One check path for local work, hooks, and CI
 
@@ -334,7 +334,7 @@ assert.deepEqual(selectProjects([], projects), []);
 
 - [ ] Run `node --test scripts/check-projects.test.mjs`; expect RED before implementation. Add fixtures for a dependent package, deleted/renamed files, and paths containing spaces. Implement the small runner using discovered workspace metadata and argv arrays, never shell-concatenated filenames. Its CLI accepts `--all`, `--staged`, or explicit paths after `--`, and runs each selected package's `check:project`; propagate failures. Use NUL-separated Git output, and account for both sides of renames.
 - [ ] Define root scripts: `test:repo` runs `node --test scripts/*.test.mjs`; `check:repo` runs root formatting/lint/type checks and `test:repo`; `check` runs `check:repo`, the project runner with `--all`, and infrastructure validation. Pin hk/zizmor/taplo via mise. Configure hk's changed-file formatting with the root Oxfmt configuration and whole-affected-project checks through the runner; pass hk's selected paths through structured argv. Reuse those commands for full checks; avoid `mise → hk → mise` recursion. Validate Pkl with `hk validate`, TOML with taplo plus tool-specific validation, and workflows with zizmor. Keep hook installation opt-in and repository-scoped; test installation/partial-staging behavior in a disposable Git fixture before touching real shared worktree hooks. Do not replace existing hooks without permission.
-- [ ] Add a read-only cooldown-exception audit: permit only reviewed exact-version exclusions with a reason; use registry publication timestamps and the configured release age to flag exclusions that have aged out. Keep `minimumReleaseAgeExcludePrune: true` for exclusions no longer in the resolved graph; it is not an age-expiry check. Fail clearly on unavailable/invalid age metadata rather than silently accepting an exception. No actual SDK exception is approved by this audit requirement.
+- [ ] Add a read-only cooldown-exception audit: permit only reviewed exact-version exclusions with a reason; use registry publication timestamps and the configured release age to flag exclusions that have aged out. Keep `minimumReleaseAgeExcludePrune: true` for exclusions no longer in the resolved graph; it is not an age-expiry check. Fail clearly on unavailable/invalid age metadata rather than silently accepting an exception. This audit requirement does not authorize any further exclusions.
 - [ ] Add read-only CI for PRs and pushes to `dev`/`main`, with full checks on a pinned macOS runner and Pi checks on Linux. Pin actions by full reviewed commit SHA, set `contents: read`, disable checkout credential persistence, and provide no release credentials. Test normal checks with a clean HOME and live-host opt-in flags unset. Document developer setup/task/protocol conventions and the distinction from consumer prerequisites; do not claim every later release facility exists yet.
 - [ ] Verify `mise run setup`, `mise run check`, `mise exec -- hk validate`, and `mise exec -- hk check --all --plan`. In a disposable fixture, verify an unrelated unstaged edit survives pre-commit, root config changes select every project, and a deliberate type/test failure blocks the hook and CI command. Recompare normal host registrations with F0. Commit: `ci: share local hooks and repository verification`.
 
@@ -351,6 +351,8 @@ assert.deepEqual(selectProjects([], projects), []);
 ## Execution evidence
 
 **F0 baseline:** both Herdr frozen installs and full checks passed (auto-caffeinator: 126 tests; agentlog: 65). Pi-lence's eight state tests and installed-Pi-1.3 smoke check passed. No live-agent or native-power probes ran. Git worktree metadata was repaired; hashes of 56 original-checkout files and 195 trial-worktree files, both original HEADs, and host package registrations were unchanged afterward. Evidence/backups: `/tmp/agent-dev-baseline.QTfz4l`; execution logs are in this worktree's ignored `.superpowers/sdd/plan/`.
+
+**F4:** approved SDK/trust selectors are explicit; two nonessential install scripts are explicitly denied, not authorized. All original 144 package records and snapshots remain unchanged. Pi uses public host contracts and separate Node-22 source/developer-tooling types; full library checking required one age-eligible MCP SDK development peer. Typed lifecycle tests caught and fixed stale post-shutdown render callbacks. Checks passed: Pi 17 plus an isolated pinned-host smoke, auto-caffeinator 131, agentlog 65, root 17. npm dry-run bundles no dependencies; payload allowlist/LICENSE work and deeper real-host/mode acceptance remain phase 2. Original checkout/trial contents and registrations remain unchanged.
 
 **Existing setup warnings:** Pi and Herdr still register paths beneath the former `~/proj/pi-ext`; Herdr reports its trial manifest unavailable. Repairing Git metadata does not repair those registrations. Do not reload/restart expecting those old paths to resolve; relinking is a separate owner-approved action. npm authentication is absent, so `@grepco` publication access is unverified. No release environment exists in GitHub yet; none was created.
 

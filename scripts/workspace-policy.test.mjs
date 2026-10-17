@@ -20,6 +20,7 @@ const expected = {
   strictDepBuilds: "true",
   saveExact: "true",
   autoInstallPeers: "false",
+  minimumReleaseAgeExcludePrune: "true",
 };
 
 /** @param {string} cwd */
@@ -30,12 +31,25 @@ function verifyPolicy(cwd) {
     assert.equal(result.status, 0, result.stderr);
     assert.equal(result.stdout.trim(), value, `${cwd}: ${key}`);
   }
-  const result = spawnSync("pnpm", ["config", "get", "allowBuilds", "--json"], {
-    cwd,
-    encoding: "utf8",
-  });
-  assert.equal(result.status, 0, result.stderr);
-  assert.deepEqual(JSON.parse(result.stdout), {});
+  const reviewed = {
+    allowBuilds: { "@google/genai@2.21.0": false, "protobufjs@7.6.6": false },
+    minimumReleaseAgeExclude: [
+      "@earendil-works/pi-coding-agent@1.3.0",
+      "@earendil-works/pi-tui@1.3.0",
+      "@earendil-works/pi-ai@1.3.0",
+      "@earendil-works/pi-agent-core@1.3.0",
+      "@earendil-works/pi-codemode@1.3.0",
+      "@earendil-works/pi-mcp@1.3.0",
+      "@earendil-works/pi-telemetry@1.3.0",
+    ],
+    trustPolicyExclude: ["undici-types@6.21.0"],
+  };
+  for (const [key, value] of Object.entries(reviewed)) {
+    const result = spawnSync("pnpm", ["config", "get", key, "--json"], { cwd, encoding: "utf8" });
+    assert.ifError(result.error);
+    assert.equal(result.status, 0, result.stderr);
+    assert.deepEqual(JSON.parse(result.stdout), value, `${cwd}: ${key}`);
+  }
 }
 
 for (const directory of directories) {
