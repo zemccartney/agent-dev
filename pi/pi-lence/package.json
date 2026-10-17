@@ -17,9 +17,10 @@
     "format:check": "oxfmt --check .",
     "types:core": "tsc --build tsconfig.core.json",
     "typecheck": "tsc --build",
-    "lint": "pnpm types:core && oxlint --type-aware --deny-warnings --tsconfig tsconfig.core.json src && oxlint --type-aware --deny-warnings --tsconfig tsconfig.tools.json test",
+    "lint": "pnpm types:core && oxlint --type-aware --deny-warnings --tsconfig tsconfig.core.json src && oxlint --type-aware --deny-warnings --tsconfig tsconfig.tools.json scripts test",
     "test": "tsc --build tsconfig.core.json && node --test test/*.test.ts",
     "test:integration": "node test/run-smoke.mjs",
+    "pack:candidate": "node scripts/pack.mjs",
     "check:project": "pnpm typecheck && pnpm lint && pnpm test && pnpm test:integration",
     "check": "pnpm format:check && pnpm check:project"
   },

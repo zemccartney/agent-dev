@@ -11,5 +11,5 @@
     "disableSourceOfProjectReferenceRedirect": true
   },
   "references": [{ "path": "./tsconfig.core.json" }],
-  "include": ["test/**/*.ts", "test/**/*.mjs"]
+  "include": ["scripts/**/*.mjs", "test/**/*.ts", "test/**/*.mjs"]
 }
