@@ -10,7 +10,8 @@ is no root npm package.
   browser, named pins, Quiet/Raw tool display, and an amber warning after a minute
   without model/tool updates. First trial release; tested with pi 1.1.0's
   fullscreen TUI in Herdr.
-- **[Caffeinate](herdr/caffeinate/README.md)** — an experimental Herdr plugin for automatic, time-bounded caffeination of local Pi and Claude Code runs on macOS. Start with its [guided demo](herdr/caffeinate/docs/demo.md); real-harness unattended reliability still needs hands-on validation.
+- **[auto-caffeinator](herdr/auto-caffeinator/README.md)** — automatic, time-bounded caffeination of local Pi and Claude Code runs on macOS. See its [guided demo](herdr/auto-caffeinator/docs/demo.md).
+- **[agentlog](herdr/agentlog/README.md)** — find, organize, and reopen saved Pi conversations from Herdr.
 
 ## Install pi-lence
 

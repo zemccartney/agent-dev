@@ -241,11 +241,11 @@ Sources: [npm coding-agent metadata](https://registry.npmjs.org/@earendil-works%
 
 **Consumes:** F0's isolated checkout. **Produces:** private workspace names `@grepco/auto-caffeinator` and `@grepco/agentlog`, public npm name `@grepco/pi-lence`, and the agreed Herdr IDs. Internal names are not an invitation to npm-publish the Herdr packages.
 
-- [ ] Write `scripts/identities.test.mjs` asserting the three package names, Herdr `private: true`, manifest IDs `grepco.auto-caffeinator` / `grepco.agentlog`, existing version agreement, and absence of the old directories. Use filesystem paths relative to the test module, not the caller's cwd.
-- [ ] Run `node --test scripts/identities.test.mjs`; expect failure on the old layout/identities.
-- [ ] Move directories and update live identity references, including popup-opening commands and tests. Keep domain terms such as “caffeination”; do not blindly rewrite prose or stored transcript metadata. Remove obsolete trial-entrypoint glue only with its replacement tests passing; never relink or migrate the user's installed copies.
-- [ ] Rerun the identity test and both Herdr package checks from their new paths; rerun Pi state tests. Verify there are no active references to old plugin IDs or directories outside deliberately retained historical docs slated for consolidation.
-- [ ] Review the focused rename diff and commit: `refactor: establish public project identities`.
+- [x] Write `scripts/identities.test.mjs` asserting the three package names, Herdr `private: true`, manifest IDs `grepco.auto-caffeinator` / `grepco.agentlog`, existing version agreement, and absence of the old directories. Use filesystem paths relative to the test module, not the caller's cwd.
+- [x] Run `node --test scripts/identities.test.mjs`; expect failure on the old layout/identities.
+- [x] Move directories and update live identity references, including popup-opening commands and tests. Keep domain terms such as “caffeination”; do not blindly rewrite prose or stored transcript metadata. Remove obsolete trial-entrypoint glue only with its replacement tests passing; never relink or migrate the user's installed copies.
+- [x] Rerun the identity test and both Herdr package checks from their new paths; rerun Pi state tests. Verify there are no active references to old plugin IDs or directories outside deliberately retained historical docs slated for consolidation.
+- [x] Review the focused rename diff and commit: `refactor: establish public project identities`.
 
 ### Task 2: F2 — One workspace, one effective dependency policy
 
