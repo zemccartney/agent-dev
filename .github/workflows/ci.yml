@@ -80,4 +80,10 @@ jobs:
       - name: Packed installation and real host modes
         env:
           HOST_NODE: ${{ steps.host-node.outputs.path }}
-        run: mise exec -- pnpm --filter @grepco/pi-lence test:host -- --node "$HOST_NODE"
+        run: |
+          # Restore developer Node after mise activation, which can retain setup-node's PATH priority.
+          # Only test:host's explicitly selected child runtime should use HOST_NODE.
+          mise exec -- sh -c '
+            export PATH="$(mise where node)/bin:$PATH"
+            exec pnpm --filter @grepco/pi-lence test:host -- --node "$HOST_NODE"
+          '
