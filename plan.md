@@ -1,16 +1,16 @@
-# Repository Foundation Implementation Plan
+# Repository Release Implementation Plan
 
-> **For agentic workers:** Use `executing-plans` for inline execution, or `subagent-driven-development` if an actual subagent tool is available. Execute the foundation tasks below individually, with their verification gates; do not implement the later release phases from outline bullets alone.
+> **For agentic workers:** Use `executing-plans` for the owner's chosen inline execution. Execute approved tasks individually with their verification gates; do not implement later release phases from outline bullets alone. Foundation tasks F0–F5 are complete; the approved current tasks are P1–P4 below.
 
-**Goal:** Give all three projects consistent identities, a reproducible workspace, and real shared checks without disturbing working trial installations.
+**Goal:** Prepare independently publishable projects without disturbing working trials; the current wave verifies Pi-lence's packed payload and real-host behavior.
 
 **Architecture:** Root configuration owns developer policy and task coordination. Packages retain their runtime contracts, builds, and tests; Pi consumes host-provided libraries while the Herdr plugins retain standalone dependencies.
 
-**Tech Stack:** mise, pnpm, TypeScript, Oxlint/Oxfmt, Node's test runner, hk, GitHub Actions, zizmor, taplo. Changesets and publication belong to the next wave.
+**Tech Stack:** mise, pnpm, TypeScript, Oxlint/Oxfmt, Node's test runner, hk, GitHub Actions, zizmor, taplo. Pi-lence remains host-loaded TypeScript, not a compiled/bundled application. Changesets and publication workflows follow this readiness wave.
 
 **Spec:** The approved release scope and sequence in this document, preceding the foundation tasks.
 
-**Status:** approved for inline foundation execution. On 2026-10-17 the owner explicitly approved both the seven exact Pi SDK age exceptions and the separate Undici trust exception. At the owner's subsequent request, implementation now runs in the primary checkout `/Users/enlow/proj/agent-dev` on `chore/release-foundation`; the old implementation worktree is retained detached as a recovery copy. Original planning edits were backed up/stashed, unrelated local files were preserved, and `main` was not promoted. This file and `.superpowers/sdd/plan/progress.md` track progress. Publication and changes to live installations still require explicit approval.
+**Status:** the owner merged foundation PR #1 into `dev` on 2026-10-17 at `789db7ef39489e930751a36c3e85354ffbbdddec` and requested the next step. Hosted CI passed at PR head `a9fcc49`. The primary checkout is now on `feat/pi-lence-release-candidate`, based on that merge; its tree matched the reviewed foundation head and the branch switch preserved the complete local patch/status. The seven exact Pi SDK age exceptions and separate Undici trust exception remain the only approved exceptions. The owner approved P1–P4 for inline implementation. Before later release tooling is enabled or used, provide a hands-on tour of Changesets, npm trusted publishing and the chosen release workflow, with a no-publication rehearsal and space for the owner's preferences. This is the single working plan; `.superpowers/sdd/plan/progress.md` holds execution evidence. Publication, `main` promotion, real hooks and normal-host changes remain separately gated.
 
 **Standing handoff requirement:** for this and future work, provide a concrete manual demo: commands to run, expected results and things to notice, plus cleanup/reversal where applicable. Record this convention in the repository protocol.
 
@@ -22,11 +22,11 @@ This is one repo-wide effort. **The old Caffeinate-first strategy is superseded.
 
 ## Global constraints and agreed scope
 
-| Project directory | Public identity | Distribution |
-| --- | --- | --- |
-| `pi/pi-lence/` | `@grepco/pi-lence` | Public npm package |
+| Project directory         | Public identity           | Distribution                                    |
+| ------------------------- | ------------------------- | ----------------------------------------------- |
+| `pi/pi-lence/`            | `@grepco/pi-lence`        | Public npm package                              |
 | `herdr/auto-caffeinator/` | `grepco.auto-caffeinator` | Herdr GitHub install + prebuilt release payload |
-| `herdr/agentlog/` | `grepco.agentlog` | Herdr GitHub install + prebuilt release payload |
+| `herdr/agentlog/`         | `grepco.agentlog`         | Herdr GitHub install + prebuilt release payload |
 
 - Freely improve names, layout, interfaces, and internals. No compatibility shims for unpublished trials. Do not silently delete trial data or alter live installations.
 - Focus on existing capabilities. Native rewrites, new agent integrations, and new product features are separate work. Fix justified design problems, not merely cosmetic architecture differences.
@@ -79,15 +79,15 @@ Herdr 0.9.3 updates by reinstalling. Verify replacement, running-process behavio
 
 This was a structural/documentation audit, not a complete independent correctness review. Herdr suites were not rerun during planning.
 
-| Finding | Consequence |
-| --- | --- |
-| Implementations are on `dev`; the current `main` checkout has uncommitted planning work. Moved worktree metadata still references `~/proj/pi-ext`. | Preserve the dirty checkout; repair/inventory worktrees and use an isolated branch from `dev` for implementation. |
+| Finding                                                                                                                                                                     | Consequence                                                                                                                            |
+| --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| Implementations are on `dev`; the current `main` checkout has uncommitted planning work. Moved worktree metadata still references `~/proj/pi-ext`.                          | Preserve the dirty checkout; repair/inventory worktrees and use an isolated branch from `dev` for implementation.                      |
 | Pi-lence's eight state tests and installed-host smoke check pass, but a strict check against Pi 1.3.0 reports obsolete event registrations and missing public type exports. | Establish real typechecking and host-lifecycle acceptance early. A manually emitted obsolete event is not host compatibility evidence. |
-| Pi-lence's npm dry run includes tests and omits LICENSE. | Treat distribution contents as a tested contract, not whatever packing happens to include. |
-| Both Herdr projects duplicate tooling, but tests assert local config/lockfile layout; auto-caffeinator's license validator assumes a package-local dependency store. | Migrate effective policy, tests, and license provenance together. Do not just move YAML files. |
-| Auto-caffeinator has a runtime packaging script; agentlog prepares its clean payload in a test helper. | Make production packaging canonical; tests consume it rather than implement a second release recipe. |
-| Auto-caffeinator's spike has separate build/PTY tests and a legacy entrypoint. | Retain useful production coverage before deleting experiments, compatibility glue, and their configs. |
-| The plugins already have distinct application modules and different Herdr adapters. | Improve specific interfaces where justified; do not extract a shared runtime framework solely to eliminate similar-looking code. |
+| Pi-lence's npm dry run includes tests and omits LICENSE.                                                                                                                    | Treat distribution contents as a tested contract, not whatever packing happens to include.                                             |
+| Both Herdr projects duplicate tooling, but tests assert local config/lockfile layout; auto-caffeinator's license validator assumes a package-local dependency store.        | Migrate effective policy, tests, and license provenance together. Do not just move YAML files.                                         |
+| Auto-caffeinator has a runtime packaging script; agentlog prepares its clean payload in a test helper.                                                                      | Make production packaging canonical; tests consume it rather than implement a second release recipe.                                   |
+| Auto-caffeinator's spike has separate build/PTY tests and a legacy entrypoint.                                                                                              | Retain useful production coverage before deleting experiments, compatibility glue, and their configs.                                  |
+| The plugins already have distinct application modules and different Herdr adapters.                                                                                         | Improve specific interfaces where justified; do not extract a shared runtime framework solely to eliminate similar-looking code.       |
 
 Evidence and official host-documentation links are in `thinking/pi-publishing-audit.md` until distilled.
 
@@ -185,7 +185,128 @@ Start with **pi-lence**, then publish whichever Herdr plugin clears its release 
 
 Choose exact script names, shared config layout, artifact filenames, safe extraction implementation, readable bundle/module layout, CI job structure, and npm/GitHub approval mechanics after checking current tool support. Respect the contracts above; surface any change in scope, supported behavior, security policy, or approval guarantees rather than silently deciding it.
 
-The following tasks cover phases 0–1 only. Product redesign, public installers, Changesets/release workflows, marketplace registration, and the final documentation cleanup remain later work. No additional trial-period gate is introduced for pi-lence or auto-caffeinator.
+Foundation tasks F0–F5 cover phases 0–1. Approved Pi-lence tasks P1–P4 cover its payload and real-host readiness within phase 2. Product redesign, Herdr installers, Changesets/release workflows, marketplace registration, and final repository documentation consolidation remain later work. No additional trial-period gate is introduced for pi-lence or auto-caffeinator.
+
+## Approved Pi-lence readiness wave
+
+**Owner clarification (2026-10-17):** [MAINTENANCE.md](MAINTENANCE.md) now records the durable personal-first policy for both Pi and Herdr projects. Linux CI is best-effort compatibility evidence, not an unconditional release gate or distro support commitment. Pi-lence uses Pi's runtime; the Node engine floor is not a demand for a separate consumer Node installation. The owner requested this record and proceeding to the next step: push the readiness branch, open a dev PR and capture hosted results. No merge, main promotion, release tooling or publication is authorized.
+
+**Scope:** satisfy the Pi-lence portion of phase 2's existing product/payload requirements before designing the publishing workflow. No new user features, host integration, compiler/bundler, publication, npm login, normal installation or additional soak period. Version `0.1.0` remains provisional; producing a test tarball is not choosing or approving its first public version.
+
+**Builder choices for review:** stage a minimal consumer package before `npm pack`; exercise that tarball through the actual pinned Pi CLI in disposable homes; use deterministic test-only model responses instead of paid/live-provider traffic; run host tests at Node `22.19.0` and `24.16.0`. Keep fast state/SDK tests, but report them separately from real-host evidence. These are implementation choices, not new owner requirements.
+
+### Readiness constraints and verified inputs
+
+- Work in the primary checkout on `feat/pi-lence-release-candidate`, based on merged `dev` `789db7e`. Preserve `.gitignore`, the user-deleted `GLOSSARY.md`, untracked `CODE_REVIEW.md`, trial contents and all normal registrations; never stage indiscriminately.
+- Host target: released **Pi 1.3.0**. Runtime floor: **Node `>=22.19.0`**; developer Node remains **24.16.0**. Runtime peers remain `"*"`, host-provided and unbundled; this is not a promise of compatibility with every Pi version.
+- The installed/repo-pinned Pi docs distinguish invocation-only `-e` loading from persistent `pi install`. All persistent installation tests must run with disposable HOME, `PI_CODING_AGENT_DIR`, cwd, npm config/cache and settings. Resolve the CLI from the workspace SDK package's declared `bin`, never `~/.pi/agent/bin/pi`.
+- Pi 1.3's package manager parses `npm:<name>@<spec>` and invokes npm with `--legacy-peer-deps`. Verify `npm:@grepco/pi-lence@file:<absolute-tarball>` end to end; source inspection alone is not acceptance. If unsupported, report the gap rather than calling unpacked-directory loading a normal npm install.
+- Canonical license is root `LICENSE` (MIT). Payload: `package.json`, `README.md`, canonical `LICENSE`, and the seven existing `src/*.ts` files. No tests, planning files, configs, caches, dependencies, scripts or symlinks. New production files must deliberately update the inventory.
+- The staged manifest copies consumer metadata (`name`, `version`, `description`, `keywords`, `license`, `repository`, `type`, `engines`, `peerDependencies`, `pi`) and a restrictive `files` allowlist. Preserve runtime engines verbatim; omit developer scripts, `devDependencies`, `devEngines` and package-manager policy rather than changing the consumer floor through a publishing override.
+- Reuse existing dependency resolutions where tests need them: `@earendil-works/pi-ai@1.3.0` for a public test-provider stream and existing `@xterm/headless@5.5.0` for screen assertions. Add only direct development references if needed; no upgrades, native-build approvals, new age/trust exceptions or runtime dependencies. Re-run frozen-policy checks after lockfile edits.
+- Test subprocesses receive an allowlisted environment, no copied auth or provider credentials, and disabled unrelated resources/telemetry/updates. Pi's `--offline` is not a network sandbox: the fixture provider itself must perform no network I/O. No natural-language input may accidentally select a real provider.
+- Real-host suites target macOS ARM64 plus advisory Ubuntu 24.04 x64 compatibility checks. Failures or unavailable tools remain failures, never successful skips; Linux-specific failures are triaged, not unconditional release blockers. This is not a distro minimum or broad Linux support guarantee. Do not claim Windows/Intel macOS acceptance from these results.
+- Node release metadata confirms `22.19.0` (2025-08-28) and `24.16.0` (2026-05-21). For CI runtime selection, reviewed age-eligible `actions/setup-node` v7.1.0 (2026-10-08) resolves to `949feb2413d6458794dcd2491c4babbbce0c15c1`; inspect its action inputs/source before adding it. It must not provision consumer machines or alter developer pins.
+- Seven Pi age exceptions expire October 22, the last at 19:14:02.843 UTC. If they expire during this wave, remove the aged-out age selectors and update their tests as a separately explained policy maintenance change; do not extend them. The Undici trust exception is separate.
+
+### Readiness file map and interfaces
+
+| Files                                                                   | Responsibility                                                                                       |
+| ----------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `pi/pi-lence/scripts/pack.mjs`, `test/packaging.test.ts`                | Canonical staged tarball producer and exact payload/license/reproducibility tests                    |
+| `pi/pi-lence/test/helpers/host-sandbox.mjs`, `test/host-modes.test.mjs` | Disposable install/update/removal and real print/JSON/RPC subprocesses                               |
+| `pi/pi-lence/test/fixtures/host-driver.ts`                              | Test-only deterministic provider and public extension commands; never shipped                        |
+| `pi/pi-lence/test/helpers/terminal.mjs`, `test/host-tui.test.mjs`       | PTY lifecycle, terminal snapshots/input, actual regular/fullscreen acceptance                        |
+| `pi/pi-lence/test/run-host.mjs`                                         | Bounded host-test entry point; chooses requested host Node without changing the test-runner runtime  |
+| `pi/pi-lence/package.json`, `tsconfig.tools.json`, root lockfile        | Script surface, checking all new tools/fixtures, exact test-only dependencies                        |
+| `.github/workflows/ci.yml`, `pi/pi-lence/README.md`, `DEVELOPMENT.md`   | Runtime checks/advisory Linux evidence, truthful consumer instructions, one disposable demo          |
+| `pi/pi-lence/src/*` and existing tests                                  | Change only for reproduced acceptance defects; retain existing behavior and fast regression coverage |
+
+Interfaces shared by the tasks (JSDoc-checked `.mjs`; no framework extraction):
+
+```ts
+declare function packCandidate(
+  packageRoot: string,
+  outputDir: string,
+): Promise<{ tarballPath: string; sha256: string }>;
+declare function createHostSandbox(
+  tarballPath: string,
+  options?: { nodePath?: string },
+): Promise<HostSandbox>;
+// HostSandbox has readonly string paths: root, home, agentDir, cwd, nodePath, cliPath.
+// run(args: string[], input?: string): Promise<{ code: number; stdout: string; stderr: string }> runs Pi.
+// spawn(command: string, args: string[], limits?: {timeoutMs?: number}): ChildProcessWithoutNullStreams uses the same private environment.
+// sessionArgs: string[] selects the fixture and disables unrelated resources; run() adds these automatically.
+// dispose(): Promise<void> terminates/reaps every owned child and removes private state.
+declare function startTui(
+  sandbox: HostSandbox,
+  options: { mode: "regular" | "fullscreen"; columns: number; rows: number },
+): Promise<TuiDriver>;
+// TuiDriver: send(input: string): void; screen(): Promise<string[]>;
+// waitFor(text: string, timeoutMs?: number): Promise<void>; close(): Promise<void>.
+```
+
+`run-host.mjs` accepts `--modes`, `--tui` or neither (both), and optional `--node <absolute executable>`. Its own runner stays on developer Node; only the actual host/consumer install uses the requested Node. Validate the child version, put its directory first on the child's PATH, and report host, runtime and OS identities with results.
+
+### Readiness review focus
+
+1. **Checkout-dependent artifacts:** P1 rejects missing license/entry points, extra files and escaping symlinks; P2 packs a disposable source snapshot, removes that snapshot, then loads only the artifact. Never rename/hide the primary checkout's source to test isolation.
+2. **False noninteractive success:** P2 requires completed model/tool work, valid JSON/RPC and orderly exit—not merely a process that fails early because credentials are missing.
+3. **Stale state across real transitions:** P3 drives new/resume/fork/reload through Pi, checks branch-specific references/pins and verifies that input/rendering still work afterward.
+4. **Terminal ownership and accessibility:** P3 covers keyboard-only regular mode, fullscreen input, narrow/Unicode rendering, dialogs and restoring the editor after dismissal/cancellation.
+5. **Leaked environment/processes:** P2/P3 deliberately inject hostile inherited settings/credentials, force a test failure, and assert normal-state sentinels survive and owned children/temp directories are removed.
+
+### Task 6 (P1): Produce and verify the consumer tarball
+
+**Files:** create `scripts/pack.mjs` and `test/packaging.test.ts` inside Pi-lence; update its `package.json`/`tsconfig.tools.json`. Consume root `LICENSE`; produce `packCandidate` above and package command `pack:candidate -- <output-dir>`.
+
+- [x] Write `packs only the consumer contract` and `identical inputs produce identical tarballs`: pack to temporary directories and assert the exact ten-file payload, `pi.extensions === ["./src/reference-ui.ts"]`, `engines.node === ">=22.19.0"`, both wildcard host peers, byte-equal canonical license, no install scripts/developer metadata/bundled dependencies, and SHA-256 of the actual tarball. Assert two identical source packs have equal digests, and input files remain unchanged.
+- [x] Add negative fixtures: absent canonical license, missing entry module, unlisted source file, and source symlink outside the package must reject before producing a usable artifact. Paths containing spaces must succeed; an existing output artifact must not be silently overwritten.
+- [x] Run `mise exec -- pnpm --filter @grepco/pi-lence exec node --test test/packaging.test.ts`; capture the specific RED failures before adding the producer.
+- [x] Implement `packCandidate` with an explicit production inventory, temporary staging, consumer-manifest projection and `npm pack --ignore-scripts --json`. Do not build/import production modules or install anything while packing. Validate the produced archive inventory; remove staging on success/failure and return the actual tarball path/digest. Expose the CLI via a main guard, not import-time execution.
+- [x] Include `scripts/**/*.mjs` and new tests in the existing tooling project/lint contract. Add the `pack:candidate` script without a publish hook. Run the focused tests, `mise exec -- pnpm --filter @grepco/pi-lence check`, and root quality/policy tests; expect all GREEN with no omitted script files. Commit only named task files: `build(pi-lence): produce a minimal verified consumer tarball`.
+
+### Task 7 (P2): Install that artifact and prove noninteractive host behavior
+
+**Files:** create `test/helpers/host-sandbox.mjs`, `test/fixtures/host-driver.ts`, `test/host-modes.test.mjs`, `test/run-host.mjs`; update package scripts/types and lockfile only as needed. Consume `packCandidate`; produce `HostSandbox` and the `test:host` command.
+
+- [x] Write sandbox safety tests with fake outer HOME/settings/auth sentinels and hostile inherited `PI_*`, npm, Git and test-runner variables. Assert all child state remains beneath the sandbox; no outer credentials/resources appear; forced child failure cleans up. Strip inherited `NODE_TEST_CONTEXT` before launching another test runner, as established by F5.
+- [x] Write `packed installation survives removal of its source snapshot`: pack a disposable copy of the producer inputs, remove that copy (not primary source), then verify the actual pinned Pi CLI installs `npm:@grepco/pi-lence@file:<tarball>`, discovers exactly the packaged extension, and loads with no package-local SDK/node_modules or producer-source fallback. Reinstall the same artifact; remove it using Pi's package command; assert only its package/settings entry changes and unrelated sandbox settings/session data survive. Do not use `--no-extensions` to bypass managed-package discovery: the empty sandbox excludes unrelated extensions while the explicit fixture is the only extra one. This proves local-artifact installation, not public registry access.
+- [x] Write real-host cases for print, JSON and RPC with a deterministic test provider and finite fixture-only tool calls. Require print to contain only the expected final answer; parse every JSON/RPC line, check successful completion/tool results and no Pi-lence terminal escapes/UI requests. Pi-lence has Ctrl+Alt+R/P shortcuts, not slash commands; verify harmless noninteractive loading without inventing commands. Prove managed discovery with a sentinel failure in the disposable installed entry, then restore it. Contrast enabled versus absent Pi-lence where appropriate.
+- [x] Run `mise exec -- pnpm --filter @grepco/pi-lence exec node --test test/host-modes.test.mjs`; capture meaningful RED assertions. Implement the sandbox, runner and test-only provider using public Pi 1.3 contracts, not manual calls to Pi-lence's event handlers or private interactive components. Read the complete RPC/JSON/provider references and matching checked examples before writing their protocol fixtures.
+- [x] Every process gets a deadline and owned cleanup. Confirm a timed-out process is terminated and reaped; do not make `--offline` a claim that all networking is impossible. Keep fixture provider/commands outside the artifact. If a product defect appears, reproduce it in a focused failing regression before repairing source.
+- [x] Run `mise exec -- pnpm --filter @grepco/pi-lence test:host -- --modes` and the package check; expect successful installation, execution, reinstall/removal, no leaked state, and no skips. Record exact versions and exit/output assertions. Commit: `test(pi-lence): verify packed installs and noninteractive Pi modes`.
+
+### Task 8 (P3): Exercise real regular/fullscreen sessions
+
+**Files:** create `test/helpers/terminal.mjs`, `test/host-tui.test.mjs`; extend the test fixture/runner from P2. Modify production modules only for reproduced defects. Consume `HostSandbox`; produce `startTui`/`TuiDriver` above.
+
+- [x] Write PTY driver tests for bounded startup/exit, literal arguments containing spaces/metacharacters, input delivery, screen output and failure cleanup. Reuse the proven approach in `herdr/auto-caffeinator/test/helpers/pty.ts` without importing a Herdr test module or moving its existing spike coverage. Use the platform's `script`/`stty` facilities with explicit macOS/Linux argument handling; no new native addon/build permission. Assert missing required tools fail clearly.
+- [x] Add direct test-only `@xterm/headless@5.5.0` if needed for terminal-buffer assertions; do not equate raw ANSI substring matches with the current screen. Run the driver tests RED, implement the driver, then establish GREEN before testing product behavior.
+- [x] Write both-mode host cases with deterministic responses/tool history: compact quiet output; complete answer/tool detail in the Ctrl+Alt+R reference browser; named pin creation/navigation; keyboard-only tab/select/open/close; narrow output with wide/combining characters; fullscreen mouse input without removing keyboard access. Check restored editor input after browser dismissal and host dialogs. Render from the installed tarball, not the source extension.
+- [x] Write host-driven startup/reload/new/resume/fork cases with distinct session/branch content. Assert new sessions clear stale visible state; resume restores the correct branch/pins; fork excludes abandoned-branch references; repeated reload does not duplicate widgets/handlers or revive closed views. Use host commands/public command-context transitions and persisted fixture sessions, not fabricated lifecycle events. Add a terminal resize case using bounded fixture-side `stty` to change the actual PTY dimensions.
+- [x] Exercise an actual prolonged deterministic operation across the existing **60 seconds without updates** warning threshold, completion and cancellation; assert `Working · no updates for …` uses native warning behavior and subsequent idle restoration. Keep threshold arithmetic/timer cardinality in fast tests; do not fake the host clock and call that real elapsed-time evidence. Give slow cases explicit bounded deadlines instead of timing-dependent sleeps throughout the suite.
+- [x] Run `mise exec -- pnpm --filter @grepco/pi-lence test:host -- --tui`; capture RED for each reproduced product defect, add its smallest fast regression and repair only that behavior. Expect GREEN in both regular/fullscreen modes, successful subsequent input and complete child/temp cleanup. Retain the existing SDK smoke as a distinct lower-level check. Commit driver/acceptance work and any justified repairs in reviewable increments.
+
+### Task 9 (P4): Require runtime evidence and document the disposable demo
+
+**Files:** update `.github/workflows/ci.yml`, Pi-lence `package.json`/`README.md`, `DEVELOPMENT.md`; add `test/host-contract.test.ts` for required scripts/matrix contracts. Consume `test:host`, its runtime selector and `pack:candidate`.
+
+- [x] Add a failing contract test requiring package-owned `test:host` in the full Pi check path, checked new tooling files, and CI coverage of Node `22.19.0`/`24.16.0` on macOS ARM64 plus advisory Ubuntu 24.04 x64 compatibility checks. Runtime tests must execute the actual host at each version, not merely typecheck against Node-22 declarations.
+- [x] Extend read-only CI with an explicit OS/runtime matrix: frozen setup on developer Node first, then reviewed SHA-pinned setup-node for the host runtime. Capture its absolute Node path before `mise exec` restores developer tools; pass that path to `test:host -- --node <path>`. Disable action package-manager caching unless deliberately configured. Do not run pnpm under Node 22 or give jobs credentials/write permissions. Avoid redundant default-runtime host runs where full checks already cover them.
+- [x] Wire complete `test:host` into `check:project`; all required host cases fail rather than skip. Keep isolated SDK smoke separately named. Run the focused contract test RED → GREEN, `mise run check`, `mise exec -- hk validate`, and the infrastructure validators. Frozen install must preserve the lockfile; inspect any new resolution/exception before proceeding.
+- [x] Update the README with consumer Node floor, tested Pi/runtime/platform matrix, local candidate command clearly labeled prerelease, normal eventual `pi install npm:@grepco/pi-lence` command clearly not yet available, package limitations and no pnpm requirement for consumers. Do not claim public installation, all-host compatibility, or reviewed release security yet.
+- [x] Put one disposable hands-on demo in `DEVELOPMENT.md`: create/print a temp root, pack there, create private HOME/agent/cwd/npm state, install using the pinned host CLI and exact tarball, open regular/fullscreen Pi with the test fixture, try references/pins/new/resume/fork/reload, exit and remove only that printed temp root. Show expected screens/state restoration and cleanup. Never use or relink the normal installation; do not require a new soak period.
+- [ ] Obtain a fresh-context whole-branch review covering P1–P4 and the inherited deletion-selection repair, reproduce findings before fixing, and re-review material fixes. Run fresh verification after fixes; preserve existing edits/trials/registrations. Push/open a `dev` PR and obtain hosted results only when authorized. Commit named files: `ci(pi-lence): gate packed host behavior across supported runtimes`.
+
+**Local execution checkpoint (2026-10-17):** P1–P3 and P4 implementation are committed through `0c4c1bb`. Fresh clean-HOME frozen setup/full checks passed: 273 tests plus SDK smoke; actual packed-host suites passed 12/12 on macOS ARM64 with both Node 22.19.0 and 24.16.0. Read-only fresh-context review covered this branch through `a011558` plus inherited hook repair; its Important RPC false-green finding was reproduced and repaired test-first in `0c4c1bb`, then all suites rerun. Two Minor test-harness follow-ups remain: earlier cleanup registration for failed TUI setup, and permanent coverage of cleanup after private allocation (manually verified). The owner subsequently authorized the next step after recording the maintenance policy. PR #2 is open against dev. Hosted run `39063493954` passed the full macOS/Node24 gate and both advisory Ubuntu runtime jobs. The macOS/Node22 suite reached 11/12 but failed an immediate control-row assertion; a bounded positive readiness wait has been added before the unchanged exact-one assertion. Post-fix hosted verification remains pending; do not describe that failed run as fully green. This is not publication readiness or permission.
+
+### Readiness handoff and remaining release gates
+
+- Present source revision, candidate tarball path/SHA-256, exact successful test matrix, independent review findings/limits, and runnable demo/cleanup commands. An unexecuted matrix cell or untested install route is a gap, not inferred success.
+- The owner approved this plan for inline execution. Planning-only inspection was: `git diff -- plan.md` and `git status --short`; expected changes are this plan plus the preserved user-owned files. No demo processes, installations or dependencies were created during planning, so there is no host cleanup to perform.
+- After readiness integrates, elaborate Changesets/version/changelog and human-approved release automation as the next bounded plan. The owner is new to Changesets and npm trusted publishing: explain the concepts and concrete configuration, walk through a safe rehearsal, distinguish versioning from publishing/approval, and invite preferences before enabling or using the release path. Still required before publication: npm `@grepco` access, dependency/source/secret review, immutable release candidate and explicit approval. Public registry install/update/removal can only be verified after an approved publication; local tarball tests do not substitute for it.
+- Herdr acceptance/builders/installers and agentlog's human trial remain in the approved repo-wide scope, not silently dropped by the Pi-first ordering. `main` stays unpromoted until all content in its proposed merge is release-ready.
 
 ## Foundation review focus
 
@@ -197,21 +318,21 @@ The following tasks cover phases 0–1 only. Product redesign, public installers
 
 ## Foundation file map
 
-| Files | Responsibility |
-| --- | --- |
-| `mise.toml`, root `package.json`, `pnpm-workspace.yaml`, `pnpm-lock.yaml` | Tool pins, workspace membership, dependency policy, shared commands |
-| `.oxlintrc.json`, `.oxfmtrc.json`, `tsconfig.base.json`, `tsconfig.tools.json` | Shared quality policy and checking repository scripts |
-| Each package's `package.json`, `tsconfig.json`, `tsconfig.core.json`, `tsconfig.tools.json` | Runtime metadata, package scripts, separately checked source/tooling projects |
-| `scripts/identities.test.mjs`, `scripts/workspace-policy.test.mjs`, `scripts/quality.test.mjs` | Repository-level identity, effective-policy, and negative quality canaries |
-| `scripts/check-projects.mjs`, `scripts/check-projects.test.mjs`, `hk.pkl` | Safe whole-project selection and hook coordination |
-| `.github/workflows/ci.yml`, `taplo.toml`, `DEVELOPMENT.md` | Read-only CI, infrastructure checks, concise repository protocol |
-| Existing package tests/build scripts and `.gitignore` | Adapt assumptions; exclude generated output without discarding useful tests |
+| Files                                                                                          | Responsibility                                                                |
+| ---------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| `mise.toml`, root `package.json`, `pnpm-workspace.yaml`, `pnpm-lock.yaml`                      | Tool pins, workspace membership, dependency policy, shared commands           |
+| `.oxlintrc.json`, `.oxfmtrc.json`, `tsconfig.base.json`, `tsconfig.tools.json`                 | Shared quality policy and checking repository scripts                         |
+| Each package's `package.json`, `tsconfig.json`, `tsconfig.core.json`, `tsconfig.tools.json`    | Runtime metadata, package scripts, separately checked source/tooling projects |
+| `scripts/identities.test.mjs`, `scripts/workspace-policy.test.mjs`, `scripts/quality.test.mjs` | Repository-level identity, effective-policy, and negative quality canaries    |
+| `scripts/check-projects.mjs`, `scripts/check-projects.test.mjs`, `hk.pkl`                      | Safe whole-project selection and hook coordination                            |
+| `.github/workflows/ci.yml`, `taplo.toml`, `DEVELOPMENT.md`                                     | Read-only CI, infrastructure checks, concise repository protocol              |
+| Existing package tests/build scripts and `.gitignore`                                          | Adapt assumptions; exclude generated output without discarding useful tests   |
 
 New paths/config splits here are implementation recommendations, not user-imposed names. Keep this file as the single working plan.
 
-## Verified inputs and reviewed dependency approvals
+## Historical foundation inputs and reviewed dependency approvals
 
-- Base: local `dev` at `5bfc63fad553a75eb0c1a2c05c81742b7c18a150`; main checkout is dirty. Recheck before execution and stop if the baseline has materially changed.
+- Foundation base was local `dev` at `5bfc63fad553a75eb0c1a2c05c81742b7c18a150`, with a dirty primary checkout. The current readiness-wave base is `789db7e`, recorded above; do not reset to the historical base.
 - Existing tools: Node **24.16.0**, pnpm **11.26.0**, mise **2026.9.1**. Start with these rather than gratuitously upgrading them.
 - Reuse existing JS tooling pins: TypeScript **7.0.2**, Oxlint **1.87.0**, oxlint-tsgolint **7.0.2003**, Oxfmt **0.72.0**, tsdown **0.23.0**. Preserve package-specific runtime dependencies.
 - Selected additional tool pins: hk **2.5.0**, zizmor **1.30.1**, taplo **0.10.0**. The proposed hk 2.7.0/zizmor 1.31.1 releases were too young; selected releases are age-eligible (October 4, September 9, May 23 respectively). hk 2.5 supports structured argv and embedded Pkl evaluation; no Pkl CLI is needed. mise's release-age setting filters fuzzy selection, not exact pins, so publication dates were explicitly reviewed. Lockfiles cover macOS ARM64 and Linux x64; upstream hk/pnpm do not provide Intel macOS assets at these versions. Actionlint remains optional.
@@ -223,13 +344,13 @@ New paths/config splits here are implementation recommendations, not user-impose
 
 ```yaml
 minimumReleaseAgeExclude:
-  - '@earendil-works/pi-coding-agent@1.3.0'
-  - '@earendil-works/pi-tui@1.3.0'
-  - '@earendil-works/pi-ai@1.3.0'
-  - '@earendil-works/pi-agent-core@1.3.0'
-  - '@earendil-works/pi-codemode@1.3.0'
-  - '@earendil-works/pi-mcp@1.3.0'
-  - '@earendil-works/pi-telemetry@1.3.0'
+  - "@earendil-works/pi-coding-agent@1.3.0"
+  - "@earendil-works/pi-tui@1.3.0"
+  - "@earendil-works/pi-ai@1.3.0"
+  - "@earendil-works/pi-agent-core@1.3.0"
+  - "@earendil-works/pi-codemode@1.3.0"
+  - "@earendil-works/pi-mcp@1.3.0"
+  - "@earendil-works/pi-telemetry@1.3.0"
 ```
 
 All seven age out by **2026-10-22 19:14:03 UTC**. The workspace now contains exactly those approved exclusions; F5 adds their read-only age-expiry audit.
@@ -274,10 +395,15 @@ Sources: [npm coding-agent metadata](https://registry.npmjs.org/@earendil-works%
 
 ```js
 const policy = {
-  engineStrict: "true", minimumReleaseAge: "10080",
-  minimumReleaseAgeStrict: "true", minimumReleaseAgeIgnoreMissingTime: "false",
-  blockExoticSubdeps: "true", trustPolicy: "no-downgrade",
-  trustLockfile: "false", strictDepBuilds: "true", saveExact: "true",
+  engineStrict: "true",
+  minimumReleaseAge: "10080",
+  minimumReleaseAgeStrict: "true",
+  minimumReleaseAgeIgnoreMissingTime: "false",
+  blockExoticSubdeps: "true",
+  trustPolicy: "no-downgrade",
+  trustLockfile: "false",
+  strictDepBuilds: "true",
+  saveExact: "true",
   autoInstallPeers: "false",
 }; // Assert allowBuilds contains only reviewed false entries (initially {}).
 ```
@@ -354,9 +480,9 @@ assert.deepEqual(selectProjects([], projects), []);
 
 **F4:** approved SDK/trust selectors are explicit; two nonessential install scripts are explicitly denied, not authorized. All original 144 package records and snapshots remain unchanged. Pi uses public host contracts and separate Node-22 source/developer-tooling types; full library checking required one age-eligible MCP SDK development peer. Typed lifecycle tests caught and fixed stale post-shutdown render callbacks. Checks passed: Pi 17 plus an isolated pinned-host smoke, auto-caffeinator 131, agentlog 65, root 17. npm dry-run bundles no dependencies; payload allowlist/LICENSE work and deeper real-host/mode acceptance remain phase 2. Original checkout/trial contents and registrations remain unchanged.
 
-**F5:** shared runner, explicit mise setup, protected opt-in hooks, read-only CI, exception audit and `DEVELOPMENT.md` are implemented. Actual hook fixtures cover partial staging, special filenames, blocked type/test failures, existing/shared/symlinked-hook refusal and inherited Git-environment isolation. Full setup/check passed with a clean HOME and live-host opt-ins unset; fixtures set only their own local Git identity. hk validation/full-plan and offline zizmor checks passed. Hosted CI has not run; no publication, promotion or normal-host registration occurred.
+**F5:** shared runner, explicit mise setup, protected opt-in hooks, read-only CI, exception audit and `DEVELOPMENT.md` are implemented. Actual hook fixtures cover partial staging, special filenames, blocked type/test failures, existing/shared/symlinked-hook refusal and inherited Git-environment isolation. Full setup/check passed with a clean HOME and live-host opt-ins unset; fixtures set only their own local Git identity. hk validation/full-plan and offline zizmor checks passed. Hosted CI subsequently passed in run `39052492073`; no publication, promotion or normal-host registration occurred.
 
-**Independent foundation review:** a fresh Pi 1.3.0 `--print` process reviewed `5bfc63f..8d143be` against F0–F5 using disposable base/head snapshots and the full 182-file change inventory. Only read/grep/find/ls were enabled; no inherited conversation, extensions, MCP, skills or context files. Verdict: ready for `dev` integration on static review, with no critical/important findings and one minor stale auto-caffeinator development-guide finding, verified and repaired in `e124add`. The reviewer did not execute tests; the coordinator reran clean-HOME setup/full checks afterward: root 33, agentlog 65, auto-caffeinator 131, Pi 17 plus smoke, all passing. Report/transcript: ignored `.superpowers/sdd/plan/cli-review-8d143be/`. Installed-hook follow-up exercised deletion-only and cross-package rename commits in disposable fixtures. It exposed hk dropping deleted paths from its file list: a broken deletion incorrectly committed. The selector now recovers staged deletions from Git; both that hook regression and a CLI regression were watched RED → GREEN. Source-side and destination-side rename failures block commits, while valid renames/deletions succeed. Fresh clean-HOME setup/full checks passed with root 38, agentlog 65, auto-caffeinator 131 and Pi 17 plus smoke. Both hosted CI jobs remain to be captured. Publication and broader host/runtime/security acceptance remain outside this review.
+**Independent foundation review:** a fresh Pi 1.3.0 `--print` process reviewed `5bfc63f..8d143be` against F0–F5 using disposable base/head snapshots and the full 182-file change inventory. Only read/grep/find/ls were enabled; no inherited conversation, extensions, MCP, skills or context files. Verdict: ready for `dev` integration on static review, with no critical/important findings and one minor stale auto-caffeinator development-guide finding, verified and repaired in `e124add`. The reviewer did not execute tests; the coordinator reran clean-HOME setup/full checks afterward: root 33, agentlog 65, auto-caffeinator 131, Pi 17 plus smoke, all passing. Report/transcript: ignored `.superpowers/sdd/plan/cli-review-8d143be/`. Installed-hook follow-up exercised deletion-only and cross-package rename commits in disposable fixtures. It exposed hk dropping deleted paths from its file list: a broken deletion incorrectly committed. The selector now recovers staged deletions from Git; both that hook regression and a CLI regression were watched RED → GREEN. Source-side and destination-side rename failures block commits, while valid renames/deletions succeed. Fresh clean-HOME setup/full checks passed with root 38, agentlog 65, auto-caffeinator 131 and Pi 17 plus smoke. Both hosted CI jobs passed at `a9fcc49` in run `39052492073`: macOS ARM64 full checks and Linux x64 Pi contracts. The owner subsequently merged PR #1 into `dev`; the hook repair has coordinator/CI verification but no separate recorded independent re-review. Publication and broader host/runtime/security acceptance remain outside this foundation review.
 
 **Existing setup warnings:** Pi and Herdr still register paths beneath the former `~/proj/pi-ext`; Herdr reports its trial manifest unavailable. Repairing Git metadata does not repair those registrations. Do not reload/restart expecting those old paths to resolve; relinking is a separate owner-approved action. npm authentication is absent, so `@grepco` publication access is unverified. No release environment exists in GitHub yet; none was created.
 

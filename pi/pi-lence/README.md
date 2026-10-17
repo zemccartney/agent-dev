@@ -1,232 +1,145 @@
 # pi-lence
 
-A quieter pi conversation, with a response browser and session-local named pins.
-Unpublished 0.1.0; the initial daily-use trial used **pi 1.1.0's fullscreen TUI in Herdr**.
-Development checks now pin **Pi 1.3.0**. Node.js **22.19.0 or later** aligns with that
-host's minimum; checks run on the repository's pinned developer Node, not every
-supported runtime/mode combination. Styling remains provisional.
+A quieter Pi conversation, with a response browser and session-local named pins.
+Runs independently of Herdr, in regular and fullscreen Pi.
 
-## Install once, then launch normally
+**Unpublished release candidate.** Requires a compatible Pi installation; tested
+with **Pi 1.3.0**. Uses Pi's runtime: no separate Node installation, compiler or
+pnpm setup is required for Pi-lence. Its Node `>=22.19.0` package metadata matches
+that host's runtime requirement; Pi's installer can arrange Node for you.
 
-From the `agent-dev` repository root:
+The tarball contains TypeScript, its manifest, this README and the canonical MIT
+license. Wildcard host peers do not promise compatibility with every Pi version.
+Maintenance is personal-first and best-effort; see the repository's
+[maintenance policy](https://github.com/zemccartney/agent-dev/blob/dev/MAINTENANCE.md).
+
+## Install
+
+Until publication, an explicitly chosen checkout can be installed locally:
 
 ```sh
-pi install ./pi/pi-lence
+pi install /absolute/path/to/agent-dev/pi/pi-lence
 pi
 ```
 
-Or from this package directory, run `pi install .`. This registers the package
-in your personal pi settings and loads it on future launches, regardless of
-working directory. No build or `npm install` is needed: pi provides the runtime
-libraries listed as peer dependencies. Only `src/reference-ui.ts` is an extension
-entry point; helper modules and tests are not independently loaded.
-
-To install on another machine, first clone
-`https://github.com/zemccartney/agent-dev.git`, then run the commands above.
-The package is not published to npm yet. Pi 1.1.0's Git installer does not select
-subdirectory packages, so install the local `pi/pi-lence` folder, not the repo
-root or its Git URL.
-
-### Updating and developing
-
-Run `git pull --ff-only` in the checkout to receive pushed changes, then restart
-pi or use `/reload`. Local edits also take effect on `/reload`. Local-path
-packages are excluded from pi's package update notifications and `pi update`;
-use Git for updates until a standalone package is published.
-
-Pi records the resolved package path. Keep the checkout in place. If you move
-it, remove the old source and install the new one:
+This changes your personal Pi settings. Keep the checkout at that path. To update,
+use `git pull --ff-only` there, then `/reload` or restart Pi. To remove it:
 
 ```sh
-pi remove /absolute/old/agent-dev/pi/pi-lence
-pi install /absolute/new/agent-dev/pi/pi-lence
+pi remove /absolute/path/to/agent-dev/pi/pi-lence
 ```
 
-`pi list` shows the registered source. To uninstall, use `pi remove` with that
-source and restart pi. This removes registration, not your checkout or pins.
+Removal unregisters the package; it does not delete your checkout or saved pins.
+`pi list` shows the registered source. If the checkout moved, remove its old source
+and install the new path. Do not load the same extension twice with an additional
+`-e` argument.
 
-**Coming from the original spike:** restart pi without the old
-`-e ./spikes/reference-ui.ts` argument; that file has moved. From the same working
-directory, `pi --continue` resumes your saved conversation with the installed
-extension. Do not use `--no-session` if you want pins to survive exit.
+After an approved npm publication, the intended command will be
+`pi install npm:@grepco/pi-lence`. **That public installation is not available or
+verified yet.** Local tarball tests do not establish npm scope access or registry
+installation. For a no-registration trial, use
+`pi -e /absolute/path/to/agent-dev/pi/pi-lence/src/reference-ui.ts` instead.
 
-### Try without installing
+## Use
 
-From the repository root:
+| Action                            | Keyboard      | Fullscreen mouse  |
+| --------------------------------- | ------------- | ----------------- |
+| Quiet / Raw tool display          | Ctrl+Alt+Q    | View button       |
+| Pin/unpin latest response         | Ctrl+Alt+P    | Pin latest button |
+| Open response browser             | Ctrl+Alt+R    | Responses button  |
+| Switch Pins / All                 | Tab           | Tab label         |
+| Select / read                     | Arrows, Enter | Response row      |
+| Pin/unpin the response being read | `p`           | Pin / Unpin       |
+| Return from reader to list        | `b`           | Back              |
+| Close and return to draft         | Escape        | Close             |
 
-```sh
-pi --tui-mode fullscreen -e ./pi/pi-lence/src/reference-ui.ts
-```
+Regular mode leaves mouse handling to your terminal; use the keyboard controls.
+Terminal support for modified shortcuts varies. Naming uses Enter to save and
+Escape to cancel. Empty names are rejected. Arrows and PageUp/PageDown scroll;
+Home/End reach the ends of a response. Resize a very small terminal if prompted.
 
-Use this alternative only when the package is not already installed.
+The browser opens on **Pins**. **All** includes earlier assistant responses, which
+can be pinned retroactively. Search matches response text and pin names in the
+current tab, not thinking or tool output. Browsing never submits/replaces your
+draft or calls the model. Reader positions last until the extension reloads.
 
-## Interaction
-
-Controls sit at the right below the composer:
-
-- **View: Quiet / View: Raw** switches tool presentation (see below).
-- **Pin latest** opens a naming form for the latest assistant response. After
-  saving, it becomes **Unpin latest**. Clicking again removes that pin.
-- The latest-response control is disabled while pi is busy or history is empty.
-  A newly completed agent run updates which response it targets; older pins stay.
-- **Responses** opens on **Pins**, with an **All** tab for the rest of the history.
-  The active tab is accent-colored and bold; the inactive tab is muted. Select a
-  response to read it, then **Pin** or **Unpin** it. This also works retroactively.
-- Search matches **full assistant-response text and pin names** within the current
-  tab, case-insensitively. It does not search thinking, tool output, or timestamps.
-  Rows use the whole width: a pin name in Pins, or a response's first line in All.
-  A ◆ marks pinned responses in All. There is no timestamp/description side column.
-  A spacer row with a short muted divider separates entries; divider clicks do
-  nothing. Fewer entries fit per page, but the modal stays the same size.
-- Click or press Enter to read; Tab switches lists. Use the wheel, arrows, or
-  PageUp/PageDown to browse long lists or responses. Home/End also work in the
-  reader. **Back** returns to the list; **Close** or Escape returns to your draft.
-- Naming starts with a **blank input**. Enter a memorable name; Enter saves and
-  Escape cancels. Saving an empty name is not allowed.
-- The modal uses a fixed 90% of the pane's height and up to 95% of its width, with
-  more spacing between controls. Lists and responses scroll inside it; adding
-  results or searching does not grow or shrink it. The background is neutral.
-- Ctrl+Alt+P toggles the latest pin; Ctrl+Alt+R opens the browser. Terminal shortcut
-  support varies. No conversation commands are required for normal use.
-
-The overlay owns keyboard input until dismissed. Your main draft is not replaced
-or submitted. Reading positions are remembered while this extension stays loaded.
+Pins belong to stable message IDs on the active session branch. They are stored
+as append-only `response-references.pin.v1` entries, outside model context.
+Resume restores them; a fork excludes pins targeting abandoned history. Use a
+saved session, not `--no-session`, to keep pins across exits.
 
 ## Quiet / Raw
 
-Quiet is the default on extension load. It hides routine call arguments and result
-text for `read`, `write`, `edit`, `bash`, `powershell`, `grep`, `find`, and `ls`.
-Your messages and the agent's prose, including interim acknowledgments, remain in
-the ordinary transcript. Older turns are **not** hidden, and your thinking-display
-setting is unchanged.
+Quiet hides successful routine calls/results for `read`, `write`, `edit`, `bash`,
+`powershell`, `grep`, `find` and `ls`. It does not change tool execution, history,
+model context, your messages, assistant prose or your thinking-display setting.
+Raw restores native rendering, including its collapsed state: **Ctrl+O** expands
+native tool output. The reference browser contains assistant prose, not tool results.
 
-Click **View: Quiet** to switch to Raw, or use Ctrl+Alt+Q. Raw restores the tools'
-normal renderers and respects pi's existing collapsed/expanded setting; use Ctrl+O
-to expand their output. Switching modes does not alter execution, session data,
-model context, or your draft. Pins still work in either mode.
-
-Pi's ordinary **Working** indicator is unchanged during normal activity. There is
-no additional status row. After **60 seconds without a model/tool update**, its
-existing label becomes a yellow/amber warning (using the theme's warning color):
+Pi's ordinary Working indicator stays intact. After **60 seconds without a
+model/tool update**, its label uses the native warning color:
 
 ```text
 Working · no updates for 90s · bash
 ```
 
-New activity immediately restores pi's normal wording. The timer never counts
-its own redraws as activity. The warning is suppressed while an extension dialog
-is open; pi's retry and compaction indicators keep their own wording and priority.
-Completion, cancellation, session switching, and reload clear our label override.
+New activity, completion, cancellation, session replacement and reload clear the
+override. Open extension dialogs suppress it; native retry/compaction indicators
+retain their own wording and priority. Polling does not count as activity.
 
-This is a yellow flag, not a confirmed stall. A silent healthy command and a hung
-command can look identical; Raw is available to inspect the details. A chatty hung
-process can still appear active. A clock jump after sleep increases the displayed
-age; the extension cannot update while the machine sleeps or after pi crashes.
+This is a warning, not stall detection: healthy silent work and a hung command can
+look identical. A chatty hung process can look active; sleeping the computer can
+increase the reported age. Use Raw to inspect details.
 
-Safety boundaries for this prototype:
+Failed results and unfamiliar tools remain visible. Native dialogs, notifications,
+provider errors and cancellation displays are not replaced. Warnings embedded in
+otherwise successful shell output cannot reliably be recognized and may be hidden.
+There is no cross-session pin library or automatic checklist updating.
 
-- Failed tool results remain visible in both modes, using pi's explicit error flag.
-- Native permission dialogs, notifications, provider errors, retry/compaction
-  indicators, and cancellation displays are not replaced or suppressed.
-- We no longer add separate dialog, failure, or cancellation notices; pi's own
-  dialogs and transcript messages provide that feedback.
-- Unfamiliar tools remain visible. Inline images remain visible. Warnings or
-  interactive requests printed as ordinary successful shell output cannot be
-  reliably recognized; use Raw when activity is unexpectedly quiet.
+## Development and evidence
 
-### Quiet-mode checkpoint
-
-1. Ask for a small task that uses tools. Compare Quiet and Raw during and after it.
-2. Notice whether the remaining prose feels like a readable conversation rather
-   than a log. Errors and dialogs should still demand attention.
-3. To exercise the warning, ask the agent to run `sleep 70` through its bash tool
-   with a timeout of at least 90 seconds. The composer should look normal for the
-   first minute, then show the yellow warning, and clear it when the command ends.
-   This checks visibility of a wait, not stall detection.
-4. Switch back to Raw to inspect the same tool history; check that pins and an
-   unsent draft still behave normally.
-
-## Pinning checkpoint — checklist plus a detour
-
-1. Get a checklist, click **Pin latest**, and name it.
-2. Confirm the button changes to **Unpin latest**. Optionally unpin/re-pin it.
-3. Ask follow-ups. The control should disable while working, then refer to the new
-   response. Find the original checklist under **Responses → Pins**.
-4. Open **All**, find an older unpinned response, read it, and pin it there.
-5. Leave an unsent draft, open a reference, scroll, close, and continue typing.
-6. In a saved session, reload or resume it and verify the pins are still there.
-
-Notice whether locating, naming, and repeatedly consulting references feels easy,
-particularly whether closing the reader to compose a reply gets in your way.
-This feedback determines the next interaction change, not visual polish yet.
-
-## Scope and storage
-
-- The browser reads the current session branch, including original entries still
-  stored before compaction. It lists assistant messages containing prose; that
-  includes textual acknowledgments, not just final answers. Thinking and tool
-  blocks are excluded. The full main transcript is untouched.
-- New run output is refreshed when the agent settles. A pin targets a stable
-  message ID, not whichever response happens to be latest when the label is saved.
-- Pins are append-only `response-references.pin.v1` custom session entries.
-  They follow the active branch and do **not** enter model context. Browsing,
-  naming, and unpinning do not call the model or rewind the conversation.
-- No checklist auto-updates, excerpts, user-message browsing, cross-session
-  reference library, or “respond to this” action yet.
-
-## Verification
-
-After the repository's frozen workspace install, from its root:
+From a prepared repository checkout:
 
 ```sh
-pnpm --filter @grepco/pi-lence check
+mise exec -- pnpm --filter @grepco/pi-lence check
+mise exec -- pnpm --filter @grepco/pi-lence pack:candidate -- /tmp/pi-lence-candidate
 ```
 
-This runs formatting, isolated source/tooling typechecks, lint, tests, and the
-focused host smoke. SDK pins and declaration dependencies are development-only;
-Pi-provided runtime libraries remain wildcard peers and are not bundled. The
-MCP SDK development pin satisfies an optional peer referenced by Google's SDK
-declarations, without enabling peer auto-installation or skipping library checks.
+Use a fresh output directory; packing refuses to overwrite an existing tarball.
+It prints the artifact path and SHA-256, stages consumer-only metadata and copies
+the root license without modifying source. It does **not** publish.
 
-State tests cover filtering, identity, metadata replay, unpinning, branch scope,
-and the 60-second warning threshold, activity reset, dialog suppression, settlement,
-and a sleep-sized gap. Typed lifecycle tests cover startup, reload, new, resume,
-and fork; one timer after start, none after shutdown; branch-state resets; and
-no terminal callbacks or timers in RPC, JSON, or print mode, even after a TUI session.
-Additional development smoke checks exercised busy-state guards, labels, both
-lists, full-text/name search, scroll position, active tabs, blank naming, and
-fixed-height rendering with 120 responses and pane resizing, spaced-row click
-mapping, and inert separators. A fullscreen
-pseudoterminal trial verified mouse pin/unpin, retroactive pinning, reader/draft
-focus, and Pins opening by default after restarting pi. Real Herdr usability
-remains the human checkpoint.
+The full check includes formatting/types/lint, fast regressions, a separately
+identified pinned-SDK smoke, and real-host tests against the packed artifact.
+Expect roughly two minutes for the real elapsed-time warning cases.
+`check:contracts` is the faster subset, **not** the complete acceptance gate.
 
-Quiet-mode development checks compared all eight wrapped tool renderers with pi's
-native Raw text rendering, confirmed failed/unknown tools stay visible, and
-simulated waiting, dialog, provider-failure, cancellation, and recovery events.
-The integration check verifies that pi's package resolver exposes only the
-extension entry point, then uses pi's real status components and label API with
-a controlled clock. It covers warning color, normal-label restoration,
-retry/compaction precedence, and timer/override cleanup:
+| Actual-host target                         | Evidence on this branch                         |
+| ------------------------------------------ | ----------------------------------------------- |
+| macOS ARM64, Node 22.19.0 and 24.16.0      | Local packed-host suites passed on Pi 1.3.0     |
+| Ubuntu 24.04 x64, Node 22.19.0 and 24.16.0 | Packed-host suites passed on Pi 1.3.0; advisory |
+| Other hosts/platforms/runtimes             | Not verified                                    |
 
-```sh
-pnpm --filter @grepco/pi-lence test:integration
-```
+[Hosted CI results](https://github.com/zemccartney/agent-dev/actions/workflows/ci.yml)
+identify the tested revision and any current failures; passing Linux checks do not
+create a distro-support or ongoing maintenance commitment.
 
-The smoke resolves the pinned workspace SDK by default, creates a disposable HOME,
-and removes it afterward. It uses some private host components and manually emits
-typed events: it is version-coupled evidence, not full host-driven lifecycle or
-normal/fullscreen acceptance. Those deeper checks remain outstanding.
+Real-host tests cover managed tarball install/reinstall/removal, print/JSON/RPC,
+regular/fullscreen UI, keyboard and fullscreen mouse access, saved pins,
+new/resume/fork/reload, dialogs, errors, draft preservation, resize/Unicode,
+and actual warning completion/cancellation. They use private homes and a
+network-free test provider, not personal credentials or a normal installation.
 
-A fullscreen pseudoterminal trial verified Quiet/Raw clicks, intact transcripts,
-a native permission dialog, stored tool/provider failures, and draft preservation.
-Live provider retries and actual machine sleep have **not** been end-to-end tested.
+The SDK smoke uses some private host components and controlled events; it is not
+substituted for those CLI tests. Live-provider retries, actual computer sleep,
+public registry installs and a comprehensive release security review remain
+outside this evidence. The initial owner daily-use trial is accepted; no new soak
+period is required.
 
-Development browser mockups are untracked under the repository's
-`.superpowers/brainstorm/` directory and are not part of this package.
+See the repository's [development protocol](https://github.com/zemccartney/agent-dev/blob/dev/DEVELOPMENT.md)
+for the disposable interactive demo and cleanup. Styling and README wording remain
+subject to owner review before publication.
 
-## License and future distribution
+## License
 
-MIT, under the repository's [root license](../../LICENSE). Before publishing a
-standalone npm release, include that license text in the published archive.
-See the repository's [scratch ideas](../../docs/ideas.md) for possible future work.
+MIT. Every candidate tarball includes the repository's canonical `LICENSE`.

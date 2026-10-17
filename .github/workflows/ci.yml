@@ -35,10 +35,26 @@ jobs:
       - name: Shared checks
         run: mise run check
 
-  pi-linux:
-    name: Pi contracts (Linux x64)
-    runs-on: ubuntu-24.04
+  pi-hosts:
+    # Linux failures stay visible, but are advisory for merge/release decisions.
+    # See MAINTENANCE.md; do not make compatibility jobs mandatory merge checks.
+    name: Pi ${{ matrix.purpose }} (${{ matrix.os }}, Node ${{ matrix.node }})
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # macOS/Node 24 is already exercised by the full check job.
+          - os: macos-15
+            node: 22.19.0
+            purpose: host
+          - os: ubuntu-24.04
+            node: 22.19.0
+            purpose: compatibility
+          - os: ubuntu-24.04
+            node: 24.16.0
+            purpose: compatibility
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -51,5 +67,23 @@ jobs:
           persist_github_token: false
       - name: Frozen developer setup
         run: mise run setup
-      - name: Pi source, tooling, lifecycle and isolated pinned-host smoke
-        run: mise exec -- pnpm --filter @grepco/pi-lence check
+      - name: Linux source, tooling, unit tests and isolated SDK smoke
+        if: matrix.node == '24.16.0'
+        run: mise exec -- pnpm --filter @grepco/pi-lence check:contracts
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ matrix.node }}
+          package-manager-cache: false
+      - name: Capture host runtime before restoring developer tools
+        id: host-node
+        run: printf 'path=%s\n' "$(command -v node)" >> "$GITHUB_OUTPUT"
+      - name: Packed installation and real host modes
+        env:
+          HOST_NODE: ${{ steps.host-node.outputs.path }}
+        run: |
+          # Restore developer Node after mise activation, which can retain setup-node's PATH priority.
+          # Only test:host's explicitly selected child runtime should use HOST_NODE.
+          mise exec -- sh -c '
+            export PATH="$(mise where node)/bin:$PATH"
+            exec pnpm --filter @grepco/pi-lence test:host -- --node "$HOST_NODE"
+          '

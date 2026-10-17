@@ -66,6 +66,12 @@ repository contains extension code, not conversation data.
 Npm publishing is deferred. A future standalone `@grepco/pi-lence` release can use pi's
 package update notifications without changing this monorepo layout.
 
+## Maintenance
+
+These are personal-first tools shared publicly, maintained primarily for the owner's
+workflows. See [MAINTENANCE.md](MAINTENANCE.md) for best-effort compatibility,
+Linux CI's advisory role, runtime prerequisites and release-approval boundaries.
+
 ## Ideas
 
 [Scratch ideas](docs/ideas.md) are possibilities to revisit, not a committed roadmap.

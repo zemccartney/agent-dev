@@ -291,7 +291,7 @@ export class ReferenceBrowser implements Component, Focusable {
           },
         },
       ];
-      hint = "Read-only · wheel / ↑↓ / PgUp/PgDn to scroll · Esc returns to your draft";
+      hint = "Read-only · b back · p pin/unpin · ↑↓ / PgUp/PgDn scroll · Esc to draft";
     }
     const content = new Box(0, 0);
     for (const component of body) content.addChild(component);
@@ -335,6 +335,10 @@ export class ReferenceBrowser implements Component, Focusable {
         this.search.handleInput(data);
         if (before !== this.search.getValue()) this.rebuildList();
       }
+    } else if (matchesKey(data, "b")) {
+      this.showList();
+    } else if (matchesKey(data, "p")) {
+      this.togglePin();
     } else if (this.scroll) {
       if (matchesKey(data, "up")) this.scroll.scrollBy(-1);
       if (matchesKey(data, "down")) this.scroll.scrollBy(1);
