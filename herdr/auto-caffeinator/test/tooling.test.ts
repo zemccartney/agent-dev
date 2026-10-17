@@ -9,6 +9,11 @@ function config(name: string): Record<string, unknown> {
   assert.ok(existsSync(path), `Missing ${name}`);
   return JSON.parse(readFileSync(path, "utf8")) as Record<string, unknown>;
 }
+function effective(tool: string, args: string[]): Record<string, unknown> {
+  const result = spawnSync("pnpm", ["exec", tool, ...args], { cwd: root, encoding: "utf8" });
+  assert.equal(result.status, 0, result.stdout + result.stderr);
+  return JSON.parse(result.stdout) as Record<string, unknown>;
+}
 void test("effective pnpm policy fails closed on fresh, undated, exotic, downgraded or unreviewed dependencies", () => {
   for (const [key, want] of Object.entries({
     engineStrict: "true",
@@ -34,15 +39,27 @@ void test("effective pnpm policy fails closed on fresh, undated, exotic, downgra
   assert.deepEqual(JSON.parse(r.stdout), {});
 });
 void test("linting retains built-in plugins and type awareness; TypeScript runs independently", () => {
-  const lint = config(".oxlintrc.json");
-  assert.deepEqual(lint.plugins, ["eslint", "typescript", "unicorn", "oxc", "import", "node"]);
+  const lint = effective("oxlint", ["--print-config"]);
+  assert.deepEqual((lint.plugins as string[]).sort(), [
+    "import",
+    "node",
+    "oxc",
+    "typescript",
+    "unicorn",
+  ]);
+  assert.equal((lint.rules as Record<string, string>)["constructor-super"], "deny");
   assert.equal((lint.options as { typeAware: boolean }).typeAware, true);
-  const ts = config("tsconfig.json").compilerOptions as Record<string, unknown>;
+  const ts = effective("tsc", ["--showConfig", "-p", "tsconfig.core.json"])
+    .compilerOptions as Record<string, unknown>;
   assert.equal(ts.strict, true);
-  assert.equal(ts.noEmit, true);
-  assert.equal(ts.module, "ESNext");
-  assert.equal(ts.moduleResolution, "Bundler");
-  assert.equal(config("tsconfig.json").references, undefined);
+  assert.equal(ts.emitDeclarationOnly, true);
+  assert.match(String(ts.outDir), /node_modules\/\.cache\/agent-dev\/core/);
+  assert.equal(ts.module, "esnext");
+  assert.equal(ts.moduleResolution, "bundler");
+  const tools = effective("tsc", ["--showConfig", "-p", "tsconfig.tools.json"])
+    .compilerOptions as Record<string, unknown>;
+  assert.equal(tools.noEmit, true);
+  assert.equal(tools.disableSourceOfProjectReferenceRedirect, true);
   const pkg = config("package.json");
   assert.deepEqual(pkg.devEngines, {
     runtime: { name: "node", version: "24.16.0", onFail: "error" },
@@ -53,5 +70,5 @@ void test("linting retains built-in plugins and type awareness; TypeScript runs 
   const runtime = pkg.dependencies as Record<string, string>;
   assert.deepEqual(Object.keys(runtime), ["@earendil-works/pi-tui"]);
   assert.match(runtime["@earendil-works/pi-tui"], /^\d+\.\d+\.\d+$/);
-  assert.match((pkg.scripts as Record<string, string>).typecheck, /\btsc\b.*--noEmit/);
+  assert.match((pkg.scripts as Record<string, string>).typecheck, /\btsc\b.*--build/);
 });

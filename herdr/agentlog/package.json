@@ -11,14 +11,16 @@
   },
   "scripts": {
     "build": "tsdown",
-    "typecheck": "tsc --noEmit",
-    "lint": "oxlint --type-aware --deny-warnings .",
-    "lint:fix": "oxlint --type-aware --deny-warnings --fix .",
+    "typecheck": "tsc --build",
+    "types:core": "tsc --build tsconfig.core.json",
+    "lint": "pnpm types:core && oxlint --type-aware --deny-warnings --tsconfig tsconfig.core.json src && oxlint --type-aware --deny-warnings --tsconfig tsconfig.tools.json scripts test tsdown.config.ts",
+    "lint:fix": "pnpm types:core && oxlint --type-aware --deny-warnings --fix --tsconfig tsconfig.core.json src && oxlint --type-aware --deny-warnings --fix --tsconfig tsconfig.tools.json scripts test tsdown.config.ts",
     "format": "oxfmt .",
     "format:check": "oxfmt --check .",
-    "test": "pnpm build && node --test --test-reporter=tap test/*.test.ts",
+    "test": "pnpm types:core && pnpm build && node --test --test-reporter=tap test/*.test.ts",
     "test:integration": "pnpm build && node --test --test-reporter=tap --test-concurrency=1 test/integration/*.test.ts",
-    "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test"
+    "check:project": "pnpm typecheck && pnpm lint && pnpm test",
+    "check": "pnpm format:check && pnpm check:project"
   },
   "dependencies": {
     "@earendil-works/pi-tui": "1.0.4"

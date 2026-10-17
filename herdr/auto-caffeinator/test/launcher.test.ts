@@ -169,7 +169,7 @@ void test("launcher resolves its location and preserves shell-looking arguments 
   assert.deepEqual(JSON.parse(result.stdout), args);
   assert.equal(existsSync(injected), false);
 });
-void test("built consumer launcher and cached-manifest shim work without source TypeScript or developer dependencies", async (t) => {
+void test("built consumer launcher works without source or developer dependencies and needs no legacy shim", async (t) => {
   const f = await fixture(t);
   await cp(join(root, "dist"), join(f.dir, "dist"), { recursive: true });
   const result = f.launch(["--help"]);
@@ -177,15 +177,11 @@ void test("built consumer launcher and cached-manifest shim work without source 
   assert.match(result.stdout, /ensure.*monitor.*controls/s);
   assert.equal(existsSync(join(f.dir, "node_modules")), false);
   assert.equal(existsSync(join(f.dir, "src")), false);
-  await mkdir(join(f.dir, "src"));
-  await cp(join(root, "src", "main.mjs"), join(f.dir, "src", "main.mjs"));
-  const legacy = spawnSync(process.execPath, [join(f.dir, "src", "main.mjs"), "--help"], {
-    cwd: tmpdir(),
-    env: f.env,
-    encoding: "utf8",
-  });
-  assert.equal(legacy.status, 0, legacy.stderr);
-  assert.match(legacy.stdout, /ensure.*monitor.*controls/s);
+  assert.equal(
+    existsSync(join(root, "src/main.mjs")),
+    false,
+    "obsolete cached-manifest shim removed",
+  );
 });
 void test("package build and all manifest entrypoints use the prerequisite guards", () => {
   const pkg = object(JSON.parse(readFileSync(join(root, "package.json"), "utf8")));

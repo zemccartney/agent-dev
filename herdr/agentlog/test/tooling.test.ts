@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { existsSync, readFileSync, realpathSync } from "node:fs";
+import { existsSync, realpathSync } from "node:fs";
 import { mkdtemp, writeFile, rm, symlink } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -39,29 +39,41 @@ await test("package policy fails closed rather than inheriting weaker global def
 
 await test("quality configuration retains all plugins and covers source, tests and build config through symlinks", async (t) => {
   assert.ok(existsSync(join(root, ".oxlintrc.json")), "lint configuration is required");
-  const config: { plugins: string[] } = JSON.parse(
-    readFileSync(join(root, ".oxlintrc.json"), "utf8"),
-  );
-  assert.deepEqual(config.plugins, ["eslint", "typescript", "unicorn", "oxc", "import", "node"]);
+  const printed = spawnSync(join(root, "../../node_modules/.bin/oxlint"), ["--print-config"], {
+    cwd: root,
+    encoding: "utf8",
+  });
+  assert.equal(printed.status, 0, printed.stderr);
+  const config: { plugins: string[]; rules: Record<string, string> } = JSON.parse(printed.stdout);
+  assert.deepEqual(config.plugins.sort(), ["import", "node", "oxc", "typescript", "unicorn"]);
+  assert.equal(config.rules["constructor-super"], "deny");
   const dir = await mkdtemp(join(tmpdir(), "agentlog-coverage-"));
   t.after(() => rm(dir, { recursive: true, force: true }));
   const alias = join(dir, "checkout");
   await symlink(root, alias, "dir");
   for (const cwd of [root, alias]) {
-    const result = spawnSync(join(root, "../../node_modules/.bin/tsc"), ["--listFilesOnly"], {
-      cwd,
-      env: { ...process.env, PWD: cwd },
-      encoding: "utf8",
-    });
-    assert.equal(result.status, 0, result.stdout + result.stderr);
-    const files = new Set(
-      result.stdout
-        .trim()
-        .split(/\r?\n/u)
-        .map((path) => realpathSync(path)),
-    );
-    for (const path of ["src/cli.ts", "test/tooling.test.ts", "tsdown.config.ts"]) {
-      assert.ok(files.has(realpathSync(join(root, path))), path);
+    for (const project of ["core", "tools"]) {
+      const result = spawnSync(
+        join(root, "../../node_modules/.bin/tsc"),
+        ["-p", join(root, `tsconfig.${project}.json`), "--listFilesOnly"],
+        {
+          cwd,
+          env: { ...process.env, PWD: cwd },
+          encoding: "utf8",
+        },
+      );
+      assert.equal(result.status, 0, result.stdout + result.stderr);
+      const files = new Set(
+        result.stdout
+          .trim()
+          .split(/\r?\n/u)
+          .map((path) => realpathSync(path)),
+      );
+      for (const path of project === "core"
+        ? ["src/cli.ts"]
+        : ["test/tooling.test.ts", "tsdown.config.ts"]) {
+        assert.ok(files.has(realpathSync(join(root, path))), path);
+      }
     }
   }
 });
@@ -73,9 +85,16 @@ await test("independent compiler and type-aware lint reject bad code, accept rep
   await writeFile(
     join(dir, "tsconfig.json"),
     JSON.stringify({
-      extends: join(root, "tsconfig.json"),
+      extends: join(root, "tsconfig.tools.json"),
+      references: [{ path: join(root, "tsconfig.core.json") }],
       include: ["probe.ts"],
-      compilerOptions: { types: [], rootDir: dir },
+      compilerOptions: {
+        types: [],
+        rootDir: dir,
+        composite: false,
+        incremental: true,
+        tsBuildInfoFile: join(dir, "cache.tsbuildinfo"),
+      },
     }),
   );
   const probe = join(dir, "probe.ts");

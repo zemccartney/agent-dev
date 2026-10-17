@@ -25,13 +25,17 @@ function tool(name: "tsc" | "oxlint", args: string[], cwd = root) {
 }
 
 void test("TypeScript covers every owned source, probe, test, fixture and build config", async () => {
-  const result = tool("tsc", ["--listFilesOnly"]);
-  assert.equal(result.status, 0, result.output);
+  const projects = ["tsconfig.core.json", "tsconfig.tools.json"].map((project) =>
+    tool("tsc", ["-p", join(root, project), "--listFilesOnly"]),
+  );
+  for (const result of projects) assert.equal(result.status, 0, result.output);
+  const result = { output: projects.map((project) => project.output).join("\n") };
   const checked = new Set(
     await Promise.all(
       result.output
         .trim()
         .split(/\r?\n/)
+        .filter(Boolean)
         .map((path) => realpath(path)),
     ),
   );
@@ -88,8 +92,12 @@ void test("coverage canary accepts a symlinked checkout but rejects a genuinely 
   await symlink(join(root, "../../node_modules"), join(fixture, "node_modules"), "dir");
   await writeFile(join(fixture, "package.json"), '{"type":"module"}');
   await writeFile(
-    join(fixture, "tsconfig.json"),
+    join(fixture, "tsconfig.core.json"),
     JSON.stringify({ files: ["src/included.ts"], include: [] }),
+  );
+  await writeFile(
+    join(fixture, "tsconfig.tools.json"),
+    JSON.stringify({ files: ["test/quality-canaries.test.ts"], include: [] }),
   );
   await writeFile(join(fixture, "src/included.ts"), "export {};\n");
   await writeFile(join(fixture, "src/missing.ts"), "export {};\n");
@@ -111,7 +119,14 @@ void test("real inherited tools reject type errors and floating promises, then a
     await writeFile(
       config,
       JSON.stringify({
-        extends: join(root, "tsconfig.json"),
+        extends: join(root, "tsconfig.tools.json"),
+        references: [{ path: join(root, "tsconfig.core.json") }],
+        compilerOptions: {
+          composite: false,
+          incremental: true,
+          rootDir: dir,
+          tsBuildInfoFile: join(dir, "cache.tsbuildinfo"),
+        },
         files: ["canary.ts"],
         include: [],
         exclude: [],

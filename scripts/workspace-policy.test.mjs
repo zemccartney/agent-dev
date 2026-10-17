@@ -22,6 +22,7 @@ const expected = {
   autoInstallPeers: "false",
 };
 
+/** @param {string} cwd */
 function verifyPolicy(cwd) {
   for (const [key, value] of Object.entries(expected)) {
     const result = spawnSync("pnpm", ["config", "get", key], { cwd, encoding: "utf8" });
@@ -72,9 +73,9 @@ test("one root lockfile and tool pin govern every package", () => {
     encoding: "utf8",
   });
   assert.equal(result.status, 0, result.stderr);
-  const names = JSON.parse(result.stdout)
-    .map((project) => project.name)
-    .sort();
+  /** @type {{ name: string }[]} */
+  const projects = JSON.parse(result.stdout);
+  const names = projects.map((project) => project.name).sort();
   assert.deepEqual(names, [
     "@grepco/agent-dev",
     "@grepco/agentlog",
