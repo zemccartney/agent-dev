@@ -2,6 +2,17 @@
   "name": "@grepco/agent-dev",
   "private": true,
   "type": "module",
+  "scripts": {
+    "format:root": "oxfmt scripts *.json .ox*.json pnpm-workspace.yaml .github README.md DEVELOPMENT.md",
+    "format:check:root": "oxfmt --check scripts *.json .ox*.json pnpm-workspace.yaml .github README.md DEVELOPMENT.md",
+    "format": "pnpm format:root && pnpm -r run format && taplo fmt",
+    "test:repo": "node --test scripts/*.test.mjs",
+    "test": "pnpm test:repo && pnpm -r run test",
+    "check:repo:code": "tsc -p tsconfig.tools.json && oxlint --type-aware --deny-warnings --tsconfig tsconfig.tools.json scripts && pnpm test:repo",
+    "check:repo": "pnpm format:check:root && pnpm check:repo:code",
+    "check:infra": "hk validate && taplo lint && taplo fmt --check && zizmor --offline .github/workflows/ci.yml && node scripts/check-exceptions.mjs",
+    "check": "pnpm check:repo && pnpm -r run format:check && node scripts/check-projects.mjs --all && pnpm check:infra"
+  },
   "devDependencies": {
     "@types/node": "24.19.1",
     "oxfmt": "0.72.0",

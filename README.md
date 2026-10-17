@@ -8,8 +8,8 @@ The private root workspace owns shared development tools and dependency policy.
 
 - **[pi-lence](pi/pi-lence/README.md)** — a quieter pi conversation, with a response
   browser, named pins, Quiet/Raw tool display, and an amber warning after a minute
-  without model/tool updates. First trial release; tested with pi 1.1.0's
-  fullscreen TUI in Herdr.
+  without model/tool updates. The initial trial used pi 1.1.0's fullscreen TUI in
+  Herdr; development contract checks now pin Pi 1.3.0.
 - **[auto-caffeinator](herdr/auto-caffeinator/README.md)** — automatic, time-bounded caffeination of local Pi and Claude Code runs on macOS. See its [guided demo](herdr/auto-caffeinator/docs/demo.md).
 - **[agentlog](herdr/agentlog/README.md)** — find, organize, and reopen saved Pi conversations from Herdr.
 
@@ -45,16 +45,17 @@ git pull --ff-only
 Then restart pi or run `/reload` in an existing session. Local-path packages
 are not updated or checked for updates by pi; Git handles this workflow.
 
-For development, use Node 24.16.0 and pnpm 11.26.0 (pinned in `mise.toml`).
-Install from the repository root; package commands inherit the shared policy:
+For development, review this checkout and use its pinned mise toolchain:
 
 ```sh
-pnpm install --frozen-lockfile
-pnpm --filter @grepco/pi-lence test
-pnpm --filter @grepco/pi-lence test:integration /path/to/node_modules/@earendil-works/pi-coding-agent
-pnpm --filter @grepco/auto-caffeinator check
-pnpm --filter @grepco/agentlog check
+mise trust
+mise run setup
+mise run check
 ```
+
+See [DEVELOPMENT.md](DEVELOPMENT.md) for repository protocol, optional hooks,
+changed-project checks, dependency exceptions, and safe verification/cleanup.
+Setup does not install hooks or register host integrations.
 
 Use `/reload` to try Pi edits only in a session explicitly loading this checkout.
 
