@@ -165,6 +165,83 @@ await test("real installed pre-commit preserves partial staging and unrelated un
   assert.match(f.git(["show", `HEAD:${unusual}`]).stdout, /export const extra = 3;/);
   await assert.rejects(readFile(join(f.root, "INJECTED")));
 });
+await test("real installed pre-commit checks deletion-only commits without formatting missing files", async (t) => {
+  const f = await fixture(t);
+  await writeFile(join(f.root, "packages/one/dependency.ts"), "export const value = 1;\n");
+  await writeFile(join(f.root, "packages/one/unused.ts"), "export const unused = 1;\n");
+  await writeFile(
+    join(f.root, "packages/one/fixture.ts"),
+    'import { value } from "./dependency.js";\nexport const count = value;\n',
+  );
+  f.git(["add", "packages/one"]);
+  f.git(["commit", "--no-verify", "--quiet", "-m", "deletion fixture"]);
+  const baseline = f.run("pnpm", ["--filter", "@fixture/one", "check:project"]);
+  assert.equal(baseline.status, 0, baseline.stdout + baseline.stderr);
+  const installed = f.install();
+  assert.equal(installed.status, 0, installed.stdout + installed.stderr);
+  const head = f.git(["rev-parse", "HEAD"]).stdout;
+  f.git(["rm", "packages/one/dependency.ts"]);
+  assert.equal(
+    f.git(["diff", "--cached", "--name-status"]).stdout,
+    "D\tpackages/one/dependency.ts\n",
+  );
+  const blocked = f.git(["commit", "--quiet", "-m", "broken deletion"], false);
+  assert.notEqual(blocked.status, 0, blocked.stdout + blocked.stderr);
+  assert.match(blocked.stdout + blocked.stderr, /TS2307/);
+  assert.equal(f.git(["rev-parse", "HEAD"]).stdout, head);
+  f.git(["restore", "--staged", "--worktree", "--", "packages/one/dependency.ts"]);
+  f.git(["rm", "packages/one/unused.ts"]);
+  f.git(["commit", "--quiet", "-m", "valid deletion"]);
+  assert.equal(f.git(["status", "--porcelain"]).stdout, "");
+});
+
+await test("real installed pre-commit checks both owners of a cross-package rename", async (t) => {
+  for (const scenario of ["source", "destination", "valid"]) {
+    await t.test(scenario, async (t) => {
+      const f = await fixture(t);
+      await writeFile(
+        join(f.root, "packages/one/moved.ts"),
+        scenario === "destination"
+          ? "export const moved: number = localValue;\n"
+          : "export const moved = 1;\n",
+      );
+      if (scenario === "source") {
+        await writeFile(
+          join(f.root, "packages/one/fixture.ts"),
+          'import { moved } from "./moved.js";\nexport const count = moved;\n',
+        );
+      } else if (scenario === "destination") {
+        await writeFile(
+          join(f.root, "packages/one/globals.d.ts"),
+          "declare const localValue: number;\n",
+        );
+      }
+      f.git(["add", "packages/one"]);
+      f.git(["commit", "--no-verify", "--quiet", "-m", "rename fixture"]);
+      const baseline = f.run("pnpm", ["-r", "check:project"]);
+      assert.equal(baseline.status, 0, baseline.stdout + baseline.stderr);
+      const installed = f.install();
+      assert.equal(installed.status, 0, installed.stdout + installed.stderr);
+      const head = f.git(["rev-parse", "HEAD"]).stdout;
+      f.git(["mv", "packages/one/moved.ts", "packages/two/moved.ts"]);
+      assert.equal(
+        f.git(["diff", "--cached", "--name-status", "--find-renames"]).stdout,
+        "R100\tpackages/one/moved.ts\tpackages/two/moved.ts\n",
+      );
+      const result = f.git(["commit", "--quiet", "-m", `${scenario} rename`], false);
+      const output = result.stdout + result.stderr;
+      if (scenario === "valid") {
+        assert.equal(result.status, 0, output);
+        assert.equal(f.git(["status", "--porcelain"]).stdout, "");
+      } else {
+        assert.notEqual(result.status, 0, output);
+        assert.match(output, scenario === "source" ? /TS2307/ : /TS2304/);
+        assert.equal(f.git(["rev-parse", "HEAD"]).stdout, head);
+      }
+    });
+  }
+});
+
 await test("root changes check every project; real type/test failures block hook and CI composition", async (t) => {
   const f = await fixture(t);
   const installed = f.install();

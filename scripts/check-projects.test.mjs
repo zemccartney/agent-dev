@@ -167,6 +167,13 @@ await test("real staged rename/delete and root change cannot omit the old owning
   f.git(["commit", "--quiet", "-m", "rename"]);
   f.git(["rm", "packages/other/new\nname.ts"]);
   assert.deepEqual(checked(f.check(["--staged"])), ["other"]);
+  // hk omits deleted paths from its formatter-oriented file list, even for deletion-only commits.
+  assert.deepEqual(checked(f.check(["--"])), ["other"]);
+  assert.deepEqual(checked(f.check(["--", "packages/base/changed.ts"])), [
+    "base",
+    "consumer",
+    "other",
+  ]);
   await writeFile(join(f.root, "shared.json"), "{}\n");
   f.git(["add", "shared.json"]);
   assert.deepEqual(checked(f.check(["--staged"])), ["base", "consumer", "other"]);

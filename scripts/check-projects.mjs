@@ -67,8 +67,8 @@ function discoverProjects(root) {
     };
   });
 }
-/** Keep records intact so explicit hk file lists can recover a staged rename's old side.
- * @param {string} root @returns {string[][]} */
+/** Keep statuses so hk's existing-file lists can recover staged deletions and rename sources.
+ * @param {string} root @returns {{status: string, paths: string[]}[]} */
 function stagedChanges(root) {
   const output = run("git", ["diff", "--cached", "--name-status", "-z", "--find-renames"], root);
   if (!output) return [];
@@ -82,7 +82,7 @@ function stagedChanges(root) {
     const paths = fields.slice(index, index + count);
     if (paths.length !== count || paths.some((path) => !path))
       throw new Error("Incomplete Git change record");
-    records.push(paths);
+    records.push({ status, paths });
     index += count;
   }
   return records;
@@ -100,14 +100,17 @@ function main(args) {
   if (args[0] === "--all") files = ["pnpm-workspace.yaml"];
   else {
     const changes = stagedChanges(root);
-    files = args[0] === "--staged" ? changes.flat() : args.slice(1);
+    files = args[0] === "--staged" ? changes.flatMap((change) => change.paths) : args.slice(1);
     if (args[0] === "--") {
       const named = new Set(files.map((path) => posix.normalize(path)));
       files = [
         ...files,
         ...changes
-          .filter((paths) => paths.length === 2 && paths.some((path) => named.has(path)))
-          .flat(),
+          .filter(
+            ({ status, paths }) =>
+              status === "D" || (paths.length === 2 && paths.some((path) => named.has(path))),
+          )
+          .flatMap((change) => change.paths),
       ];
     }
   }

@@ -39,9 +39,10 @@ mise exec -- node scripts/check-projects.mjs -- pi/pi-lence/src/quiet-mode.ts
 ```
 
 The runner discovers workspace manifests and checks whole affected projects plus
-transitive dependents. Root/shared/unknown paths select every project; an empty
-list selects none. Git paths are NUL-delimited, both sides of renames are retained,
-and filenames are never concatenated into shell commands.
+transitive dependents. Root/shared/unknown paths select every project. Explicit
+file lists also recover staged deletions (which hk omits) and matching rename
+sources from Git; no paths and no staged deletions select nothing. Git paths are
+NUL-delimited, and filenames are never concatenated into shell commands.
 
 Hook installation is a separate, explicit choice, from a primary checkout:
 
