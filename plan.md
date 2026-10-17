@@ -209,7 +209,7 @@ The following tasks cover phases 0–1 only. Product redesign, public installers
 
 New paths/config splits here are implementation recommendations, not user-imposed names. Keep this file as the single working plan.
 
-## Verified inputs and one unresolved prerequisite
+## Verified inputs and pending dependency approvals
 
 - Base: local `dev` at `5bfc63fad553a75eb0c1a2c05c81742b7c18a150`; main checkout is dirty. Recheck before execution and stop if the baseline has materially changed.
 - Existing tools: Node **24.16.0**, pnpm **11.26.0**, mise **2026.9.1**. Start with these rather than gratuitously upgrading them.
@@ -218,6 +218,23 @@ New paths/config splits here are implementation recommendations, not user-impose
 - GitHub repo is public, current credentials have admin permission, and no release environments are configured. These are observations, not permission to change settings. npm scope access still needs checking.
 - **Proposed Pi SDK target: 1.3.0**, matching the installed/current released host. Registry timestamps are 2026-10-15 19:13:30Z for coding-agent and 19:14:02Z for pi-tui. They become seven days old on **2026-10-22 after 19:14:03Z**; transitive dependencies need their own eligibility checks. Both declare Node `>=22.19.0`.
 - **F4 is gated:** either wait for the target and its dependency graph to meet the existing cooldown, approve a reviewed exact-version exception list, or choose an age-eligible older SDK and recheck its contracts. Pi **1.1.0**, published October 7, is an older candidate—not a silently selected fallback. Do not set a broad scope exemption, disable trust checks, or use another installer to evade the policy. F0–F3 can proceed independently of this choice.
+
+**SDK audit, 2026-10-17 (not approved):** a separate ignored, metadata-only pnpm resolution succeeded for the SDK graph: **118 resolved, zero downloaded/added**, with all other policy controls retained. It requires these seven exact release-age exclusions, solely to test against the installed 1.3.0 host before the cooldown expires—not as a CVE hotfix:
+
+```yaml
+minimumReleaseAgeExclude:
+  - '@earendil-works/pi-coding-agent@1.3.0'
+  - '@earendil-works/pi-tui@1.3.0'
+  - '@earendil-works/pi-ai@1.3.0'
+  - '@earendil-works/pi-agent-core@1.3.0'
+  - '@earendil-works/pi-codemode@1.3.0'
+  - '@earendil-works/pi-mcp@1.3.0'
+  - '@earendil-works/pi-telemetry@1.3.0'
+```
+
+All seven age out by **2026-10-22 19:14:03 UTC**. The actual workspace config has no exclusions.
+
+**Separate blocker:** the SDK's Node typing pin `@types/node@22.19.19` depends on `undici-types@6.21.0`, which fails `trustPolicy: no-downgrade`. npm records it as a declaration package from November 2024 with no provenance attestation, while earlier releases had provenance. The newest eligible Node 22 typings (`22.20.5`) request the same Undici range. Waiting for the Pi cooldown does not solve this trust issue. An exact `trustPolicyExclude: ['undici-types@6.21.0']` needs separate approval; alternatively investigate and test a scoped override to a trusted compatible declaration release. Do not silently use Node 24 source types or raise the consumer floor instead. No trust exception, package installation, or script execution occurred in the audit. Full sourced evidence and registry integrity are in `.superpowers/sdd/plan/sdk-proposal.md`; metadata inspection is not an independent tarball/source security audit.
 
 Sources: [npm coding-agent metadata](https://registry.npmjs.org/@earendil-works%2fpi-coding-agent), [Pi package contracts](https://github.com/earendil-works/pi/blob/main/packages/coding-agent/docs/packages.md), [hk 2.7 setup](https://github.com/jdx/hk/blob/v2.7.0/docs/getting_started.md), [hk/mise integration](https://github.com/jdx/hk/blob/v2.7.0/docs/mise_integration.md), [mise tasks](https://mise.jdx.dev/tasks/toml-tasks.html).
 
