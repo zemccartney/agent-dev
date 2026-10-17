@@ -1,5 +1,8 @@
 # Repository protocol
 
+[MAINTENANCE.md](MAINTENANCE.md) records the personal-first maintenance policy,
+compatibility limits and the distinction between host runtimes and user setup.
+
 ## Setup and checks
 
 Install [mise](https://mise.jdx.dev/) separately, then review and trust this checkout:
@@ -99,7 +102,10 @@ never publish or alter normal host registrations.
 CI uses read-only permissions, immutable action commits, no persisted checkout
 credentials or release credentials. Full checks on `macos-15` (ARM64) include Pi
 on developer Node 24.16.0. Additional packed-host jobs cover macOS/22.19.0 and
-Linux x64/22.19.0/24.16.0; Linux also runs the fast contracts. Runtime jobs capture
+Ubuntu 24.04 x64/22.19.0/24.16.0; Linux also runs the fast contracts. Linux results
+are advisory compatibility evidence, not an unconditional release gate or a distro
+support promise. Failures stay visible for maintainer triage; do not configure those
+jobs as mandatory merge checks. Runtime jobs capture
 the requested Node's absolute path before restoring the developer toolchain;
 pnpm still runs on Node 24. Main-bound PRs and pushes additionally reject tracked `plan.md`,
 `thinking/`, and `.superpowers/` scratch artifacts. This targeted gate does not ban

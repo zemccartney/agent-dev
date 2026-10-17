@@ -36,7 +36,9 @@ jobs:
         run: mise run check
 
   pi-hosts:
-    name: Pi host (${{ matrix.os }}, Node ${{ matrix.node }})
+    # Linux failures stay visible, but are advisory for merge/release decisions.
+    # See MAINTENANCE.md; do not make compatibility jobs mandatory merge checks.
+    name: Pi ${{ matrix.purpose }} (${{ matrix.os }}, Node ${{ matrix.node }})
     runs-on: ${{ matrix.os }}
     timeout-minutes: 15
     strategy:
@@ -46,10 +48,13 @@ jobs:
           # macOS/Node 24 is already exercised by the full check job.
           - os: macos-15
             node: 22.19.0
+            purpose: host
           - os: ubuntu-24.04
             node: 22.19.0
+            purpose: compatibility
           - os: ubuntu-24.04
             node: 24.16.0
+            purpose: compatibility
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:

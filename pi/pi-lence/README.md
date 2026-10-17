@@ -3,10 +3,15 @@
 A quieter Pi conversation, with a response browser and session-local named pins.
 Runs independently of Herdr, in regular and fullscreen Pi.
 
-**Unpublished release candidate.** Requires Pi **1.3.0** and Node **22.19.0+**.
+**Unpublished release candidate.** Requires a compatible Pi installation; tested
+with **Pi 1.3.0**. Uses Pi's runtime: no separate Node installation, compiler or
+pnpm setup is required for Pi-lence. Its Node `>=22.19.0` package metadata matches
+that host's runtime requirement; Pi's installer can arrange Node for you.
+
 The tarball contains TypeScript, its manifest, this README and the canonical MIT
-license. Pi supplies the runtime libraries; consumers need no compiler or pnpm.
-Wildcard peer dependencies do not promise compatibility with every Pi version.
+license. Wildcard host peers do not promise compatibility with every Pi version.
+Maintenance is personal-first and best-effort; see the repository's
+[maintenance policy](https://github.com/zemccartney/agent-dev/blob/dev/MAINTENANCE.md).
 
 ## Install
 
@@ -109,11 +114,11 @@ identified pinned-SDK smoke, and real-host tests against the packed artifact.
 Expect roughly two minutes for the real elapsed-time warning cases.
 `check:contracts` is the faster subset, **not** the complete acceptance gate.
 
-| Actual-host target                    | Evidence on this branch                             |
-| ------------------------------------- | --------------------------------------------------- |
-| macOS ARM64, Node 22.19.0 and 24.16.0 | Local packed-host suites passed on Pi 1.3.0         |
-| Linux x64, Node 22.19.0 and 24.16.0   | Required CI jobs configured; hosted results pending |
-| Other hosts/platforms/runtimes        | Not verified                                        |
+| Actual-host target                         | Evidence on this branch                        |
+| ------------------------------------------ | ---------------------------------------------- |
+| macOS ARM64, Node 22.19.0 and 24.16.0      | Local packed-host suites passed on Pi 1.3.0    |
+| Ubuntu 24.04 x64, Node 22.19.0 and 24.16.0 | Advisory CI configured; hosted results pending |
+| Other hosts/platforms/runtimes             | Not verified                                   |
 
 Real-host tests cover managed tarball install/reinstall/removal, print/JSON/RPC,
 regular/fullscreen UI, keyboard and fullscreen mouse access, saved pins,
