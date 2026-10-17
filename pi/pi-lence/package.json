@@ -22,7 +22,8 @@
     "test:integration": "node test/run-smoke.mjs",
     "test:host": "node test/run-host.mjs",
     "pack:candidate": "node scripts/pack.mjs",
-    "check:project": "pnpm typecheck && pnpm lint && pnpm test && pnpm test:integration",
+    "check:contracts": "pnpm typecheck && pnpm lint && pnpm test && pnpm test:integration",
+    "check:project": "pnpm check:contracts && pnpm test:host",
     "check": "pnpm format:check && pnpm check:project"
   },
   "devDependencies": {
