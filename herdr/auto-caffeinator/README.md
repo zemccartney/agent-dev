@@ -110,28 +110,27 @@ Settings live in the directory printed by `herdr plugin config-dir grepco.auto-c
 
 ## Development
 
-Provide Node 24.x and the pinned **pnpm 11.26.0** yourself. Matching `engines` and error-only `devEngines.runtime` checks never provision Node. Tooling is package-local; this does not change the other projects' workflow.
+Follow the shared [repository setup](../../DEVELOPMENT.md) for pinned developer tools and workspace dependencies. Developer Node is **24.16.0**; the consumer requirement remains Node 24.x, minimum 24.11.0. Error-only developer runtime checks never provision Node.
+
+From the repository root:
 
 ```sh
-cd "$PLUGIN"
-node scripts/preflight.cjs build
-pnpm install --frozen-lockfile
-pnpm build
-pnpm check
-pnpm test:integration
-pnpm test:runtime
+mise run setup
+mise exec -- pnpm --filter @grepco/auto-caffeinator check
+mise exec -- pnpm --filter @grepco/auto-caffeinator test:integration
+mise exec -- pnpm --filter @grepco/auto-caffeinator test:runtime
 ```
 
-- TypeScript in `src/` uses extensionless application imports with one strict ESNext/Bundler compiler project and one Node 24 types version. Raw Node stripping does not resolve those imports: build application code rather than running `src/main.ts` directly. Native-run developer helpers keep `.ts` imports or package aliases.
+- TypeScript in `src/` uses extensionless application imports and strict ESNext/Bundler checking. Core and tooling compile separately; core declarations are generated under ignored `node_modules/.cache/agent-dev/` for tooling checks. Raw Node stripping does not resolve those imports: build application code rather than running `src/main.ts` directly. Native-run developer helpers keep `.ts` imports or package aliases.
 - tsdown emits one minified/tree-shaken production ESM entry, `dist/main.js`, without chunks/maps, and separate readable modular test output in `.build/test/`. Build before linking or trying edits. Compilation requires no running Herdr server and performs no install/relink/restart.
-- `pnpm check` runs Oxfmt, independent strict `tsc --noEmit`, type-aware Oxlint, then the built-output tests. `pnpm format` formats owned files. Exact devDependency versions, the pinned manager, and `pnpm-lock.yaml` are checked in.
+- Package `pnpm check` runs Oxfmt, independent strict `tsc --build`, type-aware Oxlint, then the built-output tests. `pnpm format` formats owned files. Shared tools, dependency policy and the single `pnpm-lock.yaml` live at the repository root.
 - pnpm enforces a seven-day release cooldown, trust-downgrade checks even against the lockfile, no exotic subdependencies, and no unapproved dependency build scripts. Do not bypass a blocked resolution silently.
 - `pnpm test` builds first, then uses the built-in Node test runner with TAP output. Native Node stripping runs developer `.ts` tests/probes; `#caffeinate/*` imports execute `.build/test/*.js` while TypeScript checks source contracts. Tests, fixtures, scripts and build configuration are included in strict checking; isolated negative canaries verify the actual compiler/linter gates.
 - Default tests use injected clocks, fake sockets, ordinary child processes and a real toolkit renderer/terminal emulator; they acquire no OS assertions. Separate artifact tests execute the actual production bundle. `pnpm test:runtime` consumes an already prepared payload and reports the actual selected binary; use `CAFFEINATE_TEST_NODE=/absolute/path/to/node` for another preinstalled Node 24 binary. Simulated version boundaries are not minimum-runtime acceptance.
 - `pnpm build` prepares `.build/runtime/`: only `dist/main.js`, launcher/preflight, runtime manifest, minimal ESM package metadata, the canonical repository LICENSE and `THIRD_PARTY_NOTICES.txt`. It does not contain source, tests, tools, node_modules, devEngines or maps. This local payload is not a published release.
 - Bundle-graph inventory and exact-version `scripts/license-policy.json` drive fail-closed notices. Installed upstream texts are preserved in full, including injected bundler helpers. Explicit version-bound `vendor:` inputs supply pi-tui's omitted root license and copied OpenTUI attribution, with pinned source provenance under `scripts/licenses/`. Unknown versions or missing required text block preparation. The repository LICENSE is copied, not independently maintained.
-- Installer, release archives, checksums and publishing automation remain subsequent work. The [fresh-context review request](docs/review-request.md) covers the whole package; independent review has not occurred.
-- Temporary `src/main.mjs` supports the already-cached trial manifest and forwards through preflight to the build. New manifest registrations use `/bin/sh scripts/launch.sh`. Existing monitors/IPC/leases are not restarted or restored by building; relinking the live trial is intentionally not automatic.
+- Installer, release archives, checksums and publishing automation remain subsequent work. The [fresh-context review request](docs/review-request.md) covers the whole package; that broader safety/release review remains separate from the repository-foundation review.
+- Manifest entrypoints use `/bin/sh scripts/launch.sh`; the obsolete `src/main.mjs` trial shim has been removed. Existing monitors/IPC/leases are not restarted or restored by building; relinking the live trial is intentionally not automatic.
 
 ### Separately opted-in validation
 
