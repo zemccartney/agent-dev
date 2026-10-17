@@ -1,8 +1,8 @@
 # agent-dev
 
 Agentic coding tools and configuration, organized by the app they extend.
-Each project owns its package metadata, code, tests, and documentation; there
-is no root npm package.
+Each project owns its package metadata, code, tests, and documentation.
+The private root workspace owns shared development tools and dependency policy.
 
 ## Projects
 
@@ -45,20 +45,24 @@ git pull --ff-only
 Then restart pi or run `/reload` in an existing session. Local-path packages
 are not updated or checked for updates by pi; Git handles this workflow.
 
-On a development machine, edit the local package, run its checks, and use
-`/reload` to try the changes:
+For development, use Node 24.16.0 and pnpm 11.26.0 (pinned in `mise.toml`).
+Install from the repository root; package commands inherit the shared policy:
 
 ```sh
-cd pi/pi-lence
-npm test
-npm run test:integration -- /path/to/node_modules/@earendil-works/pi-coding-agent
+pnpm install --frozen-lockfile
+pnpm --filter @grepco/pi-lence test
+pnpm --filter @grepco/pi-lence test:integration /path/to/node_modules/@earendil-works/pi-coding-agent
+pnpm --filter @grepco/auto-caffeinator check
+pnpm --filter @grepco/agentlog check
 ```
+
+Use `/reload` to try Pi edits only in a session explicitly loading this checkout.
 
 Commit and push only the intended files, particularly when other agents are
 working in the same checkout. Existing pins remain in pi's session files; the
 repository contains extension code, not conversation data.
 
-Npm publishing is deferred. A future standalone `pi-lence` release can use pi's
+Npm publishing is deferred. A future standalone `@grepco/pi-lence` release can use pi's
 package update notifications without changing this monorepo layout.
 
 ## Ideas

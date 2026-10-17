@@ -35,21 +35,16 @@
     "@xterm/addon-unicode11": "0.8.0",
     "@xterm/headless": "5.5.0",
     "@xterm/xterm": "5.5.0",
-    "oxfmt": "0.72.0",
-    "oxlint": "1.87.0",
-    "oxlint-tsgolint": "7.0.2003",
-    "tsdown": "0.23.0",
-    "typescript": "7.0.2"
+    "tsdown": "0.23.0"
   },
   "devEngines": {
     "runtime": {
       "name": "node",
-      "version": "^24.11.0",
+      "version": "24.16.0",
       "onFail": "error"
     }
   },
   "engines": {
     "node": "^24.11.0"
-  },
-  "packageManager": "pnpm@11.26.0"
+  }
 }

@@ -3,12 +3,18 @@ import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { mkdtemp, readdir, rm, writeFile, mkdir, cp, symlink, realpath } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
+import { createRequire } from "node:module";
+import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
 const root = await realpath(fileURLToPath(new URL("../", import.meta.url)));
 function tool(name: "tsc" | "oxlint", args: string[], cwd = root) {
-  const result = spawnSync(join(root, "node_modules", ".bin", name), args, {
+  const require = createRequire(import.meta.url);
+  const metadataPath = require.resolve(`${name === "tsc" ? "typescript" : name}/package.json`);
+  const metadata: { bin: Record<string, string> } = JSON.parse(readFileSync(metadataPath, "utf8"));
+  const executable = join(dirname(metadataPath), metadata.bin[name]);
+  const result = spawnSync(process.execPath, [executable, ...args], {
     cwd,
     encoding: "utf8",
     timeout: 30000,
@@ -79,7 +85,7 @@ void test("coverage canary accepts a symlinked checkout but rejects a genuinely 
   const fixture = join(dir, "excluded");
   for (const name of ["src", "scripts", "test", "dist", ".build"])
     await mkdir(join(fixture, name), { recursive: true });
-  await symlink(join(root, "node_modules"), join(fixture, "node_modules"), "dir");
+  await symlink(join(root, "../../node_modules"), join(fixture, "node_modules"), "dir");
   await writeFile(join(fixture, "package.json"), '{"type":"module"}');
   await writeFile(
     join(fixture, "tsconfig.json"),

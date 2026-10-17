@@ -253,7 +253,7 @@ Sources: [npm coding-agent metadata](https://registry.npmjs.org/@earendil-works%
 
 **Consumes:** F1 names. **Produces:** root workspace `pi/*` + `herdr/*`; Node 24.16.0/pnpm 11.26.0 pins; error-only developer runtime requirements; unchanged consumer floors at this step; root-owned common JS development tools. Keep `tsdown` and runtime-specific dependencies with packages that use them.
 
-- [ ] Add policy tests that invoke `pnpm config get` from root and each project, including a symlinked checkout. Assert the following effective values, exact package-manager pin, one root lockfile, and no nested workspace/lockfiles:
+- [x] Add policy tests that invoke `pnpm config get` from root and each project, including a symlinked checkout. Assert the following effective values, exact package-manager pin, one root lockfile, and no nested workspace/lockfiles:
 
 ```js
 const policy = {
@@ -265,10 +265,10 @@ const policy = {
 }; // Also assert `pnpm config get allowBuilds --json` equals {}.
 ```
 
-- [ ] Run `node --test scripts/workspace-policy.test.mjs`; expect failure before root configuration exists. Add packaging regressions: valid workspace-store dependencies are accepted; an outside-store symlink or mismatched inventory name/version is rejected.
-- [ ] Create the root workspace and mise pins; move common dev dependencies without opportunistic version upgrades. Use `autoInstallPeers: false` so Pi wildcard peers do not silently resolve/install an unreviewed SDK; F4 supplies explicit development SDK dependencies. Keep developer runtime checks error-only. Generate and review the root lockfile under the full policy, then verify `pnpm install --frozen-lockfile` from a fresh temporary store. Stop on policy failures and report the exact dependency; do not bypass them.
-- [ ] Adapt `prepareRuntime(packageRoot, outputDir)` to validate dependency realpaths within the canonical workspace dependency store, retaining version/provenance/path-escape checks. Replace obsolete local-file assertions in both tooling tests with effective-policy checks; don't weaken negative canaries. Run the root policy tests and both Herdr checks again, with no live-host access required.
-- [ ] Remove superseded nested configs/locks only after the new tests pass; confirm a second frozen install makes no lockfile changes. Commit: `build: consolidate workspace and dependency policy`.
+- [x] Run `node --test scripts/workspace-policy.test.mjs`; expect failure before root configuration exists. Add packaging regressions: valid workspace-store dependencies are accepted; an outside-store symlink or mismatched inventory name/version is rejected.
+- [x] Create the root workspace and mise pins; move common dev dependencies without opportunistic version upgrades. Use `autoInstallPeers: false` so Pi wildcard peers do not silently resolve/install an unreviewed SDK; F4 supplies explicit development SDK dependencies. Keep developer runtime checks error-only. Generate and review the root lockfile under the full policy, then verify `pnpm install --frozen-lockfile` from a fresh temporary store. Stop on policy failures and report the exact dependency; do not bypass them.
+- [x] Adapt `prepareRuntime(packageRoot, outputDir)` to validate dependency realpaths within the canonical workspace dependency store, retaining version/provenance/path-escape checks. Replace obsolete local-file assertions in both tooling tests with effective-policy checks; don't weaken negative canaries. Run the root policy tests and both Herdr checks again, with no live-host access required.
+- [x] Remove superseded nested configs/locks only after the new tests pass; confirm a second frozen install makes no lockfile changes. Commit: `build: consolidate workspace and dependency policy`.
 
 ### Task 3: F3 — Shared quality configuration with isolated source checks
 

@@ -1,0 +1,23 @@
+{
+  "name": "@grepco/agent-dev",
+  "private": true,
+  "type": "module",
+  "devDependencies": {
+    "@types/node": "24.19.1",
+    "oxfmt": "0.72.0",
+    "oxlint": "1.87.0",
+    "oxlint-tsgolint": "7.0.2003",
+    "typescript": "7.0.2"
+  },
+  "devEngines": {
+    "runtime": {
+      "name": "node",
+      "version": "24.16.0",
+      "onFail": "error"
+    }
+  },
+  "engines": {
+    "node": "24.16.0"
+  },
+  "packageManager": "pnpm@11.26.0"
+}

@@ -46,7 +46,8 @@ export async function prepareRuntime(packageRoot: string, outputDir: string): Pr
     const entry = matches[0];
     const source = text(entry.source);
     const library = await realpath(text(item.root));
-    if (!library.startsWith(join(root, "node_modules") + "/"))
+    const dependencyRoots = [join(root, "node_modules"), resolve(root, "../../node_modules")];
+    if (!dependencyRoots.some((directory) => library.startsWith(directory + "/")))
       throw new Error(`Inventory root outside dependencies: ${key}`);
     const metadata = record(await json(join(library, "package.json")));
     if (metadata.name !== name || metadata.version !== version)

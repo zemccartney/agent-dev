@@ -9,6 +9,9 @@ import { spawnSync } from "node:child_process";
 
 const root = fileURLToPath(new URL("../", import.meta.url));
 const policy = {
+  engineStrict: "true",
+  saveExact: "true",
+  autoInstallPeers: "false",
   minimumReleaseAge: "10080",
   minimumReleaseAgeStrict: "true",
   minimumReleaseAgeIgnoreMissingTime: "false",
@@ -19,7 +22,8 @@ const policy = {
 };
 
 await test("package policy fails closed rather than inheriting weaker global defaults", () => {
-  assert.ok(existsSync(join(root, "pnpm-workspace.yaml")), "package-local policy is required");
+  assert.ok(existsSync(join(root, "../../pnpm-workspace.yaml")), "workspace policy is required");
+  assert.equal(existsSync(join(root, "pnpm-workspace.yaml")), false);
   for (const [key, expected] of Object.entries(policy)) {
     const result = spawnSync("pnpm", ["config", "get", key], { cwd: root, encoding: "utf8" });
     assert.equal(result.status, 0, result.stderr);
@@ -44,7 +48,7 @@ await test("quality configuration retains all plugins and covers source, tests a
   const alias = join(dir, "checkout");
   await symlink(root, alias, "dir");
   for (const cwd of [root, alias]) {
-    const result = spawnSync(join(root, "node_modules/.bin/tsc"), ["--listFilesOnly"], {
+    const result = spawnSync(join(root, "../../node_modules/.bin/tsc"), ["--listFilesOnly"], {
       cwd,
       env: { ...process.env, PWD: cwd },
       encoding: "utf8",
@@ -76,7 +80,7 @@ await test("independent compiler and type-aware lint reject bad code, accept rep
   );
   const probe = join(dir, "probe.ts");
   const tsc = () =>
-    spawnSync(join(root, "node_modules/.bin/tsc"), ["--noEmit", "-p", dir], {
+    spawnSync(join(root, "../../node_modules/.bin/tsc"), ["--noEmit", "-p", dir], {
       cwd: dir,
       encoding: "utf8",
     });
@@ -88,7 +92,7 @@ await test("independent compiler and type-aware lint reject bad code, accept rep
   assert.equal(tsc().status, 0);
   const lint = () =>
     spawnSync(
-      join(root, "node_modules/.bin/oxlint"),
+      join(root, "../../node_modules/.bin/oxlint"),
       ["--type-aware", "--deny-warnings", "--config", join(root, ".oxlintrc.json"), probe],
       { cwd: dir, encoding: "utf8" },
     );

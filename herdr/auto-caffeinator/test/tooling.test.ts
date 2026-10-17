@@ -19,6 +19,8 @@ void test("effective pnpm policy fails closed on fresh, undated, exotic, downgra
     trustPolicy: "no-downgrade",
     trustLockfile: "false",
     strictDepBuilds: "true",
+    saveExact: "true",
+    autoInstallPeers: "false",
   })) {
     const r = spawnSync("pnpm", ["config", "get", key], { cwd: root, encoding: "utf8" });
     assert.equal(r.status, 0, r.stderr);
@@ -43,14 +45,11 @@ void test("linting retains built-in plugins and type awareness; TypeScript runs 
   assert.equal(config("tsconfig.json").references, undefined);
   const pkg = config("package.json");
   assert.deepEqual(pkg.devEngines, {
-    runtime: { name: "node", version: "^24.11.0", onFail: "error" },
+    runtime: { name: "node", version: "24.16.0", onFail: "error" },
   });
   assert.equal((pkg.devDependencies as Record<string, string>)["@types/node"], "24.19.1");
-  const lock = readFileSync(new URL("../pnpm-lock.yaml", import.meta.url), "utf8");
-  assert.deepEqual(
-    [...new Set([...lock.matchAll(/@types\/node@(\d+\.\d+\.\d+)/g)].map((match) => match[1]))],
-    ["24.19.1"],
-  );
+  const installedTypes = config("node_modules/@types/node/package.json");
+  assert.equal(installedTypes.version, "24.19.1");
   const runtime = pkg.dependencies as Record<string, string>;
   assert.deepEqual(Object.keys(runtime), ["@earendil-works/pi-tui"]);
   assert.match(runtime["@earendil-works/pi-tui"], /^\d+\.\d+\.\d+$/);

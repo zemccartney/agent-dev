@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { mkdtemp, mkdir, cp, readFile, writeFile, rm, readdir } from "node:fs/promises";
+import { mkdtemp, mkdir, cp, readFile, writeFile, rm, readdir, symlink } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -22,7 +22,15 @@ void test("prepared payload is allowlisted and copies the canonical license", as
     await readFile(join(root, "../../LICENSE"), "utf8"),
   );
   const notices = await readFile(join(payload, "THIRD_PARTY_NOTICES.txt"), "utf8");
-  const bundlerRoot = join(root, "node_modules/.pnpm/rolldown@1.2.12/node_modules/rolldown");
+  const inventory: { name: string; root: string }[] = JSON.parse(
+    await readFile(join(root, ".build/bundle-inventory.json"), "utf8"),
+  );
+  const libraryRoot = (name: string) => {
+    const entry = inventory.find((item) => item.name === name);
+    assert.ok(entry, `Required bundled dependency: ${name}`);
+    return entry.root;
+  };
+  const bundlerRoot = libraryRoot("rolldown");
   for (const file of ["LICENSE", "THIRD-PARTY-LICENSE"]) {
     assert.ok(
       notices.includes(await readFile(join(bundlerRoot, file), "utf8")),
@@ -30,14 +38,14 @@ void test("prepared payload is allowlisted and copies the canonical license", as
     );
   }
   for (const file of [
-    "scripts/licenses/pi-tui-1.0.4/LICENSE",
-    "scripts/licenses/pi-tui-1.0.4/OpenTUI-LICENSE",
-    "scripts/licenses/pi-tui-1.0.4/NOTICE",
-    "node_modules/.pnpm/marked@18.0.11/node_modules/marked/LICENSE",
-    "node_modules/.pnpm/get-east-asian-width@1.6.0/node_modules/get-east-asian-width/license",
+    join(root, "scripts/licenses/pi-tui-1.0.4/LICENSE"),
+    join(root, "scripts/licenses/pi-tui-1.0.4/OpenTUI-LICENSE"),
+    join(root, "scripts/licenses/pi-tui-1.0.4/NOTICE"),
+    join(libraryRoot("marked"), "LICENSE"),
+    join(libraryRoot("get-east-asian-width"), "license"),
   ]) {
     assert.ok(
-      notices.includes(await readFile(join(root, file), "utf8")),
+      notices.includes(await readFile(file, "utf8")),
       `Missing complete upstream text: ${file}`,
     );
   }
@@ -103,5 +111,66 @@ void test("packaging fails closed for missing canonical license and unreviewed o
       ]),
     );
     await assert.rejects(prepareRuntime(fixture, join(dir, "payload")), expected);
+  }
+});
+
+void test("workspace inventory accepts the shared store without permitting escapes or false identities", async (t) => {
+  const dir = await mkdtemp(join(tmpdir(), "cf-workspace-pack-"));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  const workspace = join(dir, "workspace");
+  const fixture = join(workspace, "herdr/auto-caffeinator");
+  const library = join(workspace, "node_modules/.pnpm/example@1.0.0/node_modules/example");
+  const outside = join(dir, "outside");
+  await mkdir(join(fixture, ".build"), { recursive: true });
+  await mkdir(library, { recursive: true });
+  await cp(join(root, "scripts"), join(fixture, "scripts"), { recursive: true });
+  await cp(join(root, "dist"), join(fixture, "dist"), { recursive: true });
+  for (const name of ["package.json", "herdr-plugin.toml"])
+    await cp(join(root, name), join(fixture, name));
+  await cp(join(root, "../../LICENSE"), join(workspace, "LICENSE"));
+  await writeFile(join(library, "LICENSE"), "Example library license\n");
+  const metadata = { name: "example", version: "1.0.0" };
+  await writeFile(join(library, "package.json"), JSON.stringify(metadata));
+  await writeFile(
+    join(fixture, "scripts/license-policy.json"),
+    JSON.stringify([
+      {
+        ...metadata,
+        source: "https://example.invalid/source",
+        licenseFiles: ["LICENSE"],
+        noticeFiles: [],
+      },
+    ]),
+  );
+  const inventory = (path: string) =>
+    writeFile(
+      join(fixture, ".build/bundle-inventory.json"),
+      JSON.stringify([{ ...metadata, root: path }]),
+    );
+  const output = join(fixture, ".build/runtime");
+  await inventory(library);
+  await t.test("valid shared-store package", async () => {
+    await prepareRuntime(fixture, output);
+    assert.match(
+      await readFile(join(output, "THIRD_PARTY_NOTICES.txt"), "utf8"),
+      /Example library license/,
+    );
+  });
+  await cp(library, outside, { recursive: true });
+  const escape = join(workspace, "node_modules/escape");
+  await symlink(outside, escape, "dir");
+  await t.test("outside-store symlink", async () => {
+    await inventory(escape);
+    await assert.rejects(prepareRuntime(fixture, output), /outside dependencies/);
+  });
+  await inventory(library);
+  for (const field of ["name", "version"] as const) {
+    await t.test(`mismatched ${field}`, async () => {
+      await writeFile(
+        join(library, "package.json"),
+        JSON.stringify({ ...metadata, [field]: "wrong" }),
+      );
+      await assert.rejects(prepareRuntime(fixture, output), /Inventory version mismatch/);
+    });
   }
 });
