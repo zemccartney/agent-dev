@@ -215,42 +215,98 @@ await test(
   },
 );
 
+/** @param {Awaited<ReturnType<typeof sandbox>>["host"]} host @param {string} message */
+async function rpcRun(host, message) {
+  const child = host.spawn(host.nodePath, [host.cliPath, ...host.sessionArgs, "--mode", "rpc"]);
+  const finished = collect(child);
+  let output = "";
+  child.stdout.on("data", (chunk) => {
+    output += chunk;
+  });
+  child.stdin.write(`${JSON.stringify({ id: "prompt", type: "prompt", message })}\n`);
+  const deadline = Date.now() + 15_000;
+  while (!output.includes('"type":"agent_settled"') && Date.now() < deadline) await delay(20);
+  assert.match(output, /"type":"agent_settled"/);
+  child.stdin.end();
+  const result = await finished;
+  assert.equal(result.code, 0, result.stderr);
+  assert.equal(result.stdout.includes("\x1b"), false, "No terminal escapes in RPC");
+  return result.stdout
+    .trim()
+    .split("\n")
+    .map((line) => JSON.parse(line));
+}
+
+/** @param {ReturnType<typeof JSON.parse>[]} records */
+function assertRpcSuccess(records) {
+  assert.ok(
+    records.some((event) => event.type === "response" && event.id === "prompt" && event.success),
+  );
+  assert.ok(
+    records.some(
+      (event) =>
+        event.type === "tool_execution_end" &&
+        event.toolName === "read" &&
+        event.isError === false &&
+        JSON.stringify(event.result).includes("Fixture file contents"),
+    ),
+    "RPC must return the actual read result",
+  );
+  const finalAssistant = records.findLast(
+    (event) => event.type === "message_end" && event.message.role === "assistant",
+  )?.message;
+  assert.equal(
+    finalAssistant?.stopReason,
+    "stop",
+    "RPC final assistant must complete successfully",
+  );
+  assert.ok(
+    finalAssistant.content.some(
+      (/** @type {{type?:string, text?:string}} */ part) =>
+        part.type === "text" && part.text === "Fixture answer: fixture-read",
+    ),
+    "RPC must return the expected final answer",
+  );
+  assert.ok(
+    records.some((event) => event.type === "agent_settled" && event.aborted === false),
+    "RPC must settle without cancellation",
+  );
+  assert.ok(
+    records.every(
+      (event) => event.type !== "extension_ui_request" && event.type !== "extension_error",
+    ),
+  );
+}
+
+await test(
+  "RPC success gate rejects a provider failure after successful tool work",
+  { timeout: 30_000 },
+  async (t) => {
+    const { host } = await sandbox(t);
+    const records = await rpcRun(host, "fixture-fail-after-read");
+    assert.ok(
+      records.some(
+        (event) =>
+          event.type === "message_end" &&
+          event.message.role === "assistant" &&
+          event.message.stopReason === "error" &&
+          event.message.errorMessage.includes("Post-tool provider failure canary"),
+      ),
+    );
+    assert.throws(
+      () => assertRpcSuccess(records),
+      /RPC final assistant must complete successfully/,
+    );
+  },
+);
+
 await test(
   "RPC stays valid through completed tool work and orderly shutdown",
   { timeout: 30_000 },
   async (t) => {
     const { host } = await sandbox(t);
-    const child = host.spawn(host.nodePath, [host.cliPath, ...host.sessionArgs, "--mode", "rpc"]);
-    const finished = collect(child);
-    let output = "";
-    child.stdout.on("data", (chunk) => {
-      output += chunk;
-    });
-    child.stdin.write(
-      `${JSON.stringify({ id: "prompt", type: "prompt", message: "fixture-read" })}\n`,
-    );
-    const deadline = Date.now() + 15_000;
-    while (!output.includes('"type":"agent_settled"') && Date.now() < deadline) await delay(20);
-    assert.match(output, /"type":"agent_settled"/);
-    child.stdin.end();
-    const result = await finished;
-    assert.equal(result.code, 0, result.stderr);
-    const records = result.stdout
-      .trim()
-      .split("\n")
-      .map((line) => JSON.parse(line));
-    assert.ok(
-      records.some((event) => event.type === "response" && event.id === "prompt" && event.success),
-    );
-    assert.ok(
-      records.some((event) => event.type === "tool_execution_end" && event.isError === false),
-    );
-    assert.ok(
-      records.every(
-        (event) => event.type !== "extension_ui_request" && event.type !== "extension_error",
-      ),
-    );
-    assert.equal(result.stdout.includes("\x1b"), false, "No terminal escapes in RPC");
+    const records = await rpcRun(host, "fixture-read");
+    assertRpcSuccess(records);
     const lifecycle = (await readFile(join(host.root, "events.jsonl"), "utf8"))
       .trim()
       .split("\n")

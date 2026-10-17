@@ -96,7 +96,8 @@ export default function (pi: ExtensionAPI) {
       const hasResult = context.messages
         .slice(userIndex + 1)
         .some((message) => message.role === "toolResult");
-      const tool = ["fixture-read", "fixture-error"].includes(prompt) && !hasResult;
+      const tool =
+        ["fixture-read", "fixture-error", "fixture-fail-after-read"].includes(prompt) && !hasResult;
       const output: AssistantMessage = {
         role: "assistant",
         api: model.api,
@@ -115,6 +116,8 @@ export default function (pi: ExtensionAPI) {
         },
       };
       const emit = async () => {
+        if (hasResult && prompt === "fixture-fail-after-read")
+          throw new Error("Post-tool provider failure canary");
         stream.push({ type: "start", partial: output });
         if (prompt === "fixture-slow") await delay(62_000, undefined, { signal: options?.signal });
         if (tool) {
