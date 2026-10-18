@@ -111,16 +111,82 @@ pnpm still runs on Node 24. Main-bound PRs and pushes additionally reject tracke
 `thinking/`, and `.superpowers/` scratch artifacts. This targeted gate does not ban
 ordinary documentation or work-branch plans.
 
-Release automation, Changesets and final Herdr artifact installers are not yet
-implemented. Before configuring/enabling the release path, walk the owner through
-Changesets (release intent, version changes and changelogs), npm trusted publishing
-(identity, permissions and its distinction from approval), and the proposed workflow.
-Rehearse without publishing and invite preferences; do not present an already-enabled
-workflow as a done deal. Every real publication still needs separate approval.
+Local Changesets version/changelog tooling is configured; release automation and
+final Herdr artifact installers are not yet implemented. The selected release flow
+is on-demand release-PR preparation, human review/merge authorizing native npm
+**staging only** through stage-only trusted publishing/OIDC, then owner approval
+on npm's website with 2FA. No extra GitHub environment approval is selected.
+The intended npm security settings require 2FA and disallow traditional publishing
+tokens; CI must not receive direct-publication or dist-tag-management authority.
+This setup does not configure that trust, change account settings or enable a
+publishing workflow. First-package bootstrap (potentially a public
+`0.0.0-stage` placeholder) and default-branch workflow registration still need
+review and explicit authorization. Ordinary development merges must not initiate
+release preparation or staging.
 
 Pi's real-host suites now test the packaged extension independently of the SDK smoke.
 The smoke still uses private components and manually dispatched events; neither
 suite establishes untested platform support or public-registry installation.
+
+## Release notes with Changesets
+
+The root pins Changesets CLI **3.0.3**. After normal setup, create a note:
+
+```sh
+mise exec -- pnpm exec changeset add
+```
+
+Choose the affected package(s), a semantic-version bump (`patch` for fixes,
+`minor` for added functionality, `major` for breaking changes), and a short
+consumer-facing summary. Projects version independently. Private Herdr projects
+can receive notes and versions without becoming public npm packages; their
+installation/distribution path remains separate from npm publication.
+
+For the **first Pi-lence release**, select only `@grepco/pi-lence`, choose **minor**,
+and write the initial-release summary yourself. Its deliberately unpublished
+`0.0.0` baseline lets that note prepare the owner-selected public **0.1.0** later;
+this is not a public downgrade or permission to publish `0.0.0`.
+
+The command creates `.changeset/<generated-name>.md`, formats it with Oxfmt, and
+does not commit, change package versions, or publish. Inspect the new file
+separately because ordinary `git diff` does not show untracked file contents:
+
+```sh
+git status --short .changeset
+less .changeset/<generated-name>.md
+mise exec -- pnpm exec changeset status
+mise exec -- pnpm format:check:root
+```
+
+Expect frontmatter selecting only `@grepco/pi-lence` with `minor`, your summary,
+and a status plan for Pi-lence `0.1.0` with no sibling releases. Commit the note
+with the relevant change after review. To undo it before committing, unstage it
+if necessary and remove only that generated note, not `config.json` or `README.md`.
+Maintenance-doc edits and other changes with no release impact need **no changeset
+and no empty placeholder**. Future PR reminders will be visible and non-blocking;
+that integration is not installed yet. `changeset status` is an inspection tool,
+not a required check: it can exit 1 when changed packages lack notes. Its suggestion
+to add an empty note does not override the no-release policy above.
+
+Stop at note creation/inspection for this handoff. Do **not** run `changeset version`
+on the real note yet: version preparation consumes notes and writes manifests and
+changelogs, and will belong to the separately reviewed release-PR step. With no
+pending notes, the pinned CLI's `version` exits 1 without changes. Do not run
+`changeset publish`, npm staging or npm publication here. Current Changesets
+publishing does not support npm staging; version preparation is intentionally
+separate from the future native staging/approval flow.
+
+The existing Pi-lence packer remains authoritative: ten consumer files, with no
+CHANGELOG included. Shipping the generated changelog is an optional future decision,
+not part of this setup. Exercise the real CLI safely in disposable fixtures with:
+
+```sh
+mise exec -- pnpm exec node --test scripts/changesets.test.mjs
+```
+
+These tests use installed tools, private homes and an allowlisted environment,
+never install dependencies or create a real pending note, and remove their owned
+fixtures. They are not a network-enforced or VM sandbox.
 
 ## Manual verification and cleanup
 
