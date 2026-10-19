@@ -188,6 +188,49 @@ These tests use installed tools, private homes and an allowlisted environment,
 never install dependencies or create a real pending note, and remove their owned
 fixtures. They are not a network-enforced or VM sandbox.
 
+### Disposable Pi-lence preparation
+
+`scripts/prepare-pi-release.mjs` is the local version-generation component for the
+future on-demand release action. It does not create a release branch or PR, commit,
+tag, stage on npm, or publish. The selected Changesets action will make its own
+GitHub commit later; `commit: false` does not disable that action behavior.
+
+In an explicitly selected **disposable, clean release checkout**, with the pinned
+developer toolchain and dependencies already installed:
+
+```sh
+mise exec -- node scripts/prepare-pi-release.mjs --check
+mise exec -- node scripts/prepare-pi-release.mjs --apply
+```
+
+Both print JSON containing `sourceCommit`, `targetVersion`, and `changesetIds`.
+Check is read-only. Apply writes only Pi's manifest/changelog and consumes its
+selected notes; separate Herdr notes and versions remain unchanged. No Pi intent
+returns a null target without versioning. Mixed Pi/Herdr notes must be split.
+The initial `0.0.0` baseline must propose `0.1.0`. Unsupported configuration,
+prereleases, dirty checkouts and unexpected output changes fail closed.
+
+The caller must select the source commit **before** preparation. Later development
+must not replace that snapshot. These functions do not choose a branch, fetch dev,
+or prevent a remote action from overwriting an active release; that integration
+remains unimplemented. The intended candidate PR targets main, with accepted
+versions, changelogs, note deletions and release fixes synchronized back to dev.
+
+Do not apply this to the primary checkout or the owner's real note for this
+handoff. On failure, partial CLI writes may remain: discard only the owned disposable
+checkout and recreate it at the same selected commit. There is no automatic
+rollback or Git reset. Temporary command homes/configs are removed on success and
+failure. Subprocesses use installed tools, an allowlisted environment and bounded
+execution; pnpm's implicit dependency repair is disabled only in those processes,
+not in workspace policy. This is not a network-enforced security sandbox.
+
+A safe demonstration uses synthetic notes, including a moving-dev regression,
+and automatically removes its owned fixtures:
+
+```sh
+mise exec -- pnpm exec node --test scripts/changesets.test.mjs scripts/prepare-pi-release.test.mjs
+```
+
 ## Manual verification and cleanup
 
 From a prepared checkout:
