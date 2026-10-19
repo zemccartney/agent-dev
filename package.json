@@ -10,7 +10,7 @@
     "test": "pnpm test:repo && pnpm -r run test",
     "check:repo:code": "tsc -p tsconfig.tools.json && oxlint --type-aware --deny-warnings --tsconfig tsconfig.tools.json scripts && pnpm test:repo",
     "check:repo": "pnpm format:check:root && pnpm check:repo:code",
-    "check:infra": "hk validate && taplo lint && taplo fmt --check && zizmor --offline .github/workflows/ci.yml && node scripts/check-exceptions.mjs",
+    "check:infra": "hk validate && taplo lint && taplo fmt --check && zizmor --offline .github/workflows .github/workflow-templates/prepare-pi-release.registration.yml && node scripts/check-exceptions.mjs",
     "check": "pnpm check:repo && pnpm -r run format:check && node scripts/check-projects.mjs --all && pnpm check:infra"
   },
   "devDependencies": {
