@@ -224,7 +224,7 @@ test("create-only PR uses CAS, targets main and explains the actual approval bou
   );
   const body = writes.at(-1)?.body.body;
   assert.match(body, /staging and publication are not enabled/i);
-  assert.match(body, /frozen/i);
+  assert.match(body, /release branch/i);
   assert.match(body, /Approve workflows to run/);
   assert.match(body, /Do not merge/i);
   assert.ok(body.includes(source) && body.includes(prepared) && body.includes(data.digest));
@@ -387,6 +387,52 @@ test("preview and post-check verification bind outside-checkout metadata to chec
   );
 });
 
+for (const jobName of ["validate", "open"]) {
+  test(`${jobName} prepares the selected SHA without local dev even after remote dev advances`, async (t) => {
+    const api = await subject("pi-release-candidate.mjs");
+    const cli = createRequire(import.meta.resolve("@changesets/cli/bin.js"));
+    const { parse } = createRequire(cli.resolve("@changesets/config"))("yaml");
+    const workflow = parse(
+      await readFile(join(root, ".github/workflows/prepare-pi-release.yml"), "utf8"),
+    );
+    const steps = workflow.jobs[jobName].steps;
+    const prepareIndex = steps.findIndex((/** @type {any} */ step) =>
+      step.run?.includes("scripts/prepare-pi-release-pr.mjs"),
+    );
+    assert.ok(prepareIndex > 0);
+    const f = await fixture(t);
+    const selected = succeeds(await f.git("rev-parse", "HEAD")).trim();
+    succeeds(await f.git("update-ref", "refs/remotes/origin/main", "HEAD~1"));
+    await writeFile(join(f.cwd, "later.txt"), "Later dev source must not enter this release.\n");
+    await writeFile(
+      join(f.cwd, ".changeset/later-note.md"),
+      '---\n"@grepco/pi-lence": major\n---\n\nLater release intent.\n',
+    );
+    succeeds(await f.git("add", "."));
+    succeeds(await f.git("commit", "-m", "Later development, after dispatch"));
+    const later = succeeds(await f.git("rev-parse", "HEAD")).trim();
+    succeeds(await f.git("update-ref", "refs/remotes/origin/dev", later));
+    succeeds(await f.git("checkout", "--detach", selected));
+    // Reproduce checkout@SHA: remote-tracking refs exist, but no local dev branch.
+    succeeds(await f.git("update-ref", "-d", "refs/heads/dev", later));
+    assert.notEqual((await f.git("rev-parse", "--verify", "refs/heads/dev")).code, 0);
+    for (const step of steps.slice(0, prepareIndex)) {
+      if (["main-base", "changesets-base"].includes(step.id))
+        succeeds(await f.run("env", [`GITHUB_SHA=${selected}`, "bash", "-e", "-c", step.run]));
+    }
+    const preparedRelease = await api.prepareCandidate(f.cwd);
+    assert.equal(preparedRelease.sourceCommit, selected);
+    assert.equal(preparedRelease.targetVersion, "0.1.0");
+    assert.deepEqual(preparedRelease.changesetIds, ["pi-note"]);
+    assert.equal(succeeds(await f.git("rev-parse", "HEAD")).trim(), selected);
+    assert.equal(succeeds(await f.git("rev-parse", "refs/heads/dev")).trim(), selected);
+    assert.equal(succeeds(await f.git("rev-parse", "refs/remotes/origin/dev")).trim(), later);
+    assert.equal(existsSync(join(f.cwd, "later.txt")), false);
+    assert.equal(existsSync(join(f.cwd, ".changeset/later-note.md")), false);
+    assert.ok(existsSync(join(f.cwd, ".changeset/herdr-note.md")));
+  });
+}
+
 test("registration must be integrated into dev before either job prepares a candidate", async (t) => {
   const cli = createRequire(import.meta.resolve("@changesets/cli/bin.js"));
   const { parse } = createRequire(cli.resolve("@changesets/config"))("yaml");
@@ -452,6 +498,12 @@ test("workflow is manual, gated, cache-free, and separates checked payload from 
     assert.equal(uses[1].with.cache, false);
     assert.equal(uses[1].with.persist_github_token, false);
     assert.ok(typed.steps.some((s) => s.run === "mise run setup"));
+    const checkoutIndex = typed.steps.findIndex((s) => s.uses?.startsWith("actions/checkout@"));
+    const baseIndex = typed.steps.findIndex((s) => s.id === "changesets-base");
+    const prepareIndex = typed.steps.findIndex((s) =>
+      s.run?.includes("scripts/prepare-pi-release-pr.mjs"),
+    );
+    assert.ok(checkoutIndex < baseIndex && baseIndex < prepareIndex);
   }
   const validateRuns = jobs.validate.steps.map((/** @type {any} */ s) => s.run ?? "");
   assert.ok(validateRuns.includes("mise run check"));

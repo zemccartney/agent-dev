@@ -53,13 +53,13 @@ export function githubClient(token, fetcher = fetch) {
     });
     if (!response.ok)
       throw new GithubFailure(
-        `GitHub ${method} ${path} failed (${response.status}); inspect any partial candidate before retrying`,
+        `GitHub ${method} ${path} failed (${response.status}); inspect any partial release branch before retrying`,
         response.status,
       );
     const data = await response.json();
     if (data.errors?.length)
       throw new GithubFailure(
-        "GitHub commit rejected; candidate may have changed. Keep it for owner inspection",
+        "GitHub commit rejected; release branch may have changed. Keep it for owner inspection",
         response.status,
       );
     return data;
@@ -91,35 +91,37 @@ export async function inspectRemote(context, api) {
   }
   if (await candidateRef(api))
     throw new Error(
-      `Existing candidate branch ${branch}; inspect it instead of refreshing. Abandonment requires an explicit owner decision`,
+      `Existing release branch ${branch}; inspect it instead of refreshing. Abandonment requires an explicit owner decision`,
     );
   const prs = await api(
     "GET",
     `${prefix}/pulls?state=open&head=${encodeURIComponent(`zemccartney:${branch}`)}&per_page=1`,
   );
   if (!Array.isArray(prs) || prs.length)
-    throw new Error("Active release PR exists; inspect it rather than preparing another candidate");
+    throw new Error(
+      "Active release PR exists; inspect it rather than preparing another release branch",
+    );
 }
 /** @param {import('./pi-release-candidate.mjs').Candidate} candidate @param {string} commit */
 function prBody(candidate, commit) {
-  return `## Preparation-only release candidate
+  return `## Preparation-only release PR
 
 **Do not merge during this walkthrough: staging and publication are not enabled.**
 This draft is ready for behavioral review only after its preparation run succeeds.
 
 - Package: @grepco/pi-lence ${candidate.targetVersion}
-- Frozen source: \`${candidate.sourceCommit}\`
+- Selected dev commit: \`${candidate.sourceCommit}\`
 - Prepared commit: \`${commit}\`
 - Version-payload SHA-256 (not an npm tarball digest): \`${candidate.digest}\`
 - Consumed notes: ${candidate.changesetIds.map((id) => JSON.stringify(id)).join(", ")}
 
-Later dev commits do not update this frozen candidate. Review the full diff against main,
-not just the version changes. Herdr source can be included; Herdr versions and separate
+Later dev commits do not automatically update this release branch. Deliberate release fixes
+are allowed, with renewed checks. Review the full diff against main, not just the version changes. Herdr source can be included; Herdr versions and separate
 notes are unchanged. Only work-branch plan.md, thinking/ and .superpowers/ scratch is omitted.
 
 GitHub may require **Approve workflows to run** for this bot-created PR's read-only CI.
 That starts checks; it does not approve a release. Review CI for the actual main merge tree
-and revalidate if main or this candidate changes. Do not add force updates to refresh it.
+and revalidate if main or this release branch changes. Do not add force updates to refresh it.
 
 The later intended flow is reviewed main merge → native npm staging only → your npm
 website/2FA approval. That staging integration is not installed. Accepted versions,
@@ -133,9 +135,9 @@ export async function openReleasePr(context, api, candidate, expectedDigest) {
   assertTrustedContext(context);
   verifyDigest(candidate, expectedDigest);
   if (candidate.sourceCommit !== context.sha)
-    throw new Error("Candidate source differs from selected workflow SHA");
+    throw new Error("Prepared source differs from selected workflow SHA");
   if (candidate.targetVersion === null)
-    throw new Error("No Pi-lence release intent; no candidate may be opened");
+    throw new Error("No Pi-lence release intent; no release branch may be created");
   await inspectRemote(context, api);
   // createRef is atomic: a candidate that appears after inspection causes422, never an update.
   await api("POST", `${prefix}/git/refs`, { ref: `refs/heads/${branch}`, sha: context.sha });
@@ -154,9 +156,9 @@ export async function openReleasePr(context, api, candidate, expectedDigest) {
   });
   const commit = response.data?.createCommitOnBranch?.commit?.oid;
   if (typeof commit !== "string" || !/^[a-f0-9]{40}$/.test(commit))
-    throw new Error("GitHub returned an invalid prepared commit; inspect the candidate branch");
+    throw new Error("GitHub returned an invalid prepared commit; inspect the release branch");
   if ((await candidateRef(api))?.object?.sha !== commit)
-    throw new Error("Candidate branch changed before PR creation; keep it for inspection");
+    throw new Error("Release branch changed before PR creation; keep it for inspection");
   const pr = await api("POST", `${prefix}/pulls`, {
     base: "main",
     head: branch,
@@ -166,7 +168,7 @@ export async function openReleasePr(context, api, candidate, expectedDigest) {
   });
   if (!Number.isSafeInteger(pr.number) || pr.number <= 0 || pr.head?.sha !== commit)
     throw new Error(
-      "GitHub PR does not match the prepared candidate; inspect it before any further action",
+      "GitHub PR does not match the prepared release commit; inspect it before any further action",
     );
   return { number: pr.number, url: `https://github.com/${repository}/pull/${pr.number}`, commit };
 }
