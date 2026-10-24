@@ -1,0 +1,24 @@
+# Install only this template as .github/workflows/prepare-pi-release.yml on published main.
+# It registers the manual workflow without promoting the development tree or granting writes.
+name: Prepare Pi-lence release (choose dev)
+
+on:
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: prepare-pi-lence
+  cancel-in-progress: false
+
+jobs:
+  registration:
+    name: Registration only — choose dev to prepare
+    runs-on: ubuntu-24.04
+    timeout-minutes: 1
+    steps:
+      - name: Explain the source selector
+        run: |
+          echo 'This is the main-branch registration stub. No release has been prepared.'
+          echo 'Run this workflow again with the branch selector set to dev.'
+          exit 1
