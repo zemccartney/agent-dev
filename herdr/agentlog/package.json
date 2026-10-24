@@ -1,0 +1,43 @@
+{
+  "name": "@grepco/agentlog",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "imports": {
+    "#agentlog/*": {
+      "types": "./src/*.ts",
+      "default": "./.build/test/*.js"
+    }
+  },
+  "scripts": {
+    "build": "tsdown",
+    "typecheck": "tsc --build",
+    "types:core": "tsc --build tsconfig.core.json",
+    "lint": "pnpm types:core && oxlint --type-aware --deny-warnings --tsconfig tsconfig.core.json src && oxlint --type-aware --deny-warnings --tsconfig tsconfig.tools.json scripts test tsdown.config.ts",
+    "lint:fix": "pnpm types:core && oxlint --type-aware --deny-warnings --fix --tsconfig tsconfig.core.json src && oxlint --type-aware --deny-warnings --fix --tsconfig tsconfig.tools.json scripts test tsdown.config.ts",
+    "format": "oxfmt .",
+    "format:check": "oxfmt --check .",
+    "test": "pnpm types:core && pnpm build && node --test --test-reporter=tap test/*.test.ts",
+    "test:integration": "pnpm build && node --test --test-reporter=tap --test-concurrency=1 test/integration/*.test.ts",
+    "check:project": "pnpm typecheck && pnpm lint && pnpm test",
+    "check": "pnpm format:check && pnpm check:project"
+  },
+  "dependencies": {
+    "@earendil-works/pi-tui": "1.0.4"
+  },
+  "devDependencies": {
+    "@types/node": "24.19.1",
+    "@xterm/headless": "5.5.0",
+    "tsdown": "0.23.0"
+  },
+  "devEngines": {
+    "runtime": {
+      "name": "node",
+      "version": "24.16.0",
+      "onFail": "error"
+    }
+  },
+  "engines": {
+    "node": ">=24.15.0 <25 || >=25.7.0"
+  }
+}

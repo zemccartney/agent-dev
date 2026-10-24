@@ -1,0 +1,46 @@
+[settings]
+pin = true
+lockfile = true
+locked = true
+auto_install = false
+# Fuzzy selections only; review publication dates before changing exact pins.
+minimum_release_age = "7d"
+
+[tools]
+node = "24.16.0"
+pnpm = "11.26.0"
+# GitHub releases: hk 2026-10-04, zizmor 2026-09-09, taplo 2025-05-23.
+hk = "2.5.0"
+zizmor = "1.30.1"
+taplo = "0.10.0"
+
+[env]
+_.path = ["node_modules/.bin"]
+
+[tasks.setup]
+description = "Install locked developer tools and frozen workspace dependencies; no hooks or host registration"
+run = ["mise install --locked", "pnpm install --frozen-lockfile"]
+
+[tasks.check]
+description = "Run repository, all-project and infrastructure checks (the CI command)"
+run = "pnpm check"
+
+[tasks.test]
+description = "Run repository and package unit/regression tests"
+run = "pnpm test"
+
+[tasks.format]
+description = "Format repository/package files and TOML without installing hooks"
+run = "pnpm format"
+
+[tasks.fix]
+description = "Apply shared formatters and run all shared checks"
+run = "hk fix --all"
+
+[tasks."hooks:install"]
+description = "Opt in to repository-local pre-commit; refuse existing or shared-worktree hooks"
+run = "node scripts/install-hooks.mjs"
+
+[tasks."audit:exceptions"]
+description = "Read-only registry audit of exact, reviewed cooldown exceptions"
+run = "node scripts/check-exceptions.mjs"

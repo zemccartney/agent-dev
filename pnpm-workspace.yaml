@@ -1,0 +1,25 @@
+packages:
+  - pi/*
+  - herdr/*
+
+engineStrict: true
+minimumReleaseAge: 10080
+minimumReleaseAgeStrict: true
+minimumReleaseAgeIgnoreMissingTime: false
+blockExoticSubdeps: true
+trustPolicy: no-downgrade
+trustLockfile: false
+strictDepBuilds: true
+# Reviewed denials, not execution grants: Google preinstall is a no-op echo;
+# protobuf postinstall only warns about the dependent's version range.
+allowBuilds:
+  "@google/genai@2.21.0": false
+  "protobufjs@7.6.6": false
+saveExact: true
+autoInstallPeers: false
+minimumReleaseAgeExcludePrune: true
+minimumReleaseAgeExclude: []
+# Separately approved 2026-10-17: upstream Node 22 declaration dependency.
+# Missing historical provenance; this is NOT an age exception and does not age out.
+trustPolicyExclude:
+  - "undici-types@6.21.0"

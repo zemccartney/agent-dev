@@ -1,27 +1,57 @@
 {
-  "name": "pi-lence",
+  "name": "@grepco/pi-lence",
   "version": "0.1.0",
   "description": "A quieter pi conversation with a response browser, named pins, and a delayed activity warning.",
-  "type": "module",
+  "keywords": [
+    "pi-package"
+  ],
   "license": "MIT",
-  "keywords": ["pi-package"],
   "repository": {
     "type": "git",
     "url": "https://github.com/zemccartney/agent-dev.git",
     "directory": "pi/pi-lence"
   },
-  "engines": {
-    "node": ">=22.18.0"
-  },
+  "type": "module",
   "scripts": {
-    "test": "node --test *.test.ts",
-    "test:integration": "node quiet-label.smoke.mjs"
+    "format": "oxfmt .",
+    "format:check": "oxfmt --check .",
+    "types:core": "tsc --build tsconfig.core.json",
+    "typecheck": "tsc --build",
+    "lint": "pnpm types:core && oxlint --type-aware --deny-warnings --tsconfig tsconfig.core.json src && oxlint --type-aware --deny-warnings --tsconfig tsconfig.tools.json scripts test",
+    "test": "tsc --build tsconfig.core.json && node --test test/*.test.ts",
+    "test:integration": "node test/run-smoke.mjs",
+    "test:host": "node test/run-host.mjs",
+    "pack:candidate": "node scripts/pack.mjs",
+    "check:contracts": "pnpm typecheck && pnpm lint && pnpm test && pnpm test:integration",
+    "check:project": "pnpm check:contracts && pnpm test:host",
+    "check": "pnpm format:check && pnpm check:project"
+  },
+  "devDependencies": {
+    "@earendil-works/pi-ai": "1.3.0",
+    "@earendil-works/pi-coding-agent": "1.3.0",
+    "@earendil-works/pi-tui": "1.3.0",
+    "@modelcontextprotocol/sdk": "1.32.1",
+    "@types/node": "22.19.19",
+    "@xterm/addon-unicode11": "0.8.0",
+    "@xterm/headless": "5.5.0"
   },
   "peerDependencies": {
     "@earendil-works/pi-coding-agent": "*",
     "@earendil-works/pi-tui": "*"
   },
+  "devEngines": {
+    "runtime": {
+      "name": "node",
+      "version": "24.16.0",
+      "onFail": "error"
+    }
+  },
+  "engines": {
+    "node": ">=22.19.0"
+  },
   "pi": {
-    "extensions": ["./reference-ui.ts"]
+    "extensions": [
+      "./src/reference-ui.ts"
+    ]
   }
 }

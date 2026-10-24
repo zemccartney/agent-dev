@@ -1,16 +1,17 @@
 # agent-dev
 
 Agentic coding tools and configuration, organized by the app they extend.
-Each project owns its package metadata, code, tests, and documentation; there
-is no root npm package.
+Each project owns its package metadata, code, tests, and documentation.
+The private root workspace owns shared development tools and dependency policy.
 
 ## Projects
 
 - **[pi-lence](pi/pi-lence/README.md)** — a quieter pi conversation, with a response
   browser, named pins, Quiet/Raw tool display, and an amber warning after a minute
-  without model/tool updates. First trial release; tested with pi 1.1.0's
-  fullscreen TUI in Herdr.
-- **Herdr projects** will live under `herdr/` as they are ready to share.
+  without model/tool updates. The initial trial used pi 1.1.0's fullscreen TUI in
+  Herdr; development contract checks now pin Pi 1.3.0.
+- **[auto-caffeinator](herdr/auto-caffeinator/README.md)** — automatic, time-bounded caffeination of local Pi and Claude Code runs on macOS. See its [guided demo](herdr/auto-caffeinator/docs/demo.md).
+- **[agentlog](herdr/agentlog/README.md)** — find, organize, and reopen saved Pi conversations from Herdr.
 
 ## Install pi-lence
 
@@ -44,21 +45,32 @@ git pull --ff-only
 Then restart pi or run `/reload` in an existing session. Local-path packages
 are not updated or checked for updates by pi; Git handles this workflow.
 
-On a development machine, edit the local package, run its checks, and use
-`/reload` to try the changes:
+For development, review this checkout and use its pinned mise toolchain:
 
 ```sh
-cd pi/pi-lence
-npm test
-npm run test:integration -- /path/to/node_modules/@earendil-works/pi-coding-agent
+mise trust
+mise run setup
+mise run check
 ```
+
+See [DEVELOPMENT.md](DEVELOPMENT.md) for repository protocol, optional hooks,
+changed-project checks, dependency exceptions, and safe verification/cleanup.
+Setup does not install hooks or register host integrations.
+
+Use `/reload` to try Pi edits only in a session explicitly loading this checkout.
 
 Commit and push only the intended files, particularly when other agents are
 working in the same checkout. Existing pins remain in pi's session files; the
 repository contains extension code, not conversation data.
 
-Npm publishing is deferred. A future standalone `pi-lence` release can use pi's
+Npm publishing is deferred. A future standalone `@grepco/pi-lence` release can use pi's
 package update notifications without changing this monorepo layout.
+
+## Maintenance
+
+These are personal-first tools shared publicly, maintained primarily for the owner's
+workflows. See [MAINTENANCE.md](MAINTENANCE.md) for best-effort compatibility,
+Linux CI's advisory role, runtime prerequisites and release-approval boundaries.
 
 ## Ideas
 

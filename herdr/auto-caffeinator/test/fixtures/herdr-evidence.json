@@ -1,0 +1,96 @@
+{
+  "pi": {
+    "agent": {
+      "terminal_id": "term_probe",
+      "agent": "pi",
+      "agent_status": "working",
+      "screen_detection_skipped": true,
+      "agent_session": {
+        "source": "herdr:pi",
+        "agent": "pi",
+        "kind": "path",
+        "value": "/fixture/session.jsonl"
+      },
+      "workspace_id": "w2",
+      "tab_id": "w2:t1",
+      "pane_id": "w2:p1",
+      "focused": false,
+      "state_change_seq": 5,
+      "cwd": "/fixture",
+      "foreground_cwd": "/fixture",
+      "revision": 0
+    },
+    "explain": {
+      "agent": "pi",
+      "state": "working",
+      "screen_detection_skipped": true,
+      "screen_detection_skip_reason": "full_lifecycle_hook_authority",
+      "skip_state_update": false,
+      "fallback_reason": null,
+      "matched_rule": null,
+      "visible_working": false,
+      "visible_idle": false,
+      "visible_blocker": false
+    }
+  },
+  "claude": {
+    "working": {
+      "agent": "claude",
+      "state": "working",
+      "screen_detection_skipped": false,
+      "skip_state_update": false,
+      "matched_rule": {
+        "id": "live_turn_working",
+        "priority": 970,
+        "region": "bottom_non_empty_lines(12)",
+        "state": "working"
+      },
+      "fallback_reason": null,
+      "visible_working": true,
+      "visible_idle": false,
+      "visible_blocker": false
+    },
+    "idle": {
+      "agent": "claude",
+      "state": "idle",
+      "screen_detection_skipped": false,
+      "skip_state_update": false,
+      "matched_rule": {
+        "id": "live_prompt_box",
+        "priority": 950,
+        "region": "prompt_box_body",
+        "state": "idle"
+      },
+      "fallback_reason": null,
+      "visible_working": false,
+      "visible_idle": true,
+      "visible_blocker": false
+    },
+    "blocked": {
+      "agent": "claude",
+      "state": "blocked",
+      "screen_detection_skipped": false,
+      "skip_state_update": false,
+      "matched_rule": {
+        "id": "generic_permission_prompt",
+        "priority": 840,
+        "region": "after_last_horizontal_rule",
+        "state": "blocked"
+      },
+      "fallback_reason": null,
+      "visible_working": false,
+      "visible_idle": false,
+      "visible_blocker": true
+    }
+  },
+  "fallback": {
+    "state": "idle",
+    "screen_detection_skipped": false,
+    "skip_state_update": false,
+    "matched_rule": null,
+    "fallback_reason": "default_known_agent_idle_fallback",
+    "visible_working": false,
+    "visible_idle": false,
+    "visible_blocker": false
+  }
+}
