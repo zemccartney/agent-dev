@@ -33,15 +33,7 @@ function verifyPolicy(cwd) {
   }
   const reviewed = {
     allowBuilds: { "@google/genai@2.21.0": false, "protobufjs@7.6.6": false },
-    minimumReleaseAgeExclude: [
-      "@earendil-works/pi-coding-agent@1.3.0",
-      "@earendil-works/pi-tui@1.3.0",
-      "@earendil-works/pi-ai@1.3.0",
-      "@earendil-works/pi-agent-core@1.3.0",
-      "@earendil-works/pi-codemode@1.3.0",
-      "@earendil-works/pi-mcp@1.3.0",
-      "@earendil-works/pi-telemetry@1.3.0",
-    ],
+    minimumReleaseAgeExclude: [],
     trustPolicyExclude: ["undici-types@6.21.0"],
   };
   for (const [key, value] of Object.entries(reviewed)) {

@@ -81,8 +81,9 @@ build scripts. `allowBuilds: false` entries are reviewed denials, not execution 
 
 Active exceptions must match `dependency-exceptions.json`. The read-only audit
 uses official registry publication times and fails on expired or unavailable data.
-Remove each age exclusion when eligible (all current Pi 1.3.0 exclusions expire by
-**2026-10-22 19:14:03 UTC**), updating the review record and policy tests together.
+Remove each age exclusion when eligible, updating the review record and policy tests
+together. There are currently no age exclusions: the seven Pi 1.3.0 exceptions
+expired on October 22, 2026 and were removed on October 24.
 `minimumReleaseAgeExcludePrune` removes selectors absent from the graph, not expired
 ones. The separate Undici trust exception does not age out and needs its own
 replacement/removal review.
