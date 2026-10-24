@@ -12,13 +12,13 @@ concurrency:
 
 jobs:
   validate:
-    name: Generate and check the frozen candidate
+    name: Generate and check release files
     if: github.repository == 'zemccartney/agent-dev' && github.ref == 'refs/heads/dev'
     runs-on: macos-15
     timeout-minutes: 20
     permissions:
       contents: read
-      pull-requests: read # Detect any active candidate PR; no remote writes in this job.
+      pull-requests: read # Detect any active release PR; no remote writes in this job.
     outputs:
       has-release: ${{ steps.preview.outputs.has-release }}
       digest: ${{ steps.verified.outputs.digest }}
@@ -28,6 +28,10 @@ jobs:
           ref: ${{ github.sha }}
           fetch-depth: 0
           persist-credentials: false
+      - name: Anchor Changesets base to the selected dev commit
+        id: changesets-base
+        # Checkout at a SHA is detached. Changesets needs local dev, not moving origin/dev.
+        run: git branch --no-track dev "$GITHUB_SHA"
       - name: Require published main to be integrated into the selected source
         id: main-base
         run: |
@@ -43,7 +47,7 @@ jobs:
           persist_github_token: false
       - name: Fresh frozen developer setup
         run: mise run setup
-      - name: Inspect remote state and generate a local candidate
+      - name: Inspect remote state and prepare release files
         id: preview
         env:
           GITHUB_TOKEN: ${{ github.token }}
@@ -51,12 +55,12 @@ jobs:
       - name: Verify main-bound tree
         if: steps.preview.outputs.has-release == 'true'
         run: mise exec -- node scripts/check-release-tree.mjs
-      - name: Check the generated candidate with read-only permissions
+      - name: Check prepared release files with read-only permissions
         if: steps.preview.outputs.has-release == 'true'
         env:
           pnpm_config_verify_deps_before_run: "false"
         run: mise run check
-      - name: Verify checks did not change candidate bytes
+      - name: Verify checks did not change prepared files
         if: steps.preview.outputs.has-release == 'true'
         id: verified
         env:
@@ -65,7 +69,7 @@ jobs:
         run: mise exec -- node scripts/prepare-pi-release-pr.mjs --verify "$RUNNER_TEMP/pi-candidate.json"
 
   open:
-    name: Create the frozen draft PR
+    name: Create release branch and draft PR
     needs: validate
     if: github.repository == 'zemccartney/agent-dev' && github.ref == 'refs/heads/dev' && needs.validate.outputs.has-release == 'true'
     runs-on: macos-15
@@ -79,6 +83,10 @@ jobs:
           ref: ${{ github.sha }}
           fetch-depth: 0
           persist-credentials: false
+      - name: Anchor Changesets base to the selected dev commit
+        id: changesets-base
+        # This fresh job must recreate the same source-pinned local ref independently.
+        run: git branch --no-track dev "$GITHUB_SHA"
       - name: Require published main to be integrated into the selected source
         id: main-base
         run: |

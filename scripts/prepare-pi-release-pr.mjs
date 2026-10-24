@@ -17,14 +17,14 @@ import {
 /** @param {string} cwd @param {string|undefined} path */
 async function outsideCheckout(cwd, path) {
   if (!path || !isAbsolute(path))
-    throw new Error("Candidate metadata requires an absolute outside-checkout path");
+    throw new Error("Release preparation metadata requires an absolute outside-checkout path");
   const parent = await realpath(dirname(path));
   const location = relative(await realpath(cwd), parent);
   if (
     location === "" ||
     (!location.startsWith("../") && location !== ".." && !isAbsolute(location))
   )
-    throw new Error("Candidate metadata must be outside the checkout");
+    throw new Error("Release preparation metadata must be outside the checkout");
   return path;
 }
 /** Workflow-only orchestration; exported to exercise real local generation against simulated HTTP.
@@ -101,7 +101,7 @@ if (import.meta.main) {
       "url" in result
         ? `Prepared draft release PR: ${result.url}. Stop at inspection; do not merge.\n`
         : result.hasRelease
-          ? `Candidate ${mode === "--verify" ? "verified" : "generated"}: ${result.digest}\n`
+          ? `Release files ${mode === "--verify" ? "verified" : "generated"}: ${result.digest}\n`
           : "No Pi-lence release notes: no branch or PR will be created.\n";
     console.log(message.trim());
     if (env.GITHUB_STEP_SUMMARY) await appendFile(env.GITHUB_STEP_SUMMARY, message);

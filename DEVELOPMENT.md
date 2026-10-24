@@ -213,9 +213,11 @@ The initial `0.0.0` baseline must propose `0.1.0`. Unsupported configuration,
 prereleases, dirty checkouts and unexpected output changes fail closed.
 
 The caller must select the source commit **before** preparation. Later development
-must not replace that snapshot. These functions do not choose a branch, fetch dev,
+must not replace that snapshot. Changesets status also requires a local `dev`
+reference. Both CI jobs check out the exact dispatch SHA, then create that local
+reference at the same SHA; they never switch to the potentially newer `origin/dev`. These functions do not choose a branch, fetch dev,
 or guard remote writes. The surrounding workflow implements that separate boundary
-with create-only branch reservation and an expected-head GitHub commit. The intended candidate PR targets main, with accepted
+with create-only branch reservation and an expected-head GitHub commit. The intended release PR targets main, with accepted
 versions, changelogs, note deletions and release fixes synchronized back to dev.
 
 Do not apply this to the primary checkout or the owner's real note for this
@@ -261,32 +263,39 @@ The workflow and setup below are not activated merely by a local commit.
    refuse a source that does not contain published main. This avoids an add/add
    conflict in the first real release PR. Do not rewrite either shared branch.
 
+**Branch selection:** GitHub's built-in selector chooses which branch's workflow
+revision runs; it is not a custom release-source input and is not ignored. Only
+`dev` is accepted for preparation. GitHub provides no workflow setting to hide
+that selector; an explicit CLI dispatch with `--ref dev` avoids the dropdown.
+
 **First behavioral walkthrough:**
 
 1. Open Actions → **Prepare Pi-lence release (choose dev)** → **Run workflow**.
    Select **dev**. The dispatch captures that source commit; later dev commits
    do not enter or invalidate it. The selected source must already contain main.
-2. Expect a read-only job to generate and fully check the candidate. No Pi note
+2. Expect a read-only job to generate and fully check the prepared release files. No Pi note
    means a successful no-op and no PR. Herdr-only notes do not release Pi.
 3. A separate fresh job regenerates the same payload and compares its digest,
-   rechecks permissions and active candidates, then creates
-   **changeset-release/main → main** as a **draft PR**. The run summary links it.
+   rechecks permissions and existing release branches/PRs, then creates
+   **changeset-release/main → main** as a **draft PR**. This is the release branch:
+   later dev commits do not automatically enter it, but deliberate release fixes
+   are allowed with renewed checks. The run summary links it.
    Only tracked `plan.md`, `thinking/` and `.superpowers/` scratch is omitted;
    Herdr code stays included. The payload digest is not an npm tarball digest.
 4. Review the full source diff, Pi version/changelog, note deletions, and checks.
    If GitHub displays **Approve workflows to run**, that starts read-only PR CI;
    it is not release approval. PR CI checks the merge tree, unlike the earlier
-   candidate-source checks. Linux compatibility results remain advisory.
+   prepared-source checks. Linux compatibility results remain advisory.
 5. **Stop at inspection. Do not mark ready or merge for this walkthrough.**
    Staging is not implemented. The eventual flow remains reviewed main merge →
    native npm staging only → owner approval on npm's website with 2FA.
 
 **Retry, abandon and recovery:** another request refuses an existing branch or
 open PR, including a branch left after partial failure. It never refreshes,
-force-updates, deletes, approves or merges that candidate. A collision during
+force-updates, deletes, approves or merges that release branch/PR. A collision during
 creation fails atomically; a concurrent edit before the version commit fails its
 expected-head check. Inspect the failed run and any retained branch/PR first.
-A failure before any remote branch exists can be rerun; a partial candidate needs
+A failure before any remote branch exists can be rerun; a partial release branch needs
 an explicit owner decision to finish manually or abandon it. To abandon, first
 preserve any wanted fixes, close its PR if present, and delete only
 `changeset-release/main`; then request a fresh preparation. No automated cleanup
@@ -295,7 +304,8 @@ while preparation is running.
 
 After eventual acceptance, back-sync versions/changelog, consumed-note deletions
 and release fixes selectively to dev—not scratch omissions or a reset of newer
-work. Main/candidate changes require renewed merge-tree validation before release.
+work. Changes to main or the release branch require renewed merge-tree validation
+before release.
 Live registration, first bot PR/CI behavior and future npm staging must be verified
 on GitHub/npm; local tests do not establish those hosted outcomes.
 
