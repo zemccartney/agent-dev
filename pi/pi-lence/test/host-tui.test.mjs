@@ -2,15 +2,14 @@ import assert from "node:assert/strict";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { fileURLToPath } from "node:url";
 import { test } from "node:test";
-import { packCandidate } from "../scripts/pack.mjs";
+import { selectHostArtifact } from "./helpers/artifact.mjs";
 import { createHostSandbox } from "./helpers/host-sandbox.mjs";
 
 /** @param {import('node:test').TestContext} t */
 async function fixture(t) {
   const root = await mkdtemp(join(tmpdir(), "pi-lence-tui-artifact-"));
-  const { tarballPath } = await packCandidate(fileURLToPath(new URL("../", import.meta.url)), root);
+  const { tarballPath } = await selectHostArtifact(root);
   const host = await createHostSandbox(tarballPath, { nodePath: process.env.PI_LENCE_HOST_NODE });
   t.after(async () => {
     await host.dispose();
@@ -172,8 +171,21 @@ for (const mode of modes) {
       ui.send("\x1b");
       await ui.waitWithout("Tab switches");
       for (let repeat = 0; repeat < 2; repeat++) {
+        // An intermediate redraw can hide the pin before Escape has closed its overlay.
+        // Require the restored controls, or /reload can become browser search input.
+        await ui.waitFor("View: Quiet");
         ui.send("/reload\r");
-        await transition(host, "reload", repeat + 1);
+        try {
+          await transition(host, "reload", repeat + 1);
+        } catch (error) {
+          console.error(
+            "Reload diagnostic",
+            repeat,
+            await ui.screen(),
+            await readFile(join(host.root, "events.jsonl"), "utf8"),
+          );
+          throw error;
+        }
         await ui.waitFor("Reloaded");
         ui.send(browse);
         await ui.waitFor("Release notes");
