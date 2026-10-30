@@ -112,19 +112,14 @@ pnpm still runs on Node 24. Main-bound PRs and pushes additionally reject tracke
 `thinking/`, and `.superpowers/` scratch artifacts. This targeted gate does not ban
 ordinary documentation or work-branch plans.
 
-Local Changesets version/changelog tooling and a manual release-PR workflow are
-implemented. GitHub activation, native npm staging and final Herdr artifact
-installers still require separate setup. The selected release flow
-is on-demand release-PR preparation, human review/merge authorizing native npm
-**staging only** through stage-only trusted publishing/OIDC, then owner approval
-on npm's website with 2FA. No extra GitHub environment approval is selected.
-The intended npm security settings require 2FA and disallow traditional publishing
-tokens; CI must not receive direct-publication or dist-tag-management authority.
-This setup does not configure that trust, change account settings or enable a
-publishing workflow. First-package bootstrap (potentially a public
-`0.0.0-stage` placeholder) and default-branch workflow registration still need
-review and explicit authorization. Ordinary development merges must not initiate
-release preparation or staging.
+Changesets preparation and native npm staging have separate workflows. The release
+flow is on-demand preparation from dev → reviewed manual release-PR merge → native
+npm **staging only** → owner approval on npm's website with 2FA. A local workflow
+file does not configure npm trust, GitHub environments or package access. Complete
+the explicitly authorized first-release setup below before merging a release.
+CI must have neither direct-publication nor dist-tag-management authority, and
+receives no npm secret. Ordinary development merges never prepare or stage releases.
+Herdr artifact installers remain separate work.
 
 Pi's real-host suites now test the packaged extension independently of the SDK smoke.
 The smoke still uses private components and manually dispatched events; neither
@@ -176,7 +171,7 @@ workflow below, which versions a disposable copy of committed intent. With no
 pending notes, the pinned CLI's `version` exits 1 without changes. Do not run
 `changeset publish`, npm staging or npm publication here. Current Changesets
 publishing does not support npm staging; version preparation is intentionally
-separate from the future native staging/approval flow.
+separate from the native staging/approval flow.
 
 The existing Pi-lence packer remains authoritative: ten consumer files, with no
 CHANGELOG included. Shipping the generated changelog is an optional future decision,
@@ -286,9 +281,9 @@ that selector; an explicit CLI dispatch with `--ref dev` avoids the dropdown.
    If GitHub displays **Approve workflows to run**, that starts read-only PR CI;
    it is not release approval. PR CI checks the merge tree, unlike the earlier
    prepared-source checks. Linux compatibility results remain advisory.
-5. **Stop at inspection. Do not mark ready or merge for this walkthrough.**
-   Staging is not implemented. The eventual flow remains reviewed main merge →
-   native npm staging only → owner approval on npm's website with 2FA.
+5. **Stop at draft inspection for the initial preparation walkthrough.**
+   Mark ready and merge only after staging readiness and owner authorization,
+   as described below. Bot-CI execution permission is not release approval.
 
 **Retry, abandon and recovery:** another request refuses an existing branch or
 open PR, including a branch left after partial failure. It never refreshes,
@@ -306,8 +301,132 @@ After eventual acceptance, back-sync versions/changelog, consumed-note deletions
 and release fixes selectively to dev—not scratch omissions or a reset of newer
 work. Changes to main or the release branch require renewed merge-tree validation
 before release.
-Live registration, first bot PR/CI behavior and future npm staging must be verified
-on GitHub/npm; local tests do not establish those hosted outcomes.
+Hosted preparation and merge gates were verified in October 2026. Native staging,
+bootstrap/UI behavior and trusted-publisher validation still require their own live
+evidence; local tests do not establish those outcomes.
+
+### Native staging: what a release merge does
+
+`.github/workflows/stage-pi-release.yml` reacts only to a **merged**, same-repository
+`changeset-release/main → main` PR. Closing without merging, unrelated main PRs,
+ordinary pushes and dev merges do not submit anything. Keep auto-merge off: the
+maintainer's deliberate manual merge is the GitHub-side release approval, with no
+second reviewer or additional environment approval. Retain strict main freshness
+and the required maintained macOS checks. Linux compatibility remains visible and
+advisory; a general defect found there still needs investigation.
+
+1. **Verify accepted release archive** checks the event against GitHub's PR record
+   and current actor permissions, then checks out the accepted merge SHA—not a moving
+   branch tip. Deletion of the merged release head is harmless. Fresh frozen setup,
+   full checks and exact-archive Node24/Node22 host tests run with read-only permissions.
+2. The canonical packer supplies exactly ten consumer files; this does not add
+   CHANGELOG.md. `release.json` binds package/version, PR, accepted commit, head SHA,
+   run/attempt, archive filename, SHA256 and SHA512 integrity. After checks, source
+   and bundle are reverified and uploaded as one immutable same-run artifact.
+3. **Submit verified archive to npm staging only** uses a fresh checkout/install,
+   downloads that explicit artifact ID, and independently checks its record digest
+   and source binding. Only this job has `id-token: write`, in `npm-staging`.
+   There are no dependency/build cache restores; artifact transfer is not cache reuse.
+4. The reviewed local npm **11.21.1** runs `npm stage publish` on a private copy of the
+   existing absolute tarball, never a package directory. It fixes the registry to
+   npm, public access, ignored scripts, provenance and zero request retries. Private
+   project/HOME/config/cache and an environment allowlist prevent inherited tokens,
+   routing or ancestor npm configuration. This is process hygiene, not VM isolation.
+5. A validated response produces `pi-stage-receipt.json` and an Actions summary with
+   stage ID and archive digests. The bundle and receipt artifacts have 30-day retention;
+   retain the receipt locally during owner review. **Green means a stage receipt,
+   not publication.** CI cannot inspect, download, reject or approve pending stages.
+
+The workflow entry `scripts/stage-pi-release.mjs` is not a general local publisher.
+Its prepare/verify/submit modes require the accepted GitHub event/context. There is
+no manual version/registry override, tag creation, GitHub release, branch write or
+automatic back-sync. For local byte-level tests, use the loopback fixtures instead:
+
+```sh
+mise exec -- node --test scripts/pi-release-npm.test.mjs scripts/pi-release-stage.test.mjs scripts/stage-pi-release.test.mjs
+```
+
+Those tests use the real pinned CLI against a local server, not npm authentication
+or OIDC. They cannot establish live stage-only enforcement or provenance signing.
+
+### First release: owner-controlled checkpoints
+
+**Do not run live commands just because these instructions exist.** PR #6 stays
+open/draft until tooling integration, setup and the explicitly authorized merge
+checkpoint are complete. Account settings, authentication, public placeholder
+creation and publication are separate decisions, not consequences of local testing.
+
+1. **Integrate reviewed tooling, without refreshing the release branch.** Land the
+   tooling through the dev PR flow, then apply only deliberate infrastructure fixes
+   to the existing release branch. Preserve its `0.1.0`, changelog, consumed note and
+   scratch omissions. Do not rerun preparation or merge unrelated newer dev wholesale.
+   Renew PR #6's merge-tree checks; keep permanent-branch protections/auto-delete intact.
+2. **Configure the GitHub identity restriction.** Repository Settings → Environments
+   → create `npm-staging`. Under deployment branches/tags, select explicit **branch
+   main only**, not all protected branches (which also permits dev). Set no required
+   reviewers or wait timer, and disable administrator bypass. This enforces identity
+   without adding another per-release approval. Verify the saved settings before use.
+3. **Bootstrap the package, only with explicit public-write consent.** Verify the
+   owner's npm 2FA and `@grepco` package-creation rights using temporary local auth
+   state, never CI credentials. Prepare/review an inert archive named
+   `@grepco/pi-lence@0.0.0-bootstrap.0`, prominently labelled **BOOTSTRAP—NEVER APPROVE**,
+   with no Pi extension or executable lifecycle scripts. Using the pinned npm CLI,
+   stage that absolute archive with `--ignore-scripts --access=public
+   --tag=bootstrap-never-approve --fetch-retries=0` against the npm registry.
+   This creates npm's **public `0.0.0-stage` placeholder**; it is not a dry run or the
+   real release. Record the returned stage ID and keep the bootstrap pending. Do not
+   manually stage `0.1.0`, directly publish a dummy version, or approve the bootstrap.
+   The exact private-auth command and archive are reviewed at this live checkpoint.
+4. **Configure npm trust immediately before use.** Package Settings → Trusted
+   Publisher → GitHub Actions: organization/user `zemccartney`, repository `agent-dev`,
+   workflow filename `stage-pi-release.yml` (no path), environment `npm-staging`.
+   Allow **stage only**; leave direct publish and dist-tag management disabled. Require
+   package 2FA and disallow traditional publishing tokens. Do not add an npm GitHub
+   secret. Newly created trust must validate within two days; saving the form is not
+   evidence of first-use validation. Verify actual status after staging/approval and
+   stop—not broaden authority—if the registry rejects the intended setup.
+5. **Authorize the release merge.** Review the complete PR, exact head/current checks
+   and setup above, mark ready and manually merge, preferably with a merge commit.
+   Observe the two staging jobs. The real first version remains **0.1.0**. Bootstrap
+   staging exercises the owner UI; only this submission exercises GitHub OIDC.
+6. **Inspect before approving.** On npmjs.com open the **Staged Packages**
+   tab. Match the real stage's ID/name/version to the CI receipt. With owner-authenticated
+   pinned npm, use `npm stage view <stage-id>` and `npm stage download <stage-id>` in
+   owned temporary state; compare `shasum -a 256 <downloaded-tarball>` with the receipt.
+   Also verify provenance information and trust status. A mismatch or unclear identity
+   means stop. Reject the inert bootstrap with owner 2FA; **never approve it**. Its
+   rejection is cleanup, not a prerequisite for staging the distinct `0.1.0` version.
+   Then approve **only the real 0.1.0** on npm's website with 2FA.
+7. **Verify public bytes and record acceptance.** Read the public version metadata,
+   download its registry tarball and compare the same digest. Record the version,
+   stage/PR/run/accepted commit, archive digest and trust result. Provenance transparency
+   is public; source/CI artifacts also need not be private while a registry stage is
+   pending. No automatic release tags or publication claims are made by this workflow.
+   Back-sync accepted metadata/fixes and main ancestry selectively via a disposable
+   head into dev, preserving later notes/work and restoring only dev's scratch.
+   Do not use permanent main/dev as an auto-deletable PR head. Back-sync automation
+   and post-publication recording remain separate reviewed operations.
+
+### Staging failures and recovery
+
+- A failed verification does not intentionally invoke npm. An OIDC failure is still
+  a real remote authentication attempt, not offline evidence.
+- Once submission starts, timeout, interruption, malformed/missing response or lost
+  receipt means **a pending stage may already exist**. Inspect npm using owner access
+  before any rerun. CI has no inspection credential and cannot repair this automatically.
+- If the intended stage exists, verify its downloaded bytes and continue owner review;
+  do not resubmit merely to make CI green. If it is wrong, stop for a deliberate
+  correction/rejection decision with owner 2FA. Never automatically reject or replace.
+- npm does not permit duplicate staged/public versions or in-place stage-tag changes.
+  A duplicate error is not permission to use another version or force publication.
+- Only after inspection establishes a safe retry, use **Re-run all jobs**, not only
+  the failed staging job: bundles bind to the run **and attempt**, so an old-attempt
+  bundle is rejected. A rerun retains the original accepted source; newer main code
+  will not repair an old workflow run. Source fixes require a reviewed correction
+  and renewed checks, not a refresh from moving dev.
+- Keep partial remote state and evidence. If setup or first trust validation fails,
+  stop for owner investigation; never add a token, direct-publish permission or a
+  weaker branch/environment rule as a workaround.
 
 ## Manual verification and cleanup
 
