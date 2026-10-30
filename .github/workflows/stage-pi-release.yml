@@ -1,0 +1,136 @@
+name: Stage accepted Pi-lence release
+
+on:
+  pull_request:
+    types: [closed]
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: stage-pi-lence
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    name: Verify accepted release archive
+    if: github.repository == 'zemccartney/agent-dev' && github.event.pull_request.merged == true && github.event.pull_request.head.ref == 'changeset-release/main' && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: macos-15
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      pull-requests: read # Bind the event to the accepted release PR; never mutate it.
+    outputs:
+      digest: ${{ steps.verified.outputs.digest }}
+      artifact-id: ${{ steps.artifact.outputs.artifact-id }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: jdx/mise-action@2d8d4cafcbd33be2ea37d2b6f5ad595363d1f1ca # v5.1.1
+        with:
+          version: 2026.9.1
+          install_args: --locked
+          cache: false
+          persist_github_token: false
+      - name: Fresh frozen developer setup
+        run: mise run setup
+      - name: Check accepted main tree
+        run: mise exec -- node scripts/check-release-tree.mjs
+      - name: Authorize accepted release and pack canonical archive
+        id: prepared
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: mise exec -- node scripts/stage-pi-release.mjs --prepare "$RUNNER_TEMP/pi-release"
+      - name: Full maintained checks with read-only permissions
+        run: mise run check
+      - name: Test exact archive in the maintained Node24 host
+        id: host24
+        env:
+          ARCHIVE_NAME: ${{ steps.prepared.outputs.filename }}
+          ARCHIVE_SHA256: ${{ steps.prepared.outputs.sha256 }}
+        run: mise exec -- pnpm --filter @grepco/pi-lence test:host -- --tarball "$RUNNER_TEMP/pi-release/$ARCHIVE_NAME" --sha256 "$ARCHIVE_SHA256"
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22.19.0
+          package-manager-cache: false
+      - name: Capture Node22 before restoring developer tools
+        id: node22
+        run: printf 'path=%s\n' "$(command -v node)" >> "$GITHUB_OUTPUT"
+      - name: Test the same archive in the maintained Node22 host
+        id: host22
+        env:
+          HOST_NODE: ${{ steps.node22.outputs.path }}
+          ARCHIVE_NAME: ${{ steps.prepared.outputs.filename }}
+          ARCHIVE_SHA256: ${{ steps.prepared.outputs.sha256 }}
+        run: |
+          mise exec -- sh -c '
+            export PATH="$(mise where node)/bin:$PATH"
+            exec pnpm --filter @grepco/pi-lence test:host -- --node "$HOST_NODE" --tarball "$RUNNER_TEMP/pi-release/$ARCHIVE_NAME" --sha256 "$ARCHIVE_SHA256"
+          '
+      - name: Revalidate source and artifact after checks
+        id: verified
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          EXPECTED_RECORD_DIGEST: ${{ steps.prepared.outputs.digest }}
+        run: |
+          mise exec -- sh -c '
+            export PATH="$(mise where node)/bin:$PATH"
+            exec node scripts/stage-pi-release.mjs --verify "$RUNNER_TEMP/pi-release"
+          '
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        id: artifact
+        with:
+          name: pi-release-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/pi-release/
+          if-no-files-found: error
+          overwrite: false
+          retention-days: 30
+
+  stage:
+    name: Submit verified archive to npm staging only
+    needs: validate
+    runs-on: macos-15
+    timeout-minutes: 15
+    # Configure this environment main-only, no reviewers/wait timer, before first use.
+    environment: npm-staging
+    permissions:
+      contents: read
+      pull-requests: read # Independently reauthorize the same accepted PR before submission.
+      id-token: write # npm stage-only trust; no direct publication, approval or dist-tag authority.
+    env:
+      EXPECTED_RECORD_DIGEST: ${{ needs.validate.outputs.digest }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: jdx/mise-action@2d8d4cafcbd33be2ea37d2b6f5ad595363d1f1ca # v5.1.1
+        with:
+          version: 2026.9.1
+          install_args: --locked
+          cache: false
+          persist_github_token: false
+      - name: Fresh frozen developer setup
+        run: mise run setup
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          artifact-ids: ${{ needs.validate.outputs.artifact-id }}
+          path: ${{ runner.temp }}/pi-release/
+          digest-mismatch: error
+      - name: Reauthorize and submit the exact checked archive
+        id: submit
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: mise exec -- node scripts/stage-pi-release.mjs --submit "$RUNNER_TEMP/pi-release"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: pi-stage-receipt-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/pi-stage-receipt.json
+          if-no-files-found: error
+          overwrite: false
+          retention-days: 30

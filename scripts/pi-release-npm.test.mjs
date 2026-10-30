@@ -143,6 +143,28 @@ test("changing the caller archive after validation cannot change submitted bytes
   );
 });
 
+test("npm cannot inherit project configuration from a temporary-directory ancestor", async (t) => {
+  const { stageTarball } = await import("./pi-release-npm.mjs");
+  const fixture = await stageFixture(t);
+  const registry = await registryFixture(t);
+  await writeFile(`${fixture.root}/package.json`, '{"name":"hostile-parent","private":true}');
+  await writeFile(
+    `${fixture.root}/.npmrc`,
+    "tag=unreviewed-tag\n//registry.npmjs.org/:_authToken=outer-secret\n",
+  );
+  const previous = process.env.TMPDIR;
+  process.env.TMPDIR = fixture.root;
+  try {
+    await stageTarball(fixture.artifact, process.env, registry.execute);
+    const post = registry.requests.find((request) => request.method === "POST");
+    assert.ok(post);
+    assert.deepEqual(post.body["dist-tags"], { latest: "0.1.0" });
+  } finally {
+    if (previous === undefined) delete process.env.TMPDIR;
+    else process.env.TMPDIR = previous;
+  }
+});
+
 test("archive changed since verification is refused before invoking npm", async (t) => {
   const { stageTarball } = await import("./pi-release-npm.mjs");
   const { artifact } = await stageFixture(t);

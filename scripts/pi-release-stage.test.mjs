@@ -152,6 +152,7 @@ for (const condition of [
   "record bytes",
   "expected digest",
   "different run",
+  "different attempt",
   "extra file",
   "archive symlink",
   "directory symlink",
@@ -168,6 +169,7 @@ for (const condition of [
     if (condition === "record bytes") await writeFile(join(f.bundle, "release.json"), "{}");
     if (condition === "expected digest") digest = "0".repeat(64);
     if (condition === "different run") f.authorization.runId = "456";
+    if (condition === "different attempt") f.authorization.runAttempt = "2";
     if (condition === "extra file") await writeFile(join(f.bundle, "extra"), "unwanted");
     if (condition === "archive symlink") {
       const path = join(f.bundle, record.filename);

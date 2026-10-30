@@ -104,9 +104,11 @@ export async function inspectRemote(context, api) {
 }
 /** @param {import('./pi-release-candidate.mjs').Candidate} candidate @param {string} commit */
 function prBody(candidate, commit) {
-  return `## Preparation-only release PR
+  return `## Prepared Pi-lence release
 
-**Do not merge during this walkthrough: staging and publication are not enabled.**
+**Do not merge until review, current required checks, and staging readiness are complete.**
+Before the first release, complete the owner-controlled environment, bootstrap and npm trust setup
+in DEVELOPMENT.md. A local workflow file does not configure that access.
 This draft is ready for behavioral review only after its preparation run succeeds.
 
 - Package: @grepco/pi-lence ${candidate.targetVersion}
@@ -123,9 +125,11 @@ GitHub may require **Approve workflows to run** for this bot-created PR's read-o
 That starts checks; it does not approve a release. Review CI for the actual main merge tree
 and revalidate if main or this release branch changes. Do not add force updates to refresh it.
 
-The later intended flow is reviewed main merge → native npm staging only → your npm
-website/2FA approval. That staging integration is not installed. Accepted versions,
-changelogs, note deletions and release fixes will need selective back-sync to dev;
+Manual merge authorizes staging only, never direct publication. The dedicated staging workflow
+checks the accepted main source and exact consumer archive before submitting a pending package.
+Your npm website/2FA approval is the final publication decision. On an uncertain submission,
+inspect npm before retrying; CI cannot inspect, reject or replace pending stages.
+Accepted versions, changelogs, note deletions and release fixes need selective back-sync to dev;
 do not back-sync the scratch omissions or erase newer dev work.
 `;
 }

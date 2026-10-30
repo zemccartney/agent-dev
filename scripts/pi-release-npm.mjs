@@ -40,6 +40,10 @@ export async function stageTarball(artifact, sourceEnv, execute = executeNpm) {
   const cli = fileURLToPath(new URL("bin/npm-cli.js", metadataUrl));
   const root = await mkdtemp(join(tmpdir(), "pi-npm-stage-"));
   try {
+    // Anchor npm's project discovery here: user/global config overrides alone do not
+    // prevent an ancestor package.json/.npmrc from supplying credentials or tags.
+    await writeFile(join(root, "package.json"), '{"private":true}\n', { flag: "wx" });
+    await writeFile(join(root, ".npmrc"), "", { flag: "wx", mode: 0o600 });
     const tarball = join(root, "release.tgz");
     await writeFile(tarball, bytes, { mode: 0o400, flag: "wx" });
     const userconfig = join(root, "user.npmrc");

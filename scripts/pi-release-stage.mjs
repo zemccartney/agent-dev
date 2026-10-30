@@ -10,8 +10,8 @@ const shaPattern = /^[a-f0-9]{40}$/;
 /** @typedef {import('./pi-release-github.mjs').Context & {runId:string,runAttempt:string}} StageContext */
 /** @typedef {{pr:number,commit:string,head:string,runId:string,runAttempt:string}} Authorization */
 /** @typedef {Authorization & {schema:1,name:string,version:string,filename:string,sha256:string,integrity:string}} StageRecord */
-/** @param {StageContext} context @param {any} event @param {import('./pi-release-github.mjs').Api} api @returns {Promise<Authorization>} */
-export async function authorizeStage(context, event, api) {
+/** @param {StageContext} context */
+export function assertStageContext(context) {
   if (
     context.repository !== repository ||
     context.eventName !== "pull_request" ||
@@ -29,6 +29,11 @@ export async function authorizeStage(context, event, api) {
     )
   )
     throw new Error("Untrusted staging context: only an accepted main release merge may stage");
+}
+
+/** @param {StageContext} context @param {any} event @param {import('./pi-release-github.mjs').Api} api @returns {Promise<Authorization>} */
+export async function authorizeStage(context, event, api) {
+  assertStageContext(context);
   const number = event.number;
   if (
     event.action !== "closed" ||
