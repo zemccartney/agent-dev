@@ -3,6 +3,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
 import { test } from "node:test";
+import { runInNewContext } from "node:vm";
 import { registryFixture, stageFixture } from "./test-helpers/npm-registry.mjs";
 
 test("the locked local npm provides the reviewed native staging command", async () => {
@@ -100,6 +101,57 @@ test("staging strips credentials and routing, disables scripts and retries, and 
     assert.ok(call.args.includes(flag), flag);
   assert.ok(call.env.npm_config_userconfig);
   await assert.rejects(readFile(call.env.npm_config_userconfig), { code: "ENOENT" });
+});
+
+test("private npm context preserves the hosted provenance builder identity", async (t) => {
+  const { stageTarball } = await import("./pi-release-npm.mjs");
+  const { artifact } = await stageFixture(t);
+  const registry = await registryFixture(t);
+  const source = await readFile(
+    new URL(
+      "node_modules/libnpmpublish/lib/provenance.js",
+      import.meta.resolve("npm/package.json"),
+    ),
+    "utf8",
+  );
+  /** @type {any} */
+  let payload;
+  await stageTarball(
+    artifact,
+    {
+      ...process.env,
+      GITHUB_ACTIONS: "true",
+      RUNNER_ENVIRONMENT: "github-hosted",
+      GITHUB_REPOSITORY: "zemccartney/agent-dev",
+      GITHUB_SHA: "a".repeat(40),
+    },
+    async (cli, args, options) => {
+      const module = { exports: /** @type {any} */ ({}) };
+      // Execute the pinned provenance builder; replace only the remote signing boundary.
+      runInNewContext(source, {
+        module,
+        Buffer,
+        process: { env: options.env },
+        require: (/** @type {string} */ name) => {
+          if (name === "sigstore")
+            return { attest: (/** @type {Buffer} */ bytes) => JSON.parse(bytes.toString()) };
+          if (name === "ci-info") return { GITHUB_ACTIONS: true };
+          if (name === "node:fs/promises") return {};
+          throw new Error(`Unexpected provenance dependency: ${name}`);
+        },
+      });
+      payload = await module.exports.generateProvenance([], {});
+      return registry.execute(cli, args, options);
+    },
+  );
+  assert.equal(
+    payload.predicate.runDetails.builder.id,
+    "https://github.com/actions/runner/github-hosted",
+  );
+  assert.equal(
+    payload.predicate.buildDefinition.resolvedDependencies[0].digest.gitCommit,
+    "a".repeat(40),
+  );
 });
 
 /** @type {Array<[string, {status?:number,reply?:unknown,hang?:boolean}]>} */

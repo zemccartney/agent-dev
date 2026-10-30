@@ -76,6 +76,7 @@ export async function stageTarball(artifact, sourceEnv, execute = executeNpm) {
       "GITHUB_WORKFLOW_REF",
       "GITHUB_WORKFLOW_SHA",
       "GITHUB_EVENT_NAME",
+      "RUNNER_ENVIRONMENT",
       "ACTIONS_ID_TOKEN_REQUEST_URL",
       "ACTIONS_ID_TOKEN_REQUEST_TOKEN",
     ])
