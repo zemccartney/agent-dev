@@ -190,7 +190,7 @@ async function prepare(input, apply) {
     const original = await fingerprints(cwd, tracked);
     const rootManifest = await jsonFile(join(cwd, "package.json"));
     requireThat(
-      rootManifest.private === true && rootManifest.packageManager === "pnpm@11.26.0",
+      rootManifest.private === true && rootManifest.packageManager === "pnpm@12.15.0",
       "Invalid private workspace/toolchain identity",
     );
     requireThat(

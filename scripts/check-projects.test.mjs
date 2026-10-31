@@ -6,7 +6,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
 import { selectProjects } from "./check-projects.mjs";
-import { fixtureEnvironment } from "./test-helpers/environment.mjs";
+import { fixtureEnvironment, seedPackageManagerLock } from "./test-helpers/environment.mjs";
 
 const projects = [
   { name: "base", path: "pi/base", dependencies: [] },
@@ -86,7 +86,7 @@ async function fixture(t) {
   };
   await writeFile(
     join(root, "package.json"),
-    JSON.stringify({ name: "fixture", private: true, packageManager: "pnpm@11.26.0" }),
+    JSON.stringify({ name: "fixture", private: true, packageManager: "pnpm@12.15.0" }),
   );
   await writeFile(
     join(root, "pnpm-workspace.yaml"),
@@ -112,6 +112,7 @@ async function fixture(t) {
     );
   }
   await writeFile(join(root, "packages/base/old name.ts"), "export const old = 1;\n");
+  await seedPackageManagerLock(root);
   const installed = run("pnpm", ["install", "--offline", "--ignore-scripts"], root);
   assert.equal(installed.status, 0, installed.stderr + installed.stdout);
   git(["init", "--quiet"]);

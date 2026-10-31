@@ -223,7 +223,8 @@ test("create-only PR uses CAS, targets main and explains the actual approval bou
     [`/repos/${repo}/git/refs`, "/graphql", `/repos/${repo}/pulls`],
   );
   const body = writes.at(-1)?.body.body;
-  assert.match(body, /staging and publication are not enabled/i);
+  assert.match(body, /merge authorizes staging only/i);
+  assert.match(body, /environment, bootstrap and.*trust setup/i);
   assert.match(body, /release branch/i);
   assert.match(body, /Approve workflows to run/);
   assert.match(body, /Do not merge/i);

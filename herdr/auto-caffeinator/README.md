@@ -5,7 +5,7 @@ Automatically caffeinate local Pi and Claude Code runs. No model calls, consumer
 ## Prerequisites
 
 - macOS supported by your Herdr installation.
-- **Node 24.x** available on Herdr's launch `PATH`. Declared minimum: 24.11.0; tested: 24.16.0. The actual minimum binary remains unverified. Other majors are rejected. No particular version manager is required.
+- **Node 24.x** available on Herdr's launch `PATH`. Declared minimum: 24.11.0; tested: 24.22.1. The actual minimum binary remains unverified. Other majors are rejected. No particular version manager is required.
 - **Herdr >=0.9.3**; tested with 0.9.3, newer versions are best-effort rather than a blanket compatibility guarantee. Pi also needs Herdr's Pi integration, as described below.
 - Git for obtaining a source checkout or GitHub-based installation, not for ongoing caffeination.
 
@@ -110,7 +110,7 @@ Settings live in the directory printed by `herdr plugin config-dir grepco.auto-c
 
 ## Development
 
-Follow the shared [repository setup](../../DEVELOPMENT.md) for pinned developer tools and workspace dependencies. Developer Node is **24.16.0**; the consumer requirement remains Node 24.x, minimum 24.11.0. Error-only developer runtime checks never provision Node.
+Follow the shared [repository setup](../../DEVELOPMENT.md) for pinned developer tools and workspace dependencies. Developer Node is **24.22.1**; the consumer requirement remains Node 24.x, minimum 24.11.0. Error-only developer runtime checks never provision Node.
 
 From the repository root:
 
