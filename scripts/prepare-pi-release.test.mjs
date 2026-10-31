@@ -348,8 +348,9 @@ test("exported API strips credential/routing variables and prevents implicit rep
   );
   await commit(f);
   const repair = await f.run("pnpm", ["exec", "oxfmt", "--check", piManifest]);
-  assert.equal(repair.code, 1, repair.output);
-  assert.match(repair.output, /ERR_PNPM_UNSAFE_MODULES_DIR/);
+  // pnpm12 warns on a failed implicit frozen repair, then still runs the command.
+  assert.equal(repair.code, 0, repair.output);
+  assert.match(repair.output, /ERR_PNPM_OUTDATED_LOCKFILE/);
   const prefix = await pnpmProbe(
     f,
     'for(const name of ["GITHUB_TOKEN","NPM_TOKEN","NODE_OPTIONS","NODE_TEST_CONTEXT","HK_SKIP_HOOK"]) if(process.env[name]) { process.stderr.write("routing leaked: "+name); process.exit(25); }',

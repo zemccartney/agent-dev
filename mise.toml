@@ -7,8 +7,8 @@ auto_install = false
 minimum_release_age = "7d"
 
 [tools]
-node = "24.16.0"
-pnpm = "11.26.0"
+node = "24.22.1"
+pnpm = "12.15.0"
 # GitHub releases: hk 2026-10-04, zizmor 2026-09-09, taplo 2025-05-23.
 hk = "2.5.0"
 zizmor = "1.30.1"

@@ -18,8 +18,8 @@ of treating a broad dependency range as a compatibility guarantee.
 
 ## Linux CI is evidence, not a support obligation
 
-Pi-lence's additional Linux target is **Ubuntu 24.04 x86-64**, with Node 22.19.0
-and 24.16.0. This is a selected GitHub Actions environment, not a minimum distro
+Pi-lence's additional Linux target is **Ubuntu 24.04 x86-64**, with Node 22.23.4
+and 24.22.1. This is a selected GitHub Actions environment, not a minimum distro
 requirement derived from Pi and not a promise to support all Linux distributions.
 It does not establish Alpine/musl, Linux ARM64, other terminals, or older systems.
 Consult the package README and linked CI results for actual verification status.

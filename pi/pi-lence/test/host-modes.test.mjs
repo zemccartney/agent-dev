@@ -5,7 +5,7 @@ import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { setTimeout as delay } from "node:timers/promises";
 import { test } from "node:test";
-import { packCandidate } from "../scripts/pack.mjs";
+import { selectHostArtifact } from "./helpers/artifact.mjs";
 
 const packageRoot = fileURLToPath(new URL("../", import.meta.url));
 
@@ -14,12 +14,14 @@ async function sandbox(t) {
   const root = await mkdtemp(join(tmpdir(), "pi-lence-artifact-test-"));
   t.after(() => rm(root, { recursive: true, force: true }));
   const producer = join(root, "producer/pi/pi-lence");
-  await mkdir(producer, { recursive: true });
-  for (const path of ["src", "package.json", "README.md"])
-    await cp(join(packageRoot, path), join(producer, path), { recursive: true });
-  await cp(resolve(packageRoot, "../../LICENSE"), join(root, "producer/LICENSE"));
-  const { tarballPath } = await packCandidate(producer, join(root, "artifacts"));
-  await rm(join(root, "producer"), { recursive: true });
+  if (process.env.PI_LENCE_HOST_TARBALL === undefined) {
+    await mkdir(producer, { recursive: true });
+    for (const path of ["src", "package.json", "README.md"])
+      await cp(join(packageRoot, path), join(producer, path), { recursive: true });
+    await cp(resolve(packageRoot, "../../LICENSE"), join(root, "producer/LICENSE"));
+  }
+  const { tarballPath } = await selectHostArtifact(join(root, "artifacts"), process.env, producer);
+  await rm(join(root, "producer"), { recursive: true, force: true });
   const { createHostSandbox } = await import("./helpers/host-sandbox.mjs");
   const host = await createHostSandbox(tarballPath, { nodePath: process.env.PI_LENCE_HOST_NODE });
   t.after(() => host.dispose());

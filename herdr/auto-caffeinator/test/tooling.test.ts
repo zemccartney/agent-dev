@@ -65,7 +65,7 @@ void test("linting retains built-in plugins and type awareness; TypeScript runs 
   assert.equal(tools.disableSourceOfProjectReferenceRedirect, true);
   const pkg = config("package.json");
   assert.deepEqual(pkg.devEngines, {
-    runtime: { name: "node", version: "24.16.0", onFail: "error" },
+    runtime: { name: "node", version: "24.22.1", onFail: "error" },
   });
   assert.equal((pkg.devDependencies as Record<string, string>)["@types/node"], "24.19.1");
   const installedTypes = config("node_modules/@types/node/package.json");
