@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
-import { fixtureEnvironment } from "./test-helpers/environment.mjs";
+import { fixtureEnvironment, seedPackageManagerLock } from "./test-helpers/environment.mjs";
 
 const repo = fileURLToPath(new URL("../", import.meta.url));
 /** @param {import('node:test').TestContext} t */
@@ -103,6 +103,7 @@ async function fixture(t) {
     );
     await writeFile(join(dir, "fixture.ts"), "export const count = 1;\n// baseline\n");
   }
+  await seedPackageManagerLock(root);
   const installed = run("pnpm", ["install", "--offline", "--ignore-scripts"]);
   assert.equal(installed.status, 0, installed.stdout + installed.stderr);
   assert.equal(run("oxfmt", ["."]).status, 0);

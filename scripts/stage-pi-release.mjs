@@ -10,7 +10,7 @@ import {
 } from "./pi-release-stage.mjs";
 import { stageTarball } from "./pi-release-npm.mjs";
 
-/** @typedef {{cwd:string,context:import('./pi-release-stage.mjs').StageContext,event:any,api:import('./pi-release-github.mjs').Api,env:NodeJS.ProcessEnv,expectedDigest?:string,execute?:typeof import('./pi-release-npm.mjs').executeNpm}} Options */
+/** @typedef {{cwd:string,context:import('./pi-release-stage.mjs').StageContext,event:any,api:import('./pi-release-github.mjs').Api,env:NodeJS.ProcessEnv,expectedDigest?:string,execute?:typeof import('./pi-release-npm.mjs').executePnpm}} Options */
 /** @typedef {import('./pi-release-stage.mjs').StageRecord & {digest:string,stageId?:string}} Result */
 /** @param {NodeJS.ProcessEnv} env @param {string} text */
 async function summary(env, text) {

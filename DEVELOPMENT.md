@@ -15,10 +15,18 @@ mise run check
 
 `mise.toml` pins developer tools; `mise.lock` binds their download URLs/checksums.
 The verified toolchain targets macOS ARM64 and Linux x64. Developer Node is
-24.16.0; that is not a replacement for each project's consumer prerequisites.
+24.22.1; that is not a replacement for each project's consumer prerequisites.
 Setup installs locked tools and frozen workspace dependencies. It does not edit
 shell configuration, install Git hooks, register Pi/Herdr packages, or publish.
 There is no directory-entry hook, and checks do not auto-install missing tools.
+
+pnpm **12.15.0** and Node **24.22.1 / 22.23.4** were selected after the seven-day
+cooldown; the Node pins include the October 2026 security fixes without changing
+consumer engine ranges. Updating this checkout does not patch Pi's own runtime or
+Herdr users' external Node installations. pnpm12 adds a bootstrap YAML document to
+the shared lockfile for its package-manager pin; application dependencies remain
+in the second document. mise still selects the executable. The bootstrap policy
+inherits the workspace age/trust settings; there are no config dependencies.
 
 | Command                              | Effect                                                                                                                           |
 | ------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------- |
@@ -102,8 +110,8 @@ never publish or alter normal host registrations.
 
 CI uses read-only permissions, immutable action commits, no persisted checkout
 credentials or release credentials. Full checks on `macos-15` (ARM64) include Pi
-on developer Node 24.16.0. Additional packed-host jobs cover macOS/22.19.0 and
-Ubuntu 24.04 x64/22.19.0/24.16.0; Linux also runs the fast contracts. Linux results
+on developer Node 24.22.1. Additional packed-host jobs cover macOS/22.23.4 and
+Ubuntu 24.04 x64/22.23.4/24.22.1; Linux also runs the fast contracts. Linux results
 are advisory compatibility evidence, not an unconditional release gate or a distro
 support promise. Failures stay visible for maintainer triage; do not configure those
 jobs as mandatory merge checks. Runtime jobs capture
@@ -327,11 +335,16 @@ advisory; a general defect found there still needs investigation.
    downloads that explicit artifact ID, and independently checks its record digest
    and source binding. Only this job has `id-token: write`, in `npm-staging`.
    There are no dependency/build cache restores; artifact transfer is not cache reuse.
-4. The reviewed local npm **11.21.1** runs `npm stage publish` on a private copy of the
-   existing absolute tarball, never a package directory. It fixes the registry to
-   npm, public access, ignored scripts, provenance and zero request retries. Private
-   project/HOME/config/cache and an environment allowlist prevent inherited tokens,
-   routing or ancestor npm configuration. This is process hygiene, not VM isolation.
+4. The mise-locked native **pnpm12.15.0** runs `pnpm stage publish` on a private copy
+   of the existing absolute tarball, never a package directory. The adapter resolves
+   an absolute executable with `mise which pnpm --tool=pnpm@12.15.0` and checks its
+   version; PATH npm/pnpm shims are not used. There is no separate npm dev dependency.
+   It fixes the registry to npm, public access, ignored scripts and explicit provenance.
+   Private workspace settings set `fetchRetries: 0` and `fetchTimeout: 30000`; there
+   are no registry submission retries. pnpm may retry provenance signing before
+   submission; the entire child has a two-minute limit. Private project/workspace,
+   HOME/XDG/config/cache and an environment allowlist prevent inherited tokens,
+   routing or ancestor configuration. This is process hygiene, not VM isolation.
 5. A validated response produces `pi-stage-receipt.json` and an Actions summary with
    stage ID and archive digests. The bundle and receipt artifacts have 30-day retention;
    retain the receipt locally during owner review. **Green means a stage receipt,
@@ -361,6 +374,10 @@ creation and publication are separate decisions, not consequences of local testi
    to the existing release branch. Preserve its `0.1.0`, changelog, consumed note and
    scratch omissions. Do not rerun preparation or merge unrelated newer dev wholesale.
    Renew PR #6's merge-tree checks; keep permanent-branch protections/auto-delete intact.
+   Coordinate the owner-authorized main required-check rename from
+   `Pi host (macos-15, Node 22.19.0)` to `Pi host (macos-15, Node 22.23.4)` when
+   integrating this matrix. Verify the new check is required and green; do not
+   remove the gate or merge while waiting for an obsolete check name.
 2. **Configure the GitHub identity restriction.** Repository Settings → Environments
    → create `npm-staging`. Under deployment branches/tags, select explicit **branch
    main only**, not all protected branches (which also permits dev). Set no required
@@ -370,9 +387,10 @@ creation and publication are separate decisions, not consequences of local testi
    owner's npm 2FA and `@grepco` package-creation rights using temporary local auth
    state, never CI credentials. Prepare/review an inert archive named
    `@grepco/pi-lence@0.0.0-bootstrap.0`, prominently labelled **BOOTSTRAP—NEVER APPROVE**,
-   with no Pi extension or executable lifecycle scripts. Using the pinned npm CLI,
+   with no Pi extension or executable lifecycle scripts. Using the pinned pnpm CLI,
    stage that absolute archive with `--ignore-scripts --access=public
-   --tag=bootstrap-never-approve --fetch-retries=0` against the npm registry.
+   --tag=bootstrap-never-approve` against the npm registry, with private workspace
+   settings `fetchRetries: 0` and `fetchTimeout: 30000` (not npm-only CLI flags).
    This creates npm's **public `0.0.0-stage` placeholder**; it is not a dry run or the
    real release. Record the returned stage ID and keep the bootstrap pending. Do not
    manually stage `0.1.0`, directly publish a dummy version, or approve the bootstrap.
@@ -391,7 +409,7 @@ creation and publication are separate decisions, not consequences of local testi
    staging exercises the owner UI; only this submission exercises GitHub OIDC.
 6. **Inspect before approving.** On npmjs.com open the **Staged Packages**
    tab. Match the real stage's ID/name/version to the CI receipt. With owner-authenticated
-   pinned npm, use `npm stage view <stage-id>` and `npm stage download <stage-id>` in
+   pinned pnpm, use `pnpm stage view <stage-id>` and `pnpm stage download <stage-id>` in
    owned temporary state; compare `shasum -a 256 <downloaded-tarball>` with the receipt.
    Also verify provenance information and trust status. A mismatch or unclear identity
    means stop. Reject the inert bootstrap with owner 2FA; **never approve it**. Its
@@ -409,7 +427,7 @@ creation and publication are separate decisions, not consequences of local testi
 
 ### Staging failures and recovery
 
-- A failed verification does not intentionally invoke npm. An OIDC failure is still
+- A failed verification does not intentionally invoke the staging client. An OIDC failure is still
   a real remote authentication attempt, not offline evidence.
 - Once submission starts, timeout, interruption, malformed/missing response or lost
   receipt means **a pending stage may already exist**. Inspect npm using owner access

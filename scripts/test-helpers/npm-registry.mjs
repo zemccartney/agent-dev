@@ -90,19 +90,17 @@ export async function registryFixture(t, behavior = {}) {
   const registry = `http://127.0.0.1:${address.port}/`;
   /** @type {Array<{args:string[],env:NodeJS.ProcessEnv,cwd:string}>} */
   const calls = [];
-  /** @type {typeof import('../pi-release-npm.mjs').executeNpm} */
+  /** @type {typeof import('../pi-release-npm.mjs').executePnpm} */
   const execute = async (cli, args, options) => {
     calls.push({ args, env: { ...options.env }, cwd: options.cwd });
     assert.ok(args.includes("--registry=https://registry.npmjs.org"));
     assert.ok(args.includes("--provenance"));
     // This adapter lives only in tests: change transport, not command/payload.
-    const local = args.map((arg) =>
-      arg === "--registry=https://registry.npmjs.org"
-        ? `--registry=${registry}`
-        : arg === "--provenance"
-          ? "--provenance=false"
-          : arg,
-    );
+    const local = args
+      .filter((arg) => arg !== "--provenance")
+      .map((arg) =>
+        arg === "--registry=https://registry.npmjs.org" ? `--registry=${registry}` : arg,
+      );
     assert.ok(options.env.npm_config_userconfig);
     await writeFile(
       options.env.npm_config_userconfig,
@@ -110,12 +108,12 @@ export async function registryFixture(t, behavior = {}) {
     );
     const env = { ...options.env };
     delete env.GITHUB_ACTIONS;
-    return promisify(execFile)(process.execPath, [cli, ...local], {
+    return promisify(execFile)(cli, local, {
       ...options,
       env,
       timeout: behavior.hang ? 2500 : options.timeout,
       encoding: "utf8",
     });
   };
-  return { requests, calls, execute, stageId };
+  return { requests, calls, execute, stageId, registry };
 }

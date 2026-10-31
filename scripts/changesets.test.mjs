@@ -17,8 +17,8 @@ const projects = ["pi/pi-lence", "herdr/agentlog", "herdr/auto-caffeinator"];
 test("root Changesets configuration preserves manual independent release preparation", async () => {
   const manifest = await json(join(root, "package.json"));
   assert.equal(manifest.devDependencies["@changesets/cli"], "3.0.3");
-  assert.equal(manifest.packageManager, "pnpm@11.26.0");
-  assert.equal(manifest.engines.node, "24.16.0");
+  assert.equal(manifest.packageManager, "pnpm@12.15.0");
+  assert.equal(manifest.engines.node, "24.22.1");
   assert.deepEqual(await json(join(root, ".changeset/config.json")), {
     changelog: "@changesets/cli/changelog",
     commit: false,

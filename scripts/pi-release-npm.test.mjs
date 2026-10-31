@@ -1,30 +1,23 @@
 import assert from "node:assert/strict";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
-import { fileURLToPath } from "node:url";
+import { chmod, mkdir, readFile, writeFile } from "node:fs/promises";
 import { spawnSync } from "node:child_process";
 import { test } from "node:test";
-import { runInNewContext } from "node:vm";
 import { registryFixture, stageFixture } from "./test-helpers/npm-registry.mjs";
 
-test("the locked local npm provides the reviewed native staging command", async () => {
+test("the mise-selected pnpm provides native staging without a second npm dependency", async () => {
   const root = JSON.parse(await readFile(new URL("../package.json", import.meta.url), "utf8"));
-  assert.equal(
-    root.devDependencies.npm,
-    "11.21.1",
-    "A local reviewed staging-capable npm is required",
-  );
-  const metadata = JSON.parse(
-    await readFile(new URL(import.meta.resolve("npm/package.json")), "utf8"),
-  );
-  assert.equal(metadata.version, "11.21.1");
-  const cli = fileURLToPath(new URL("bin/npm-cli.js", import.meta.resolve("npm/package.json")));
-  const result = spawnSync(process.execPath, [cli, "stage", "--help"], {
-    env: { PATH: process.env.PATH, HOME: "/dev/null", npm_config_update_notifier: "false" },
+  assert.equal(root.devDependencies.npm, undefined);
+  assert.equal(root.packageManager, "pnpm@12.15.0");
+  const { resolvePnpm } = await import("./pi-release-npm.mjs");
+  const cli = await resolvePnpm();
+  assert.ok(cli.startsWith("/"));
+  const result = spawnSync(cli, ["stage", "--help"], {
+    env: { PATH: "/usr/bin:/bin", HOME: "/dev/null" },
     encoding: "utf8",
     timeout: 10_000,
   });
   assert.equal(result.status, 0, result.stderr);
-  assert.match(result.stdout, /stage publish/);
+  assert.match(result.stdout, /Stage packages/);
 });
 
 test("registry fixtures ignore unrelated concurrent source canaries", async (t) => {
@@ -92,30 +85,16 @@ test("staging strips credentials and routing, disables scripts and retries, and 
     assert.equal(call.env[key], undefined, key);
   assert.deepEqual(call.args.slice(0, 2), ["stage", "publish"]);
   assert.ok(call.args[2].startsWith(`${call.cwd}/`), "npm reads a private verified copy");
-  for (const flag of [
-    "--ignore-scripts",
-    "--fetch-retries=0",
-    "--workspaces=false",
-    "--access=public",
-  ])
+  for (const flag of ["--ignore-scripts", "--no-git-checks", "--access=public"])
     assert.ok(call.args.includes(flag), flag);
   assert.ok(call.env.npm_config_userconfig);
   await assert.rejects(readFile(call.env.npm_config_userconfig), { code: "ENOENT" });
 });
 
-test("private npm context preserves the hosted provenance builder identity", async (t) => {
+test("private pnpm context preserves the hosted provenance identity and effective retry policy", async (t) => {
   const { stageTarball } = await import("./pi-release-npm.mjs");
   const { artifact } = await stageFixture(t);
   const registry = await registryFixture(t);
-  const source = await readFile(
-    new URL(
-      "node_modules/libnpmpublish/lib/provenance.js",
-      import.meta.resolve("npm/package.json"),
-    ),
-    "utf8",
-  );
-  /** @type {any} */
-  let payload;
   await stageTarball(
     artifact,
     {
@@ -124,33 +103,31 @@ test("private npm context preserves the hosted provenance builder identity", asy
       RUNNER_ENVIRONMENT: "github-hosted",
       GITHUB_REPOSITORY: "zemccartney/agent-dev",
       GITHUB_SHA: "a".repeat(40),
+      PNPM_CONFIG_FETCH_RETRIES: "10",
+      PNPM_CONFIG_REGISTRY: "https://invalid.example",
+      PNPM_HOME: "/untrusted",
+      XDG_CONFIG_HOME: "/untrusted",
     },
     async (cli, args, options) => {
-      const module = { exports: /** @type {any} */ ({}) };
-      // Execute the pinned provenance builder; replace only the remote signing boundary.
-      runInNewContext(source, {
-        module,
-        Buffer,
-        process: { env: options.env },
-        require: (/** @type {string} */ name) => {
-          if (name === "sigstore")
-            return { attest: (/** @type {Buffer} */ bytes) => JSON.parse(bytes.toString()) };
-          if (name === "ci-info") return { GITHUB_ACTIONS: true };
-          if (name === "node:fs/promises") return {};
-          throw new Error(`Unexpected provenance dependency: ${name}`);
-        },
-      });
-      payload = await module.exports.generateProvenance([], {});
+      // These are the actual env inputs consumed by pnpm12's native SLSA builder.
+      // Signing remains a separately authorized live check, not a mocked success.
+      assert.equal(options.env.RUNNER_ENVIRONMENT, "github-hosted");
+      assert.equal(options.env.GITHUB_SHA, "a".repeat(40));
+      assert.equal(options.env.GITHUB_REPOSITORY, "zemccartney/agent-dev");
+      assert.equal(options.env.PNPM_CONFIG_REGISTRY, undefined);
+      assert.equal(options.env.PNPM_CONFIG_FETCH_RETRIES, undefined);
+      assert.ok(options.env.XDG_CONFIG_HOME?.startsWith(options.cwd));
+      assert.ok(options.env.PNPM_HOME?.startsWith(options.cwd));
+      for (const [setting, expected] of [
+        ["fetchRetries", "0"],
+        ["fetchTimeout", "30000"],
+      ]) {
+        const result = spawnSync(cli, ["config", "get", setting], { ...options, encoding: "utf8" });
+        assert.equal(result.status, 0, result.stderr);
+        assert.equal(result.stdout.trim(), expected);
+      }
       return registry.execute(cli, args, options);
     },
-  );
-  assert.equal(
-    payload.predicate.runDetails.builder.id,
-    "https://github.com/actions/runner/github-hosted",
-  );
-  assert.equal(
-    payload.predicate.buildDefinition.resolvedDependencies[0].digest.gitCommit,
-    "a".repeat(40),
   );
 });
 
@@ -204,6 +181,14 @@ test("npm cannot inherit project configuration from a temporary-directory ancest
     `${fixture.root}/.npmrc`,
     "tag=unreviewed-tag\n//registry.npmjs.org/:_authToken=outer-secret\n",
   );
+  await writeFile(
+    `${fixture.root}/pnpm-workspace.yaml`,
+    "packages: []\ntag: unreviewed-workspace-tag\nregistry: https://invalid.example\nfetchRetries: 10\n",
+  );
+  await writeFile(
+    `${fixture.root}/.pnpmfile.cjs`,
+    'throw new Error("ancestor hook must not run");\n',
+  );
   const previous = process.env.TMPDIR;
   process.env.TMPDIR = fixture.root;
   try {
@@ -214,6 +199,83 @@ test("npm cannot inherit project configuration from a temporary-directory ancest
   } finally {
     if (previous === undefined) delete process.env.TMPDIR;
     else process.env.TMPDIR = previous;
+  }
+});
+
+test("explicit provenance fails closed in the real CLI without a supported signing context", async (t) => {
+  const { stageTarball, executePnpm } = await import("./pi-release-npm.mjs");
+  const { artifact } = await stageFixture(t);
+  const registry = await registryFixture(t);
+  let signingRefused = false;
+  await assert.rejects(
+    stageTarball(artifact, {}, async (cli, args, options) => {
+      assert.ok(options.env.npm_config_userconfig);
+      await writeFile(
+        options.env.npm_config_userconfig,
+        `//${new URL(registry.registry).host}/:_authToken=fixture-only\n`,
+      );
+      try {
+        return await executePnpm(
+          cli,
+          args.map((arg) =>
+            arg.startsWith("--registry=") ? `--registry=${registry.registry}` : arg,
+          ),
+          options,
+        );
+      } catch (error) {
+        signingRefused = /ERR_PNPM_PROVENANCE_UNSUPPORTED_PROVIDER/.test(
+          String(/** @type {any} */ (error).stderr),
+        );
+        throw error;
+      }
+    }),
+    /Inspect npm/,
+  );
+  assert.equal(signingRefused, true);
+  assert.equal(registry.requests.filter((r) => r.method === "POST").length, 0);
+});
+
+test("PATH pnpm and npm shims cannot replace the selected staging client", async (t) => {
+  const { stageTarball } = await import("./pi-release-npm.mjs");
+  const { artifact, root } = await stageFixture(t);
+  const registry = await registryFixture(t);
+  for (const bin of ["pnpm", "npm"]) {
+    await writeFile(`${root}/${bin}`, "#!/bin/sh\nexit 93\n");
+    await chmod(`${root}/${bin}`, 0o700);
+  }
+  const previous = process.env.PATH;
+  process.env.PATH = `${root}:${previous}`;
+  try {
+    const receipt = await stageTarball(artifact, process.env, registry.execute);
+    assert.equal(receipt.stageId, registry.stageId);
+  } finally {
+    if (previous === undefined) delete process.env.PATH;
+    else process.env.PATH = previous;
+  }
+});
+
+test("a wrong mise-selected pnpm version is refused before submission", async (t) => {
+  const { stageTarball } = await import("./pi-release-npm.mjs");
+  const { artifact, root } = await stageFixture(t);
+  await writeFile(`${root}/wrong-pnpm`, "#!/bin/sh\nprintf '11.26.0\\n'\n");
+  await writeFile(`${root}/mise`, `#!/bin/sh\nprintf '%s\\n' '${root}/wrong-pnpm'\n`);
+  await chmod(`${root}/wrong-pnpm`, 0o700);
+  await chmod(`${root}/mise`, 0o700);
+  const previous = process.env.PATH;
+  process.env.PATH = `${root}:${previous}`;
+  let submitted = false;
+  try {
+    await assert.rejects(
+      stageTarball(artifact, process.env, async () => {
+        submitted = true;
+        throw new Error("must not submit");
+      }),
+      /Reviewed pnpm12\.15\.0/,
+    );
+    assert.equal(submitted, false);
+  } finally {
+    if (previous === undefined) delete process.env.PATH;
+    else process.env.PATH = previous;
   }
 });
 

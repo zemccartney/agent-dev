@@ -1,27 +1,48 @@
 import { execFile } from "node:child_process";
 import { createHash } from "node:crypto";
-import { lstat, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { lstat, mkdtemp, readFile, realpath, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { isAbsolute, join } from "node:path";
+import { dirname, isAbsolute, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 
 /** @typedef {{tarballPath:string,name:string,version:string,integrity:string}} StageInput */
 /** @typedef {{cwd:string,env:NodeJS.ProcessEnv,timeout:number,maxBuffer:number}} ExecutionOptions */
 /** @param {string} cli @param {string[]} args @param {ExecutionOptions} options */
-export async function executeNpm(cli, args, options) {
-  return promisify(execFile)(process.execPath, [cli, ...args], {
+export async function executePnpm(cli, args, options) {
+  return promisify(execFile)(cli, args, {
     ...options,
     encoding: "utf8",
     killSignal: "SIGKILL",
   });
 }
 
+/** Resolve the installed, locked mise tool, never a PATH pnpm/npm or an auto-downloaded shim. */
+export async function resolvePnpm() {
+  const selected = await promisify(execFile)("mise", ["which", "pnpm", "--tool=pnpm@12.15.0"], {
+    cwd: fileURLToPath(new URL("../", import.meta.url)),
+    encoding: "utf8",
+    timeout: 10_000,
+    maxBuffer: 1024 * 1024,
+  });
+  const path = selected.stdout.trim();
+  if (!isAbsolute(path)) throw new Error("mise must select an absolute pnpm executable");
+  const cli = await realpath(path);
+  const version = await executePnpm(cli, ["--version"], {
+    cwd: "/",
+    env: { HOME: "/dev/null", PATH: "/usr/bin:/bin", XDG_CONFIG_HOME: "/dev/null" },
+    timeout: 10_000,
+    maxBuffer: 1024 * 1024,
+  });
+  if (version.stdout.trim() !== "12.15.0") throw new Error("Reviewed pnpm12.15.0 is required");
+  return cli;
+}
+
 /** Native submission only: no publish/inspect/reject/approve authority or configurable registry.
  * An executor can replace the subprocess boundary; tests keep the CLI real and HTTP local.
  * @param {StageInput} artifact @param {NodeJS.ProcessEnv} sourceEnv
- * @param {typeof executeNpm} [execute] */
-export async function stageTarball(artifact, sourceEnv, execute = executeNpm) {
+ * @param {typeof executePnpm} [execute] */
+export async function stageTarball(artifact, sourceEnv, execute = executePnpm) {
   if (
     artifact.name !== "@grepco/pi-lence" ||
     !/^\d+\.\d+\.\d+$/.test(artifact.version) ||
@@ -34,16 +55,17 @@ export async function stageTarball(artifact, sourceEnv, execute = executeNpm) {
   const bytes = await readFile(artifact.tarballPath);
   if (`sha512-${createHash("sha512").update(bytes).digest("base64")}` !== artifact.integrity)
     throw new Error("Staging artifact integrity changed");
-  const metadataUrl = new URL(import.meta.resolve("npm/package.json"));
-  const metadata = JSON.parse(await readFile(metadataUrl, "utf8"));
-  if (metadata.version !== "11.21.1") throw new Error("Reviewed npm11.21.1 is required");
-  const cli = fileURLToPath(new URL("bin/npm-cli.js", metadataUrl));
+  const cli = await resolvePnpm();
   const root = await mkdtemp(join(tmpdir(), "pi-npm-stage-"));
   try {
-    // Anchor npm's project discovery here: user/global config overrides alone do not
-    // prevent an ancestor package.json/.npmrc from supplying credentials or tags.
+    // Anchor both project and workspace discovery; never inherit ancestor config.
     await writeFile(join(root, "package.json"), '{"private":true}\n', { flag: "wx" });
     await writeFile(join(root, ".npmrc"), "", { flag: "wx", mode: 0o600 });
+    await writeFile(
+      join(root, "pnpm-workspace.yaml"),
+      "packages: []\nfetchRetries: 0\nfetchTimeout: 30000\n",
+      { flag: "wx", mode: 0o600 },
+    );
     const tarball = join(root, "release.tgz");
     await writeFile(tarball, bytes, { mode: 0o400, flag: "wx" });
     const userconfig = join(root, "user.npmrc");
@@ -53,6 +75,12 @@ export async function stageTarball(artifact, sourceEnv, execute = executeNpm) {
     /** @type {NodeJS.ProcessEnv} */
     const env = {
       HOME: root,
+      PATH: `${dirname(process.execPath)}:/usr/bin:/bin`,
+      XDG_CONFIG_HOME: join(root, "config"),
+      XDG_CACHE_HOME: join(root, "cache"),
+      XDG_DATA_HOME: join(root, "data"),
+      XDG_STATE_HOME: join(root, "state"),
+      PNPM_HOME: join(root, "pnpm"),
       npm_config_userconfig: userconfig,
       npm_config_globalconfig: globalconfig,
       npm_config_cache: join(root, "cache"),
@@ -60,7 +88,6 @@ export async function stageTarball(artifact, sourceEnv, execute = executeNpm) {
     };
     // Only context required by npm's GitHub OIDC/provenance implementations; no token fallback.
     for (const key of [
-      "PATH",
       "TMPDIR",
       "LANG",
       "CI",
@@ -89,13 +116,12 @@ export async function stageTarball(artifact, sourceEnv, execute = executeNpm) {
           "publish",
           tarball,
           "--json",
+          "--reporter=silent",
           "--ignore-scripts",
-          "--workspaces=false",
+          "--no-git-checks",
           "--access=public",
           "--registry=https://registry.npmjs.org",
           "--provenance",
-          "--fetch-retries=0",
-          "--fetch-timeout=30000",
         ],
         { cwd: root, env, timeout: 120_000, maxBuffer: 1024 * 1024 },
       );

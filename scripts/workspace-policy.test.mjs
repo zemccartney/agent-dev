@@ -62,10 +62,10 @@ test("one root lockfile and tool pin govern every package", () => {
   assert.ok(existsSync(join(root, "package.json")), "Root developer package required");
   const metadata = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
   assert.equal(metadata.private, true);
-  assert.equal(metadata.packageManager, "pnpm@11.26.0");
+  assert.equal(metadata.packageManager, "pnpm@12.15.0");
   assert.deepEqual(metadata.devEngines.runtime, {
     name: "node",
-    version: "24.16.0",
+    version: "24.22.1",
     onFail: "error",
   });
   assert.ok(existsSync(join(root, "pnpm-lock.yaml")));
