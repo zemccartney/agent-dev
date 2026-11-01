@@ -1,0 +1,14 @@
+@earendil-works/pi-tui 1.0.4 omits its repository-root LICENSE from the npm tarball.
+LICENSE is copied verbatim from:
+https://github.com/earendil-works/pi/blob/7c10bd4337495ee613f2224843ecdf349b80d1df/LICENSE
+The commit matches the npm version's gitHead.
+
+The included StdinBuffer source carries this attribution:
+Based on code from OpenTUI (https://github.com/anomalyco/opentui)
+MIT License - Copyright (c) 2025 opentui
+
+OpenTUI-LICENSE is copied verbatim from:
+https://github.com/anomalyco/opentui/blob/634e0083ec430c2a42268d7de8cf4946231e0405/LICENSE
+
+These version-bound supplemental inputs are reviewed licensing material,
+not runtime code or a replacement for inspecting future dependency versions.

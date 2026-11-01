@@ -1,0 +1,12 @@
+{
+  "$schema": "./node_modules/oxfmt/configuration_schema.json",
+  "sortImports": false,
+  "ignorePatterns": [
+    "**/dist/**",
+    "**/.build/**",
+    "**/node_modules/**",
+    "pnpm-lock.yaml",
+    ".superpowers/**",
+    ".worktrees/**"
+  ]
+}

@@ -1,24 +1,109 @@
-# Install only this template as .github/workflows/prepare-pi-release.yml on published main.
-# It registers the manual workflow without promoting the development tree or granting writes.
 name: Prepare Pi-lence release (choose dev)
 
 on:
   workflow_dispatch:
 
-permissions: {}
+permissions:
+  contents: read
 
 concurrency:
   group: prepare-pi-lence
   cancel-in-progress: false
 
 jobs:
-  registration:
-    name: Registration only — choose dev to prepare
-    runs-on: ubuntu-24.04
-    timeout-minutes: 1
+  validate:
+    name: Generate and check release files
+    if: github.repository == 'zemccartney/agent-dev' && github.ref == 'refs/heads/dev'
+    runs-on: macos-15
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      pull-requests: read # Detect any active release PR; no remote writes in this job.
+    outputs:
+      has-release: ${{ steps.preview.outputs.has-release }}
+      digest: ${{ steps.verified.outputs.digest }}
     steps:
-      - name: Explain the source selector
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Anchor Changesets base to the selected dev commit
+        id: changesets-base
+        # Checkout at a SHA is detached. Changesets needs local dev, not moving origin/dev.
+        run: git branch --no-track dev "$GITHUB_SHA"
+      - name: Require published main to be integrated into the selected source
+        id: main-base
         run: |
-          echo 'This is the main-branch registration stub. No release has been prepared.'
-          echo 'Run this workflow again with the branch selector set to dev.'
-          exit 1
+          if ! git merge-base --is-ancestor origin/main HEAD; then
+            echo "::error::Integrate published main into dev first, including the registration commit. Keep the full dev workflow when resolving the registration stub."
+            exit 1
+          fi
+      - uses: jdx/mise-action@2d8d4cafcbd33be2ea37d2b6f5ad595363d1f1ca # v5.1.1
+        with:
+          version: 2026.9.1
+          install_args: --locked
+          cache: false
+          persist_github_token: false
+      - name: Fresh frozen developer setup
+        run: mise run setup
+      - name: Inspect remote state and prepare release files
+        id: preview
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: mise exec -- node scripts/prepare-pi-release-pr.mjs --preview "$RUNNER_TEMP/pi-candidate.json"
+      - name: Verify main-bound tree
+        if: steps.preview.outputs.has-release == 'true'
+        run: mise exec -- node scripts/check-release-tree.mjs
+      - name: Check prepared release files with read-only permissions
+        if: steps.preview.outputs.has-release == 'true'
+        env:
+          pnpm_config_verify_deps_before_run: "false"
+        run: mise run check
+      - name: Verify checks did not change prepared files
+        if: steps.preview.outputs.has-release == 'true'
+        id: verified
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          EXPECTED_CANDIDATE_DIGEST: ${{ steps.preview.outputs.digest }}
+        run: mise exec -- node scripts/prepare-pi-release-pr.mjs --verify "$RUNNER_TEMP/pi-candidate.json"
+
+  open:
+    name: Create release branch and draft PR
+    needs: validate
+    if: github.repository == 'zemccartney/agent-dev' && github.ref == 'refs/heads/dev' && needs.validate.outputs.has-release == 'true'
+    runs-on: macos-15
+    timeout-minutes: 15
+    permissions:
+      contents: write # Create the reserved branch and an expected-head commit; never force-update.
+      pull-requests: write # Open a draft only; no approve, merge, or publication operation.
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Anchor Changesets base to the selected dev commit
+        id: changesets-base
+        # This fresh job must recreate the same source-pinned local ref independently.
+        run: git branch --no-track dev "$GITHUB_SHA"
+      - name: Require published main to be integrated into the selected source
+        id: main-base
+        run: |
+          if ! git merge-base --is-ancestor origin/main HEAD; then
+            echo "::error::Integrate published main into dev first, including the registration commit. Keep the full dev workflow when resolving the registration stub."
+            exit 1
+          fi
+      - uses: jdx/mise-action@2d8d4cafcbd33be2ea37d2b6f5ad595363d1f1ca # v5.1.1
+        with:
+          version: 2026.9.1
+          install_args: --locked
+          cache: false
+          persist_github_token: false
+      - name: Fresh frozen developer setup
+        run: mise run setup
+      - name: Regenerate verified bytes, recheck guards, create only
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          EXPECTED_CANDIDATE_DIGEST: ${{ needs.validate.outputs.digest }}
+        run: mise exec -- node scripts/prepare-pi-release-pr.mjs --open

@@ -1,0 +1,49 @@
+amends "package://github.com/jdx/hk/releases/download/v2.5.0/hk@2.5.0#/Config.pkl"
+
+// No tool installation or missing-tool skips. mise supplies PATH; setup installs JS tools.
+// Structured argv preserves spaces, newlines and shell metacharacters in selected paths.
+local all_steps = new Mapping<String, Step> {
+  ["format"] {
+    glob = List("**/*.ts", "**/*.js", "**/*.mjs", "**/*.cjs", "**/*.json", "**/*.yaml", "**/*.yml", "**/*.md")
+    exclude = List("pnpm-lock.yaml", "**/node_modules/**", "**/dist/**", "**/.build/**", ".superpowers/**", ".worktrees/**")
+    check = new Command { argv = List("pnpm", "exec", "oxfmt", "--config", ".oxfmtrc.json", "--check", "--", "{{files}}") }
+    fix = new Command { argv = List("pnpm", "exec", "oxfmt", "--config", ".oxfmtrc.json", "--", "{{files}}") }
+  }
+  ["toml"] {
+    glob = "**/*.toml"
+    env { ["RUST_LOG"] = "warn" }
+    check = new Command { argv = List("taplo", "fmt", "--check", "{{files}}") }
+    fix = new Command { argv = List("taplo", "fmt", "{{files}}") }
+  }
+  ["repo"] {
+    // Root canary tests temporarily write package source. Never race project checks.
+    depends = List("format", "toml")
+    check = new Command { argv = List("pnpm", "check:repo:code") }
+  }
+  ["projects"] {
+    depends = "repo"
+    check = new Command { argv = List("node", "scripts/check-projects.mjs", "--", "{{files}}") }
+  }
+  ["infra"] {
+    depends = "projects"
+    check = new Command { argv = List("pnpm", "check:infra") }
+  }
+}
+
+hooks {
+  ["pre-commit"] {
+    fix = true
+    stage = true
+    stash = "git"
+    steps = all_steps
+  }
+  ["check"] {
+    stage = false
+    steps = all_steps
+  }
+  ["fix"] {
+    fix = true
+    stage = false
+    steps = all_steps
+  }
+}

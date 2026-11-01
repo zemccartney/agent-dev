@@ -1,0 +1,95 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import { stat } from "node:fs/promises";
+import { join } from "node:path";
+import { DatabaseSync } from "node:sqlite";
+import { openStore, sessionKey } from "#agentlog/store";
+import { readPiSession } from "#agentlog/pi-session";
+import { makeFixture } from "./helpers/fixtures.ts";
+
+await test("reindexing and reopening preserve committed pin/archive/label choices", async (t) => {
+  const { root, file } = await makeFixture(t);
+  const r = await readPiSession(file);
+  assert.ok(r.ok);
+  const dir = join(root, "state");
+  let store = openStore(dir);
+  t.after(() => store.close());
+  const key = sessionKey(r.meta);
+  store.upsert(r.meta, r.stamp);
+  store.setPinned(key, true);
+  store.setArchived(key, true);
+  store.setLabel(key, "My label ' ; --");
+  store.upsert({ ...r.meta, lastUserAt: 4000, nativeName: "New native name" }, null);
+  store.close();
+  store = openStore(dir);
+  const row = store.get(key);
+  assert.equal(row.pinned, true);
+  assert.equal(row.archived, true);
+  assert.equal(row.labelOverride, "My label ' ; --");
+  assert.equal(row.lastUserAt, 4000);
+  assert.equal(row.nativeName, "New native name");
+  store.setArchived(key, false);
+  assert.equal(store.get(key).pinned, true);
+  assert.equal(store.get(key).lastUserAt, 4000);
+  store.setLabel(key, "  ");
+  assert.equal(store.get(key).labelOverride, null);
+  assert.equal((await stat(dir)).mode & 0o777, 0o700);
+  assert.equal((await stat(join(dir, "agentlog.sqlite3"))).mode & 0o777, 0o600);
+});
+await test("unavailable records and observed paths survive connection restart", async (t) => {
+  const { root, file } = await makeFixture(t);
+  const r = await readPiSession(file);
+  assert.ok(r.ok);
+  const dir = join(root, "state");
+  let store = openStore(dir);
+  t.after(() => store.close());
+  const key = sessionKey(r.meta);
+  store.upsert(r.meta, r.stamp);
+  store.setPinned(key, true);
+  store.setAvailability(key, "invalid", "Malformed session");
+  store.rememberPath(join(root, "not-created-yet.jsonl"));
+  store.rememberPath(join(root, "not-created-yet.jsonl"));
+  store.close();
+  store = openStore(dir);
+  assert.equal(store.list().length, 1);
+  assert.equal(store.get(key).availability, "invalid");
+  assert.equal(store.get(key).lastUserAt, 3000);
+  assert.equal(store.get(key).pinned, true);
+  assert.equal(store.get(key).stamp, null);
+  assert.ok(store.knownPaths().includes(join(root, "not-created-yet.jsonl")));
+  assert.equal(new Set(store.knownPaths()).size, store.knownPaths().length);
+  assert.throws(() => store.rememberPath("relative.jsonl"), /absolute/i);
+  assert.throws(() => store.setPinned("unknown", true), /unknown/i);
+});
+await test("a busy database never acknowledges a user edit that did not commit", async (t) => {
+  const { root, file } = await makeFixture(t);
+  const r = await readPiSession(file);
+  assert.ok(r.ok);
+  const dir = join(root, "state");
+  const store = openStore(dir);
+  t.after(() => store.close());
+  const key = sessionKey(r.meta);
+  store.upsert(r.meta, r.stamp);
+  const blocker = new DatabaseSync(join(dir, "agentlog.sqlite3"));
+  t.after(() => blocker.close());
+  blocker.exec("BEGIN IMMEDIATE");
+  try {
+    assert.throws(() => store.setLabel(key, "Not saved"), /locked|busy/i);
+  } finally {
+    blocker.exec("ROLLBACK");
+  }
+  assert.equal(store.get(key).labelOverride, null);
+  const mode = blocker.prepare("PRAGMA journal_mode").get();
+  assert.equal(mode?.journal_mode, "delete");
+});
+await test("newer schema versions are rejected without resetting the database", async (t) => {
+  const { root } = await makeFixture(t);
+  const dir = join(root, "state");
+  const store = openStore(dir);
+  store.close();
+  const db = new DatabaseSync(join(dir, "agentlog.sqlite3"));
+  t.after(() => db.close());
+  db.exec("PRAGMA user_version=42");
+  assert.throws(() => openStore(dir), /schema/i);
+  assert.equal(db.prepare("PRAGMA user_version").get()?.user_version, 42);
+});

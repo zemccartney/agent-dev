@@ -1,0 +1,8 @@
+include = ["**/*.toml", "mise.lock"]
+exclude = [
+  "**/node_modules/**",
+  "**/dist/**",
+  "**/.build/**",
+  ".superpowers/**",
+  ".worktrees/**",
+]

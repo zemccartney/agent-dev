@@ -1,0 +1,10 @@
+{
+  "releaseAge": [],
+  "trust": [
+    {
+      "packages": ["undici-types@6.21.0"],
+      "reason": "Separately owner-approved Node 22 declaration dependency with missing historical provenance. Does not age out; review replacement/removal separately.",
+      "approvedOn": "2026-10-17"
+    }
+  ]
+}
