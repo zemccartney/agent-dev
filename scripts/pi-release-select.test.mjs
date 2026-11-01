@@ -15,9 +15,12 @@ test("main push selects the exact accepted release merge without resolving a del
   const { authorizeStage } = await import("./pi-release-stage.mjs");
   const { api, calls } = stageApi();
   assert.deepEqual(await authorizeStage(stageContext(), stageEvent(), api), {
+    mode: "release-merge",
+    expectedVersion: null,
+    actor: "owner",
+    triggeringActor: "owner",
     pr: 6,
     commit,
-    releaseCommit: commit,
     head,
     runId: "123",
     runAttempt: "1",
@@ -131,31 +134,49 @@ for (const condition of [
   });
 }
 
-test("explicit recovery identifies accepted release separately from corrected main workflow", async () => {
+test("manual main staging uses expected version and actor authority without any original release PR", async () => {
   const { authorizeStage } = await import("./pi-release-stage.mjs");
   const current = "c".repeat(40);
-  const context = { ...stageContext(current), eventName: "workflow_dispatch", actor: "maintainer" };
+  const context = {
+    ...stageContext(current),
+    eventName: "workflow_dispatch",
+    actor: "maintainer",
+    triggeringActor: "rerunner",
+  };
   const { api, calls } = stageApi();
-  assert.deepEqual(await authorizeStage(context, recoveryEvent(), api), {
-    pr: 6,
+  assert.deepEqual(await authorizeStage(context, recoveryEvent("1.0.0"), api), {
+    mode: "stage-main",
+    expectedVersion: "1.0.0",
+    actor: "maintainer",
+    triggeringActor: "rerunner",
+    pr: null,
+    head: null,
     commit: current,
-    releaseCommit: commit,
-    head,
     runId: "123",
     runAttempt: "1",
   });
   assert.ok(calls.some((path) => path.includes("/maintainer/")));
-  assert.ok(calls.some((path) => path.includes("/owner/")));
-  assert.ok(!calls.some((path) => path.includes("/commits/")));
+  assert.ok(calls.some((path) => path.includes("/rerunner/")));
+  assert.ok(
+    !calls.some(
+      (path) => path.includes("/owner/") || path.includes("/commits/") || path.includes("/pulls/"),
+    ),
+  );
 });
 
-for (const [field, value] of Object.entries({
-  mode: "check-environment",
-  release_pr: "6;echo unsafe",
-  release_commit: "main",
-  inspected_npm: "false",
-})) {
-  test(`recovery refuses invalid ${field} before HTTP`, async () => {
+for (const [field, value] of [
+  ["mode", "check-environment"],
+  ["mode", "stage-accepted-release"],
+  ["expected_version", ""],
+  ["expected_version", "v1.0.0"],
+  ["expected_version", "1.0.0\n"],
+  ["expected_version", "0.0.0"],
+  ["expected_version", "1.0.0-beta"],
+  ["inspected_npm", "false"],
+  ["release_pr", "6"],
+  ["release_commit", commit],
+]) {
+  test(`manual staging refuses invalid or obsolete ${field}: ${JSON.stringify(value)} before HTTP`, async () => {
     const { authorizeStage } = await import("./pi-release-stage.mjs");
     const event = recoveryEvent();
     event.inputs = { ...event.inputs, [field]: value };
@@ -168,35 +189,23 @@ for (const [field, value] of Object.entries({
   });
 }
 
-for (const kind of [
-  "wrong merge SHA",
-  "ordinary PR",
-  "fork PR",
-  "wrong base",
-  "unmerged",
-  "lost merger access",
-]) {
-  test(`recovery refuses ${kind}`, async () => {
+for (const denied of ["maintainer", "rerunner"]) {
+  test(`manual staging refuses current read-only ${denied}`, async () => {
     const { authorizeStage } = await import("./pi-release-stage.mjs");
-    const pr = stagePullRequest();
-    if (kind === "wrong merge SHA") pr.merge_commit_sha = "c".repeat(40);
-    if (kind === "ordinary PR") pr.head.ref = "docs/maintenance";
-    if (kind === "fork PR") pr.head.repo.full_name = "other/repo";
-    if (kind === "wrong base") pr.base.ref = "dev";
-    if (kind === "unmerged") pr.merged = false;
-    const { api } = stageApi(pr);
-    const context = {
-      ...stageContext(),
-      eventName: "workflow_dispatch",
-      actor: "maintainer",
-      triggeringActor: "maintainer",
-    };
+    const { api } = stageApi();
     await assert.rejects(
-      authorizeStage(context, recoveryEvent(), async (method, path) =>
-        kind === "lost merger access" && path.includes("/owner/")
-          ? { permission: "read" }
-          : api(method, path),
+      authorizeStage(
+        {
+          ...stageContext(),
+          eventName: "workflow_dispatch",
+          actor: "maintainer",
+          triggeringActor: "rerunner",
+        },
+        recoveryEvent(),
+        async (method, path) =>
+          path.includes(`/${denied}/`) ? { permission: "read" } : api(method, path),
       ),
+      /permission/i,
     );
   });
 }

@@ -6,19 +6,16 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: Diagnose environment admission or explicitly recover an accepted release
+        description: Diagnose environment admission or manually stage main at the expected version
         type: choice
         required: true
         default: check-environment
-        options: [check-environment, stage-accepted-release]
-      release_pr:
-        description: Accepted release PR number (recovery only)
-        type: string
-      release_commit:
-        description: Full original accepted merge SHA (recovery only)
+        options: [check-environment, stage-main]
+      expected_version:
+        description: Version main must contain, e.g. 1.0.0 (stage-main only; no v prefix)
         type: string
       inspected_npm:
-        description: I inspected npm and authorize one staging attempt, not publication (recovery only)
+        description: I checked npm for this version; no pending candidate or published version blocks a new attempt. See RELEASING.md; staging only.
         type: boolean
         default: false
 
@@ -54,7 +51,7 @@ jobs:
 
   select:
     name: Select accepted release (read-only)
-    if: github.repository == 'zemccartney/agent-dev' && (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.mode == 'stage-accepted-release'))
+    if: github.repository == 'zemccartney/agent-dev' && (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.mode == 'stage-main'))
     runs-on: macos-15
     timeout-minutes: 10
     permissions:
@@ -66,6 +63,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.sha }}
+          fetch-depth: 0
           persist-credentials: false
       - uses: jdx/mise-action@2d8d4cafcbd33be2ea37d2b6f5ad595363d1f1ca # v5.1.1
         with:
@@ -73,7 +71,7 @@ jobs:
           install_args: --locked
           cache: false
           persist_github_token: false
-      - name: Require exact release merge or explicit accepted-release recovery
+      - name: Authorize release merge or manual main version and check published state
         id: select
         env:
           GITHUB_TOKEN: ${{ github.token }}
@@ -167,7 +165,7 @@ jobs:
     environment: npm-staging
     permissions:
       contents: read
-      pull-requests: read # Independently reauthorize the same accepted PR before submission.
+      pull-requests: read # Reauthorize release-merge PRs; manual runs require current actor permissions.
       id-token: write # npm stage-only trust; no direct publication, approval or dist-tag authority.
     env:
       EXPECTED_RECORD_DIGEST: ${{ needs.validate.outputs.digest }}
@@ -190,7 +188,7 @@ jobs:
           artifact-ids: ${{ needs.validate.outputs.artifact-id }}
           path: ${{ runner.temp }}/pi-release/
           digest-mismatch: error
-      - name: Reauthorize and submit the exact checked archive
+      - name: Reauthorize, recheck published state and submit the exact checked archive
         id: submit
         env:
           GITHUB_TOKEN: ${{ github.token }}

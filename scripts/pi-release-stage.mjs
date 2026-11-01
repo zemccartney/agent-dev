@@ -3,13 +3,14 @@ import { lstat, mkdir, readFile, readdir, realpath, writeFile } from "node:fs/pr
 import { basename, dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { packCandidate } from "../pi/pi-lence/scripts/pack.mjs";
 import { candidateGit } from "./pi-release-candidate.mjs";
+import { isReleaseVersion } from "./pi-release-registry.mjs";
 
 const repository = "zemccartney/agent-dev";
 const prefix = `/repos/${repository}`;
 const shaPattern = /^[a-f0-9]{40}$/;
 /** @typedef {import('./pi-release-github.mjs').Context & {runId:string,runAttempt:string}} StageContext */
-/** @typedef {{pr:number,commit:string,releaseCommit:string,head:string,runId:string,runAttempt:string}} Authorization */
-/** @typedef {Authorization & {schema:2,name:string,version:string,filename:string,sha256:string,integrity:string}} StageRecord */
+/** @typedef {{mode:"release-merge"|"stage-main",expectedVersion:string|null,actor:string,triggeringActor:string,pr:number|null,commit:string,head:string|null,runId:string,runAttempt:string}} Authorization */
+/** @typedef {Authorization & {schema:3,name:string,version:string,filename:string,sha256:string,integrity:string}} StageRecord */
 /** @param {StageContext} context */
 export function assertStageContext(context) {
   if (
@@ -49,8 +50,8 @@ export async function selectStageRelease(context, event, api) {
   if (event.repository?.full_name !== repository)
     throw new Error("Invalid release event repository identity");
   const push = context.eventName === "push";
-  let number;
-  let releaseCommit = context.sha;
+  let number = null;
+  let expectedVersion = null;
   if (push) {
     if (
       event.ref !== context.ref ||
@@ -63,19 +64,16 @@ export async function selectStageRelease(context, event, api) {
   } else {
     const inputs = event.inputs;
     if (
-      inputs?.mode !== "stage-accepted-release" ||
-      typeof inputs.release_pr !== "string" ||
-      !/^[1-9][0-9]*$/.test(inputs.release_pr) ||
-      !Number.isSafeInteger(Number(inputs.release_pr)) ||
-      typeof inputs.release_commit !== "string" ||
-      !shaPattern.test(inputs.release_commit) ||
+      inputs?.mode !== "stage-main" ||
+      !isReleaseVersion(inputs.expected_version) ||
+      inputs.release_pr !== undefined ||
+      inputs.release_commit !== undefined ||
       ![true, "true"].includes(inputs.inspected_npm)
     )
       throw new Error(
-        "Invalid recovery request: accepted PR/SHA and owner npm inspection required",
+        "Invalid recovery request: stage-main requires expected version and owner npm inspection; PR/SHA inputs are obsolete",
       );
-    number = Number(inputs.release_pr);
-    releaseCommit = inputs.release_commit;
+    expectedVersion = inputs.expected_version;
   }
   const repo = await api("GET", prefix);
   if (repo.full_name !== repository || repo.default_branch !== "main" || repo.fork !== false)
@@ -109,20 +107,27 @@ export async function selectStageRelease(context, event, api) {
     number = matches[0].number;
     selectedHead = matches[0].head.sha;
   }
-  const pr = await api("GET", `${prefix}/pulls/${number}`);
-  if (
-    pr?.number !== number ||
-    pr.state !== "closed" ||
-    pr.merged !== true ||
-    pr.draft !== false ||
-    pr.merge_commit_sha !== releaseCommit ||
-    !releaseBranch(pr) ||
-    !shaPattern.test(pr.head?.sha ?? "") ||
-    !/^[A-Za-z0-9][A-Za-z0-9-]{0,38}$/.test(pr.merged_by?.login ?? "") ||
-    (push && (pr.merged_by.login !== context.actor || pr.head.sha !== selectedHead))
-  )
-    throw new Error("GitHub PR does not match the accepted release source");
-  for (const actor of new Set([context.actor, context.triggeringActor, pr.merged_by.login])) {
+  let head = null;
+  const actors = new Set([context.actor, context.triggeringActor]);
+  if (push) {
+    const pr = await api("GET", `${prefix}/pulls/${number}`);
+    if (
+      pr?.number !== number ||
+      pr.state !== "closed" ||
+      pr.merged !== true ||
+      pr.draft !== false ||
+      pr.merge_commit_sha !== context.sha ||
+      !releaseBranch(pr) ||
+      !shaPattern.test(pr.head?.sha ?? "") ||
+      !/^[A-Za-z0-9][A-Za-z0-9-]{0,38}$/.test(pr.merged_by?.login ?? "") ||
+      pr.merged_by.login !== context.actor ||
+      pr.head.sha !== selectedHead
+    )
+      throw new Error("GitHub PR does not match the accepted release source");
+    head = pr.head.sha;
+    actors.add(pr.merged_by.login);
+  }
+  for (const actor of actors) {
     const access = await api(
       "GET",
       `${prefix}/collaborators/${encodeURIComponent(actor)}/permission`,
@@ -131,10 +136,13 @@ export async function selectStageRelease(context, event, api) {
       throw new Error("Release actor permission required");
   }
   return {
+    mode: push ? "release-merge" : "stage-main",
+    expectedVersion,
+    actor: context.actor,
+    triggeringActor: context.triggeringActor,
     pr: number,
     commit: context.sha,
-    releaseCommit,
-    head: pr.head.sha,
+    head,
     runId: context.runId,
     runAttempt: context.runAttempt,
   };
@@ -150,9 +158,9 @@ export async function authorizeStage(context, event, api) {
 }
 
 /** @param {string} cwd @param {Authorization} authorization */
-async function sourceManifest(cwd, authorization) {
+export async function inspectStageSource(cwd, authorization) {
   if (candidateGit(cwd, "rev-parse", "HEAD").trim() !== authorization.commit)
-    throw new Error("Checkout is not the accepted release source");
+    throw new Error("Checkout is not the authorized workflow source");
   candidateGit(
     cwd,
     "merge-base",
@@ -160,27 +168,6 @@ async function sourceManifest(cwd, authorization) {
     authorization.commit,
     "refs/remotes/origin/main",
   );
-  candidateGit(
-    cwd,
-    "merge-base",
-    "--is-ancestor",
-    authorization.releaseCommit,
-    authorization.commit,
-  );
-  // Recovery may correct workflow/tooling, but cannot quietly change the accepted product.
-  if (
-    candidateGit(
-      cwd,
-      "diff",
-      "--name-only",
-      authorization.releaseCommit,
-      authorization.commit,
-      "--",
-      "pi/pi-lence",
-      "LICENSE",
-    ).trim()
-  )
-    throw new Error("Accepted release package or license changed; recovery is not authorized");
   if (candidateGit(cwd, "status", "--porcelain=v1", "--untracked-files=all").trim())
     throw new Error("Release source must remain clean");
   for (const path of [cwd, join(cwd, "pi"), join(cwd, "pi/pi-lence")])
@@ -192,11 +179,13 @@ async function sourceManifest(cwd, authorization) {
   if (
     manifest.name !== "@grepco/pi-lence" ||
     manifest.private === true ||
-    typeof manifest.version !== "string" ||
-    !/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/.test(manifest.version) ||
-    manifest.version === "0.0.0"
+    !isReleaseVersion(manifest.version)
   )
     throw new Error("Expected public Pi-lence stable nonzero release identity");
+  if (authorization.mode === "stage-main" && manifest.version !== authorization.expectedVersion)
+    throw new Error(
+      "Main package version does not match the expected version; no staging authorized",
+    );
   return { name: manifest.name, version: manifest.version };
 }
 /** @param {string} path @param {number} maximum */
@@ -224,21 +213,21 @@ const integrity = (bytes) => `sha512-${createHash("sha512").update(bytes).digest
 
 /** @param {string} cwd @param {string} directory @param {Authorization} authorization @returns {Promise<StageRecord>} */
 export async function prepareStageArtifact(cwd, directory, authorization) {
-  const manifest = await sourceManifest(cwd, authorization);
+  const manifest = await inspectStageSource(cwd, authorization);
   await outsideCheckout(cwd, directory);
   await mkdir(directory); // exclusive: never replace an existing artifact/receipt directory
   const packed = await packCandidate(join(cwd, "pi/pi-lence"), directory);
   const bytes = await regularBytes(packed.tarballPath, 10 * 1024 * 1024);
   /** @type {StageRecord} */
   const record = {
-    schema: 2,
+    schema: 3,
     ...authorization,
     ...manifest,
     filename: basename(packed.tarballPath),
     sha256: packed.sha256,
     integrity: integrity(bytes),
   };
-  await sourceManifest(cwd, authorization);
+  await inspectStageSource(cwd, authorization);
   await writeFile(join(directory, "release.json"), `${JSON.stringify(record, null, 2)}\n`, {
     flag: "wx",
   });
@@ -249,7 +238,7 @@ export async function prepareStageArtifact(cwd, directory, authorization) {
  * @param {string} cwd @param {string} directory @param {Authorization} authorization
  * @param {string} expectedRecordDigest @returns {Promise<{record:StageRecord,tarballPath:string}>} */
 export async function verifyStageArtifact(cwd, directory, authorization, expectedRecordDigest) {
-  const manifest = await sourceManifest(cwd, authorization);
+  const manifest = await inspectStageSource(cwd, authorization);
   await outsideCheckout(cwd, directory);
   if (!(await lstat(directory)).isDirectory())
     throw new Error("Artifact directory must not be a symlink");
@@ -259,7 +248,7 @@ export async function verifyStageArtifact(cwd, directory, authorization, expecte
   const record = JSON.parse(raw.toString());
   const filename = `grepco-pi-lence-${manifest.version}.tgz`;
   if (
-    record?.schema !== 2 ||
+    record?.schema !== 3 ||
     record.name !== manifest.name ||
     record.version !== manifest.version ||
     record.filename !== filename ||

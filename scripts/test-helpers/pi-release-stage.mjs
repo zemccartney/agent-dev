@@ -48,14 +48,13 @@ export function stagePullRequest(sha = commit) {
     base: { ref: "main", repo: { full_name: repository } },
   };
 }
-/** @param {string} [sha] */
-export function recoveryEvent(sha = commit) {
+/** @param {string} [version] */
+export function recoveryEvent(version = "0.1.0") {
   return {
     repository: { full_name: repository },
     inputs: {
-      mode: "stage-accepted-release",
-      release_pr: "6",
-      release_commit: sha,
+      mode: "stage-main",
+      expected_version: version,
       inspected_npm: "true",
     },
   };
@@ -94,10 +93,14 @@ export async function sourceFixture(t) {
   git("commit", "-m", "accepted release source");
   const sha = git("rev-parse", "HEAD");
   git("update-ref", "refs/remotes/origin/main", sha);
+  /** @type {import("../pi-release-stage.mjs").Authorization} */
   const authorization = {
+    mode: "release-merge",
+    expectedVersion: null,
+    actor: "owner",
+    triggeringActor: "owner",
     pr: 6,
     commit: sha,
-    releaseCommit: sha,
     head,
     runId: "123",
     runAttempt: "1",
