@@ -14,6 +14,8 @@ import {
   sourceFixture,
 } from "./test-helpers/pi-release-stage.mjs";
 import { registryFixture } from "./test-helpers/npm-registry.mjs";
+import { candidateGit } from "./pi-release-candidate.mjs";
+import { recoveryEvent } from "./test-helpers/pi-release-stage.mjs";
 
 /** @param {Awaited<ReturnType<typeof sourceFixture>>} fixture */
 function options(fixture) {
@@ -23,6 +25,7 @@ function options(fixture) {
     context: stageContext(fixture.authorization.commit),
     event,
     api: stageApi(stagePullRequest(fixture.authorization.commit)).api,
+    registryFetch: async () => Response.json({ name: "@grepco/pi-lence", versions: {} }),
     env: {
       ...process.env,
       RUNNER_TEMP: fixture.root,
@@ -36,6 +39,11 @@ test("accepted merge produces a checked bundle and a stage-only receipt through 
   const { runStageCommand } = await import("./stage-pi-release.mjs");
   const fixture = await sourceFixture(t);
   const opts = options(fixture);
+  let publicChecks = 0;
+  opts.registryFetch = async () => {
+    publicChecks++;
+    return Response.json({ name: "@grepco/pi-lence", versions: {} });
+  };
   const prepared = await runStageCommand("--prepare", fixture.bundle, opts);
   assert.match(prepared.digest, /^[a-f0-9]{64}$/);
   const registry = await registryFixture(t);
@@ -59,6 +67,7 @@ test("accepted merge produces a checked bundle and a stage-only receipt through 
   assert.match(summary, /2FA/);
   assert.match(summary, new RegExp(receipt.sha256));
   assert.equal(registry.requests.filter((request) => request.method === "POST").length, 1);
+  assert.equal(publicChecks, 3, "prepare, verify and submit each consult current public state");
 });
 
 for (const condition of [
@@ -132,7 +141,7 @@ test("workflow CLI refuses local or unsupported use before network access", () =
   }
 });
 
-test("selection CLI works without installed dependencies and emits no stage authority on API failure", async (t) => {
+test("selection CLI validates clean source/version and public state without installed dependencies", async (t) => {
   const root = await mkdtemp(join(tmpdir(), "pi-select-cli-"));
   t.after(() => rm(root, { recursive: true, force: true }));
   await cp(new URL("./", import.meta.url), join(root, "scripts"), { recursive: true });
@@ -142,7 +151,20 @@ test("selection CLI works without installed dependencies and emits no stage auth
     join(root, "pi/pi-lence/scripts/pack.mjs"),
   );
   await writeFile(join(root, "package.json"), '{"type":"module","private":true}\n');
-  const preload = join(root, "http-fixture.mjs");
+  await writeFile(
+    join(root, "pi/pi-lence/package.json"),
+    '{"name":"@grepco/pi-lence","version":"0.1.0"}\n',
+  );
+  candidateGit(root, "init", "-b", "main");
+  candidateGit(root, "config", "user.name", "Fixture");
+  candidateGit(root, "config", "user.email", "fixture@example.invalid");
+  candidateGit(root, "config", "commit.gpgsign", "false");
+  candidateGit(root, "add", ".");
+  candidateGit(root, "commit", "-m", "main source");
+  candidateGit(root, "update-ref", "refs/remotes/origin/main", "HEAD");
+  const state = join(root, ".git", "cli-state");
+  await mkdir(state);
+  const preload = join(state, "http-fixture.mjs");
   await writeFile(
     preload,
     `import { readFileSync } from "node:fs";
@@ -154,11 +176,27 @@ globalThis.fetch = async (url, options) => {
 };
 `,
   );
-  const context = stageContext();
-  const eventFile = join(root, "event.json");
-  await writeFile(eventFile, JSON.stringify(stageEvent()));
-  for (const kind of ["release", "docs", "API error"]) {
-    const pr = stagePullRequest();
+  const sha = candidateGit(root, "rev-parse", "HEAD").trim();
+  for (const kind of [
+    "release",
+    "manual",
+    "docs",
+    "API error",
+    "published",
+    "registry error",
+    "wrong version",
+  ]) {
+    const context = stageContext(sha);
+    const manual = ["manual", "wrong version"].includes(kind);
+    if (manual) context.eventName = "workflow_dispatch";
+    const eventFile = join(state, `${kind}.event.json`);
+    await writeFile(
+      eventFile,
+      JSON.stringify(
+        manual ? recoveryEvent(kind === "wrong version" ? "1.0.0" : "0.1.0") : stageEvent(sha),
+      ),
+    );
+    const pr = stagePullRequest(sha);
     if (kind === "docs") pr.head.ref = "docs/maintenance";
     const prefix = "https://api.github.com/repos/zemccartney/agent-dev";
     const responses = {
@@ -172,9 +210,24 @@ globalThis.fetch = async (url, options) => {
       },
       [`${prefix}/pulls/6`]: { status: 200, body: pr },
       [`${prefix}/collaborators/owner/permission`]: { status: 200, body: { permission: "admin" } },
+      // A normal skipped push must NOT need a registry lookup.
+      ...(!["docs", "wrong version"].includes(kind)
+        ? {
+            "https://registry.npmjs.org/@grepco%2fpi-lence": {
+              status: kind === "registry error" ? 404 : 200,
+              body: {
+                name: "@grepco/pi-lence",
+                versions:
+                  kind === "published"
+                    ? { "0.1.0": { name: "@grepco/pi-lence", version: "0.1.0" } }
+                    : {},
+              },
+            },
+          }
+        : {}),
     };
-    const responseFile = join(root, `${kind}.json`);
-    const outputFile = join(root, `${kind}.outputs`);
+    const responseFile = join(state, `${kind}.json`);
+    const outputFile = join(state, `${kind}.outputs`);
     await writeFile(responseFile, JSON.stringify(responses));
     const result = spawnSync(
       process.execPath,
@@ -185,7 +238,7 @@ globalThis.fetch = async (url, options) => {
         timeout: 10_000,
         env: {
           PATH: "/usr/bin:/bin",
-          HOME: root,
+          HOME: state,
           FIXTURE_RESPONSES: responseFile,
           GITHUB_REPOSITORY: context.repository,
           GITHUB_EVENT_NAME: context.eventName,
@@ -205,16 +258,112 @@ globalThis.fetch = async (url, options) => {
         },
       },
     );
-    assert.equal(result.status, kind === "API error" ? 1 : 0, result.stderr);
-    if (kind === "API error") await assert.rejects(readFile(outputFile), /ENOENT/);
-    else {
-      assert.equal((await readFile(outputFile, "utf8")).trim(), `stage=${kind === "release"}`);
+    const success = ["release", "manual", "docs"].includes(kind);
+    assert.equal(result.status, success ? 0 : 1, result.stderr);
+    if (!success) {
+      await assert.rejects(readFile(outputFile), /ENOENT/);
+      if (kind === "wrong version") assert.match(result.stderr, /version.*match/i);
+      if (kind === "published") assert.match(result.stderr, /already published/);
+      if (kind === "registry error") assert.match(result.stderr, /inconclusive/);
+    } else {
+      const staging = kind !== "docs";
+      assert.equal((await readFile(outputFile, "utf8")).trim(), `stage=${staging}`);
       const parsed = JSON.parse(result.stdout);
-      assert.equal(parsed.stage, kind === "release");
-      if (kind === "release") assert.equal(parsed.authorization.releaseCommit, context.sha);
-      else assert.equal(parsed.authorization, null);
+      assert.equal(parsed.stage, staging);
+      if (staging) {
+        assert.equal(parsed.authorization.commit, context.sha);
+        assert.equal(parsed.source.version, "0.1.0");
+        if (manual) assert.equal(parsed.authorization.pr, null);
+      } else assert.equal(parsed.authorization, null);
     }
   }
+});
+
+for (const mode of ["--prepare", "--verify", "--submit"]) {
+  test(`${mode} refuses a version now published, before packing or invoking npm`, async (t) => {
+    const { runStageCommand } = await import("./stage-pi-release.mjs");
+    const f = await sourceFixture(t);
+    const opts = options(f);
+    const prepared =
+      mode === "--prepare" ? null : await runStageCommand("--prepare", f.bundle, opts);
+    let submitted = false;
+    await assert.rejects(
+      runStageCommand(mode, f.bundle, {
+        ...opts,
+        expectedDigest: prepared?.digest,
+        registryFetch: async () =>
+          Response.json({
+            name: "@grepco/pi-lence",
+            versions: {
+              "0.1.0": { name: "@grepco/pi-lence", version: "0.1.0" },
+            },
+          }),
+        execute: async () => {
+          submitted = true;
+          throw new Error("must not submit");
+        },
+      }),
+      /already published/,
+    );
+    assert.equal(submitted, false);
+    if (mode === "--prepare")
+      await assert.rejects(readFile(join(f.bundle, "release.json")), /ENOENT/);
+  });
+}
+
+test("inconclusive registry lookup before submission does not invoke native client", async (t) => {
+  const { runStageCommand } = await import("./stage-pi-release.mjs");
+  const f = await sourceFixture(t);
+  const opts = options(f);
+  const prepared = await runStageCommand("--prepare", f.bundle, opts);
+  let submitted = false;
+  await assert.rejects(
+    runStageCommand("--submit", f.bundle, {
+      ...opts,
+      expectedDigest: prepared.digest,
+      registryFetch: async () => {
+        throw new Error("registry unavailable");
+      },
+      execute: async () => {
+        submitted = true;
+        throw new Error("must not submit");
+      },
+    }),
+    /inconclusive/,
+  );
+  assert.equal(submitted, false);
+});
+
+test("manual main staging submits a new same-version candidate and records actual source, not a fictional release PR", async (t) => {
+  const { runStageCommand } = await import("./stage-pi-release.mjs");
+  const f = await sourceFixture(t);
+  await writeFile(join(f.cwd, "pi/pi-lence/README.md"), "Reviewed last-minute change\n");
+  f.git("add", ".");
+  f.git("commit", "-m", "correct unpublished candidate");
+  const sha = f.git("rev-parse", "HEAD");
+  f.git("update-ref", "refs/remotes/origin/main", sha);
+  const opts = {
+    ...options(f),
+    context: { ...stageContext(sha), eventName: "workflow_dispatch" },
+    event: recoveryEvent(),
+  };
+  const prepared = await runStageCommand("--prepare", f.bundle, opts);
+  const registry = await registryFixture(t);
+  const receipt = await runStageCommand("--submit", f.bundle, {
+    ...opts,
+    expectedDigest: prepared.digest,
+    execute: registry.execute,
+  });
+  assert.equal(receipt.commit, sha);
+  assert.equal(receipt.mode, "stage-main");
+  assert.equal(receipt.version, "0.1.0");
+  assert.equal(receipt.expectedVersion, "0.1.0");
+  assert.equal(receipt.pr, null);
+  assert.notEqual(receipt.sha256, f.artifact.sha256);
+  const summary = await readFile(opts.env.GITHUB_STEP_SUMMARY, "utf8");
+  assert.match(summary, /manual/i);
+  assert.doesNotMatch(summary, /pull\/null|unchanged/);
+  assert.match(summary, new RegExp(sha));
 });
 
 test("staging workflow gates accepted main merges and binds a fresh exact-archive handoff", async (t) => {
@@ -229,10 +378,11 @@ test("staging workflow gates accepted main merges and binds a fresh exact-archiv
   assert.equal(workflow.on.pull_request_target, undefined);
   const inputs = workflow.on.workflow_dispatch.inputs;
   assert.equal(inputs.mode.default, "check-environment");
-  assert.deepEqual(inputs.mode.options, ["check-environment", "stage-accepted-release"]);
+  assert.deepEqual(inputs.mode.options, ["check-environment", "stage-main"]);
   assert.equal(inputs.inspected_npm.default, false);
-  assert.equal(inputs.release_pr.type, "string");
-  assert.equal(inputs.release_commit.type, "string");
+  assert.equal(inputs.expected_version.type, "string");
+  assert.equal(inputs.release_pr, undefined);
+  assert.equal(inputs.release_commit, undefined);
   assert.equal(workflow.concurrency["cancel-in-progress"], false);
   assert.deepEqual(workflow.permissions, { contents: "read" });
   const { diagnose, select, validate, stage } = workflow.jobs;
@@ -265,6 +415,10 @@ test("staging workflow gates accepted main merges and binds a fresh exact-archiv
   assert.ok(diagnose.steps.every((step) => !step.uses && !/npm|node|checkout|curl/.test(step.run)));
   assert.deepEqual(select.permissions, { contents: "read", "pull-requests": "read" });
   assert.equal(select.environment, undefined);
+  assert.equal(
+    select.steps.find((step) => step.uses?.startsWith("actions/checkout@")).with["fetch-depth"],
+    0,
+  );
   assert.ok(select.steps.some((step) => /--select/.test(step.run ?? "")));
   assert.ok(!select.steps.some((step) => step.run === "mise run setup"));
   assert.equal(select.outputs.stage, "${{ steps.select.outputs.stage }}");
@@ -276,7 +430,7 @@ test("staging workflow gates accepted main merges and binds a fresh exact-archiv
   );
   assert.equal(
     select.if,
-    "github.repository == 'zemccartney/agent-dev' && (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.mode == 'stage-accepted-release'))",
+    "github.repository == 'zemccartney/agent-dev' && (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.mode == 'stage-main'))",
   );
   assert.equal(validate.if, "needs.select.outputs.stage == 'true'");
   for (const [id, job] of Object.entries(workflow.jobs))

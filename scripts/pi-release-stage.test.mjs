@@ -29,40 +29,56 @@ test("artifact record binds accepted source and archive bytes and tolerates late
   await assert.rejects(prepareStageArtifact(f.cwd, f.bundle, f.authorization), /exist/i);
 });
 
-test("recovery permits corrected tooling but records original accepted product commit", async (t) => {
+test("manual main staging permits reviewed same-version product and license changes", async (t) => {
   const { prepareStageArtifact } = await import("./pi-release-stage.mjs");
   const f = await sourceFixture(t);
-  const accepted = f.authorization.releaseCommit;
-  await writeFile(join(f.cwd, "workflow-fix.md"), "Reviewed infrastructure-only correction\n");
+  const original = f.authorization.commit;
+  await writeFile(
+    join(f.cwd, "pi/pi-lence/README.md"),
+    "Reviewed last-minute product documentation\n",
+  );
+  await writeFile(
+    join(f.cwd, "pi/pi-lence/src/quiet-state.ts"),
+    "// Reviewed last-minute source change\n",
+  );
+  await writeFile(join(f.cwd, "LICENSE"), "Reviewed license\n");
   f.git("add", ".");
-  f.git("commit", "-m", "workflow correction");
-  f.authorization.commit = f.git("rev-parse", "HEAD");
+  f.git("commit", "-m", "same-version release correction");
+  f.authorization = {
+    ...f.authorization,
+    mode: "stage-main",
+    expectedVersion: "0.1.0",
+    pr: null,
+    head: null,
+    commit: f.git("rev-parse", "HEAD"),
+  };
   f.git("update-ref", "refs/remotes/origin/main", "HEAD");
   const record = await prepareStageArtifact(f.cwd, f.bundle, f.authorization);
-  assert.equal(record.schema, 2);
-  assert.equal(record.releaseCommit, accepted);
-  assert.equal(record.commit, f.authorization.commit);
-  assert.equal(record.sha256, f.artifact.sha256);
+  assert.equal(record.schema, 3);
+  assert.equal(record.mode, "stage-main");
+  assert.equal(record.version, "0.1.0");
+  assert.equal(record.expectedVersion, "0.1.0");
+  assert.equal(record.pr, null);
+  assert.notEqual(record.commit, original);
+  assert.notEqual(record.sha256, f.artifact.sha256);
 });
 
-for (const changed of [
-  "pi/pi-lence/README.md",
-  "pi/pi-lence/package.json",
-  "LICENSE",
-  "non-ancestor",
-]) {
-  test(`recovery rejects changed accepted package/license or ancestry: ${changed}`, async (t) => {
-    const { prepareStageArtifact } = await import("./pi-release-stage.mjs");
-    const f = await sourceFixture(t);
-    if (changed === "non-ancestor") f.git("checkout", "--orphan", "unrelated");
-    else await writeFile(join(f.cwd, changed), "changed");
-    f.git("add", ".");
-    f.git("commit", "-m", "not the accepted release");
-    f.authorization.commit = f.git("rev-parse", "HEAD");
-    f.git("update-ref", "refs/remotes/origin/main", "HEAD");
-    await assert.rejects(prepareStageArtifact(f.cwd, f.bundle, f.authorization));
-  });
-}
+test("manual expected version must match main before packing", async (t) => {
+  const { prepareStageArtifact } = await import("./pi-release-stage.mjs");
+  const f = await sourceFixture(t);
+  f.authorization = {
+    ...f.authorization,
+    mode: "stage-main",
+    expectedVersion: "1.0.0",
+    pr: null,
+    head: null,
+  };
+  await assert.rejects(
+    prepareStageArtifact(f.cwd, f.bundle, f.authorization),
+    /expected.*version|version.*match/i,
+  );
+  await assert.rejects(readFile(join(f.bundle, "release.json")), /ENOENT/);
+});
 
 for (const condition of [
   "dirty source",
@@ -92,7 +108,6 @@ for (const condition of [
       f.git("add", ".");
       f.git("commit", "-m", "invalid release");
       f.authorization.commit = f.git("rev-parse", "HEAD");
-      f.authorization.releaseCommit = f.authorization.commit;
       f.git("update-ref", "refs/remotes/origin/main", "HEAD");
     }
     await assert.rejects(
@@ -111,8 +126,11 @@ for (const condition of [
   "expected digest",
   "different run",
   "different attempt",
-  "legacy schema",
-  "record release commit",
+  "legacy schema1",
+  "legacy schema2",
+  "record expected version",
+  "record mode",
+  "record actor",
   "extra file",
   "archive symlink",
   "directory symlink",
@@ -130,10 +148,18 @@ for (const condition of [
     if (condition === "expected digest") digest = "0".repeat(64);
     if (condition === "different run") f.authorization.runId = "456";
     if (condition === "different attempt") f.authorization.runAttempt = "2";
-    if (["legacy schema", "record release commit"].includes(condition)) {
+    if (condition.startsWith("legacy schema") || condition.startsWith("record ")) {
       const mutated = {
         ...record,
-        ...(condition === "legacy schema" ? { schema: 1 } : { releaseCommit: "c".repeat(40) }),
+        ...(condition === "legacy schema1"
+          ? { schema: 1 }
+          : condition === "legacy schema2"
+            ? { schema: 2 }
+            : condition === "record mode"
+              ? { mode: "stage-main" }
+              : condition === "record actor"
+                ? { actor: "other" }
+                : { expectedVersion: "2.0.0" }),
       };
       const bytes = JSON.stringify(mutated);
       await writeFile(join(f.bundle, "release.json"), bytes);
