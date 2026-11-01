@@ -3,87 +3,9 @@ import { readFile, writeFile, symlink, rename } from "node:fs/promises";
 import { join } from "node:path";
 import { createHash } from "node:crypto";
 import { test } from "node:test";
-import {
-  stageContext,
-  stageEvent,
-  stageApi,
-  sourceFixture,
-} from "./test-helpers/pi-release-stage.mjs";
+import { sourceFixture } from "./test-helpers/pi-release-stage.mjs";
 
 const commit = "a".repeat(40);
-const head = "b".repeat(40);
-test("merged release authorization uses immutable PR SHAs, not an auto-deleted head ref", async () => {
-  const { authorizeStage } = await import("./pi-release-stage.mjs");
-  const event = stageEvent();
-  const { api, calls } = stageApi(event);
-  assert.deepEqual(await authorizeStage(stageContext(), event, api), {
-    pr: 6,
-    commit,
-    head,
-    runId: "123",
-    runAttempt: "1",
-  });
-  assert.ok(calls.every((path) => !path.includes("git/ref")));
-});
-
-for (const [field, value] of Object.entries({
-  repository: "other/repo",
-  eventName: "push",
-  ref: "refs/heads/dev",
-  sha: "c".repeat(40),
-  workflowSha: "c".repeat(40),
-  workflowRef: "other.yml",
-  actor: "github-actions[bot]",
-  apiUrl: "https://invalid.example",
-  runId: "0",
-  runAttempt: "0",
-})) {
-  test(`untrusted staging context ${field} is rejected`, async () => {
-    const { authorizeStage } = await import("./pi-release-stage.mjs");
-    const event = stageEvent();
-    await assert.rejects(
-      authorizeStage({ ...stageContext(), [field]: value }, event, stageApi(event).api),
-      /context|source|identity|actor/i,
-    );
-  });
-}
-
-for (const condition of [
-  "unmerged",
-  "draft",
-  "wrong head",
-  "fork",
-  "wrong base",
-  "wrong action",
-  "API mismatch",
-  "read-only actor",
-  "rerun actor",
-  "API unavailable",
-]) {
-  test(`staging refuses ${condition}`, async () => {
-    const { authorizeStage } = await import("./pi-release-stage.mjs");
-    const event = stageEvent();
-    const context = stageContext();
-    if (condition === "unmerged") event.pull_request.merged = false;
-    if (condition === "draft") event.pull_request.draft = true;
-    if (condition === "wrong head") event.pull_request.head.ref = "dev";
-    if (condition === "fork") event.pull_request.head.repo.full_name = "outsider/agent-dev";
-    if (condition === "wrong base") event.pull_request.base.ref = "dev";
-    if (condition === "wrong action") event.action = "synchronize";
-    const remote = structuredClone(event);
-    if (condition === "API mismatch") remote.pull_request.head.sha = "c".repeat(40);
-    if (condition === "rerun actor") context.triggeringActor = "reader";
-    const { api } = stageApi(remote, condition === "read-only actor" ? "read" : "write");
-    /** @type {import("./pi-release-github.mjs").Api} */
-    const transport = async (method, path) => {
-      if (condition === "API unavailable") throw new Error("API unavailable");
-      if (path.includes("/reader/")) return { permission: "read" };
-      return api(method, path);
-    };
-    await assert.rejects(authorizeStage(context, event, transport));
-  });
-}
-
 test("artifact record binds accepted source and archive bytes and tolerates later main ancestry", async (t) => {
   const { prepareStageArtifact, verifyStageArtifact } = await import("./pi-release-stage.mjs");
   const f = await sourceFixture(t);
@@ -105,6 +27,57 @@ test("artifact record binds accepted source and archive bytes and tolerates late
   );
   assert.equal(f.git("status", "--porcelain"), "");
   await assert.rejects(prepareStageArtifact(f.cwd, f.bundle, f.authorization), /exist/i);
+});
+
+test("manual main staging permits reviewed same-version product and license changes", async (t) => {
+  const { prepareStageArtifact } = await import("./pi-release-stage.mjs");
+  const f = await sourceFixture(t);
+  const original = f.authorization.commit;
+  await writeFile(
+    join(f.cwd, "pi/pi-lence/README.md"),
+    "Reviewed last-minute product documentation\n",
+  );
+  await writeFile(
+    join(f.cwd, "pi/pi-lence/src/quiet-state.ts"),
+    "// Reviewed last-minute source change\n",
+  );
+  await writeFile(join(f.cwd, "LICENSE"), "Reviewed license\n");
+  f.git("add", ".");
+  f.git("commit", "-m", "same-version release correction");
+  f.authorization = {
+    ...f.authorization,
+    mode: "stage-main",
+    expectedVersion: "0.1.0",
+    pr: null,
+    head: null,
+    commit: f.git("rev-parse", "HEAD"),
+  };
+  f.git("update-ref", "refs/remotes/origin/main", "HEAD");
+  const record = await prepareStageArtifact(f.cwd, f.bundle, f.authorization);
+  assert.equal(record.schema, 3);
+  assert.equal(record.mode, "stage-main");
+  assert.equal(record.version, "0.1.0");
+  assert.equal(record.expectedVersion, "0.1.0");
+  assert.equal(record.pr, null);
+  assert.notEqual(record.commit, original);
+  assert.notEqual(record.sha256, f.artifact.sha256);
+});
+
+test("manual expected version must match main before packing", async (t) => {
+  const { prepareStageArtifact } = await import("./pi-release-stage.mjs");
+  const f = await sourceFixture(t);
+  f.authorization = {
+    ...f.authorization,
+    mode: "stage-main",
+    expectedVersion: "1.0.0",
+    pr: null,
+    head: null,
+  };
+  await assert.rejects(
+    prepareStageArtifact(f.cwd, f.bundle, f.authorization),
+    /expected.*version|version.*match/i,
+  );
+  await assert.rejects(readFile(join(f.bundle, "release.json")), /ENOENT/);
 });
 
 for (const condition of [
@@ -153,6 +126,11 @@ for (const condition of [
   "expected digest",
   "different run",
   "different attempt",
+  "legacy schema1",
+  "legacy schema2",
+  "record expected version",
+  "record mode",
+  "record actor",
   "extra file",
   "archive symlink",
   "directory symlink",
@@ -170,6 +148,23 @@ for (const condition of [
     if (condition === "expected digest") digest = "0".repeat(64);
     if (condition === "different run") f.authorization.runId = "456";
     if (condition === "different attempt") f.authorization.runAttempt = "2";
+    if (condition.startsWith("legacy schema") || condition.startsWith("record ")) {
+      const mutated = {
+        ...record,
+        ...(condition === "legacy schema1"
+          ? { schema: 1 }
+          : condition === "legacy schema2"
+            ? { schema: 2 }
+            : condition === "record mode"
+              ? { mode: "stage-main" }
+              : condition === "record actor"
+                ? { actor: "other" }
+                : { expectedVersion: "2.0.0" }),
+      };
+      const bytes = JSON.stringify(mutated);
+      await writeFile(join(f.bundle, "release.json"), bytes);
+      digest = createHash("sha256").update(bytes).digest("hex");
+    }
     if (condition === "extra file") await writeFile(join(f.bundle, "extra"), "unwanted");
     if (condition === "archive symlink") {
       const path = join(f.bundle, record.filename);

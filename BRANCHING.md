@@ -24,7 +24,9 @@ git worktree add -b feat/my-change .worktrees/my-change origin/dev
 
 ## Releases
 
-Promotion from `dev` into `main` requires explicit release approval. The promotion mechanism and automation are **not yet implemented or selected by this branch setup**.
+Pi-lence uses a manually prepared release branch: feature PR → `dev` → **Prepare Pi-lence release (choose dev)** → `changeset-release/main` PR → `main`. Preparation is create-only; never refresh an existing release branch from moving `dev`. Manually merging the release PR authorizes staging, **not npm publication**. See [RELEASING.md](RELEASING.md) for flowcharts and recovery, and [DEVELOPMENT.md](DEVELOPMENT.md) for the detailed protocol.
+
+For maintenance needed on `main` immediately, start a maintenance PR from `main`, then back-sync through a disposable PR branch to `dev`. Do not merge moving `dev` wholesale just to promote a fix. Before preparing the next release, back-sync accepted versions/changelog, consumed-note deletions, fixes and main ancestry while preserving newer dev work. Herdr publication remains separate.
 
 Release work must account for all changes being promoted. Package-specific versions or changelogs do not selectively filter a Git merge. For artifact-based installers, publish and verify the immutable artifact before advertising its installer/checksum/manifest metadata on `main`.
 
@@ -32,6 +34,8 @@ Creating `dev` does not authorize merging existing feature branches, publishing 
 
 ## Enforcement and initial setup
 
-This is the working policy, not an automated merge gate. Branch protections, required CI checks, version/changelog tooling, and release promotion remain separate work. Keep `main` as the GitHub default rather than changing it to solve PR-base selection.
+Keep `main` as the GitHub default rather than changing it to solve PR-base selection. Protected branches require current macOS checks; release preparation and staging have additional workflow guards. Human acceptance of the release PR and owner approval of npm publication remain separate decisions. Ordinary development or maintenance merges do not prepare or stage a release.
+
+### Historical initial setup
 
 `dev` was initially based on local `main` at `8e09c47f768361db8fc58cbf39a3e65427f51999`, preserving its four documentation commits beyond the then-published `origin/main` (`f34dd13b724a872105d11b844eb7da137545abec`). Published `main`, the original checkout's uncommitted work, and both existing feature branches were left untouched by this setup.
