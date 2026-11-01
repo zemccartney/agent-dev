@@ -5,6 +5,7 @@ import { githubClient } from "./pi-release-github.mjs";
 import {
   assertStageContext,
   authorizeStage,
+  selectStageRelease,
   prepareStageArtifact,
   verifyStageArtifact,
 } from "./pi-release-stage.mjs";
@@ -60,13 +61,15 @@ export async function runStageCommand(
 
 - Package: \`${record.name}@${record.version}\`
 - Release PR: https://github.com/zemccartney/agent-dev/pull/${record.pr}
-- Accepted main commit: \`${record.commit}\`
+- Accepted release commit: \`${record.releaseCommit}\`
+- Validation/workflow main commit: \`${record.commit}\`
 - Archive SHA256: \`${record.sha256}\`
 - Archive integrity: \`${record.integrity}\`
 - Stage ID: \`${staged.stageId}\`
 - Run: https://github.com/zemccartney/agent-dev/actions/runs/${record.runId} (attempt ${record.runAttempt})
 
-Native submission requested npm provenance for this accepted source and archive.
+Native submission requested npm provenance for the validation/workflow source and archive.
+Recovery separately verifies that the accepted release package and license are unchanged.
 Open npm's Staged Packages view and locate this stage. Before approval, compare the
 owner-authenticated stage download with the archive digest above. Only you approve
 publication on npm's website with 2FA. CI cannot inspect, approve or reject stages.
@@ -102,9 +105,14 @@ function contextFromEnvironment(env) {
 if (import.meta.main) {
   try {
     const [mode, directory, ...extra] = process.argv.slice(2);
-    if (!directory || extra.length || !["--prepare", "--verify", "--submit"].includes(mode))
+    if (
+      extra.length ||
+      (mode === "--select"
+        ? directory !== undefined
+        : !directory || !["--prepare", "--verify", "--submit"].includes(mode))
+    )
       throw new Error(
-        "Usage: stage-pi-release.mjs --prepare|--verify|--submit DIRECTORY (accepted GitHub release merge only)",
+        "Usage: stage-pi-release.mjs --select OR --prepare|--verify|--submit DIRECTORY (authorized main workflow only)",
       );
     const env = process.env;
     const context = contextFromEnvironment(env);
@@ -113,6 +121,23 @@ if (import.meta.main) {
     const stat = await lstat(env.GITHUB_EVENT_PATH);
     if (!stat.isFile() || stat.size > 1024 * 1024) throw new Error("Invalid GitHub event file");
     const event = JSON.parse(await readFile(env.GITHUB_EVENT_PATH, "utf8"));
+    if (mode === "--select") {
+      const authorization = await selectStageRelease(
+        context,
+        event,
+        githubClient(env.GITHUB_TOKEN ?? ""),
+      );
+      if (env.GITHUB_OUTPUT)
+        await appendFile(env.GITHUB_OUTPUT, `stage=${authorization !== null}\n`);
+      await summary(
+        env,
+        authorization
+          ? `Accepted release PR #${authorization.pr}; release commit ${authorization.releaseCommit}; workflow commit ${authorization.commit}. Validation required before staging.`
+          : "No release PR merged at this exact main push. Staging skipped.",
+      );
+      console.log(JSON.stringify({ stage: authorization !== null, authorization }));
+      process.exit(0);
+    }
     const result = await runStageCommand(mode, directory, {
       cwd: process.cwd(),
       context,

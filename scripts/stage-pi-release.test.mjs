@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
-import { readFile, writeFile } from "node:fs/promises";
+import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createRequire } from "node:module";
 import { spawnSync } from "node:child_process";
@@ -8,6 +9,7 @@ import { test } from "node:test";
 import {
   stageContext,
   stageEvent,
+  stagePullRequest,
   stageApi,
   sourceFixture,
 } from "./test-helpers/pi-release-stage.mjs";
@@ -20,7 +22,7 @@ function options(fixture) {
     cwd: fixture.cwd,
     context: stageContext(fixture.authorization.commit),
     event,
-    api: stageApi(event).api,
+    api: stageApi(stagePullRequest(fixture.authorization.commit)).api,
     env: {
       ...process.env,
       RUNNER_TEMP: fixture.root,
@@ -118,10 +120,7 @@ test("failed submission records inspection-first instructions, not an absent or 
 });
 
 test("workflow CLI refuses local or unsupported use before network access", () => {
-  for (const args of [
-    ["--approve", "/tmp/no"],
-    ["--submit", "/tmp/no"],
-  ]) {
+  for (const args of [["--approve", "/tmp/no"], ["--submit", "/tmp/no"], ["--select"]]) {
     const result = spawnSync(
       process.execPath,
       [fileURLToPath(new URL("stage-pi-release.mjs", import.meta.url)), ...args],
@@ -133,20 +132,155 @@ test("workflow CLI refuses local or unsupported use before network access", () =
   }
 });
 
-test("staging workflow gates accepted main merges and binds a fresh exact-archive handoff", async () => {
+test("selection CLI works without installed dependencies and emits no stage authority on API failure", async (t) => {
+  const root = await mkdtemp(join(tmpdir(), "pi-select-cli-"));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  await cp(new URL("./", import.meta.url), join(root, "scripts"), { recursive: true });
+  await mkdir(join(root, "pi/pi-lence/scripts"), { recursive: true });
+  await cp(
+    new URL("../pi/pi-lence/scripts/pack.mjs", import.meta.url),
+    join(root, "pi/pi-lence/scripts/pack.mjs"),
+  );
+  await writeFile(join(root, "package.json"), '{"type":"module","private":true}\n');
+  const preload = join(root, "http-fixture.mjs");
+  await writeFile(
+    preload,
+    `import { readFileSync } from "node:fs";
+const responses = JSON.parse(readFileSync(process.env.FIXTURE_RESPONSES, "utf8"));
+globalThis.fetch = async (url, options) => {
+  if (options.method !== "GET" || !Object.hasOwn(responses, url)) throw Error("Unexpected fixture HTTP");
+  const reply = responses[url];
+  return new Response(JSON.stringify(reply.body), { status: reply.status });
+};
+`,
+  );
+  const context = stageContext();
+  const eventFile = join(root, "event.json");
+  await writeFile(eventFile, JSON.stringify(stageEvent()));
+  for (const kind of ["release", "docs", "API error"]) {
+    const pr = stagePullRequest();
+    if (kind === "docs") pr.head.ref = "docs/maintenance";
+    const prefix = "https://api.github.com/repos/zemccartney/agent-dev";
+    const responses = {
+      [prefix]: {
+        status: 200,
+        body: { full_name: "zemccartney/agent-dev", default_branch: "main", fork: false },
+      },
+      [`${prefix}/commits/${context.sha}/pulls?per_page=100&page=1`]: {
+        status: kind === "API error" ? 503 : 200,
+        body: [pr],
+      },
+      [`${prefix}/pulls/6`]: { status: 200, body: pr },
+      [`${prefix}/collaborators/owner/permission`]: { status: 200, body: { permission: "admin" } },
+    };
+    const responseFile = join(root, `${kind}.json`);
+    const outputFile = join(root, `${kind}.outputs`);
+    await writeFile(responseFile, JSON.stringify(responses));
+    const result = spawnSync(
+      process.execPath,
+      ["--import", preload, join(root, "scripts/stage-pi-release.mjs"), "--select"],
+      {
+        cwd: root,
+        encoding: "utf8",
+        timeout: 10_000,
+        env: {
+          PATH: "/usr/bin:/bin",
+          HOME: root,
+          FIXTURE_RESPONSES: responseFile,
+          GITHUB_REPOSITORY: context.repository,
+          GITHUB_EVENT_NAME: context.eventName,
+          GITHUB_REF: context.ref,
+          GITHUB_SHA: context.sha,
+          GITHUB_WORKFLOW_SHA: context.workflowSha,
+          GITHUB_WORKFLOW_REF: context.workflowRef,
+          GITHUB_ACTOR: context.actor,
+          GITHUB_TRIGGERING_ACTOR: context.triggeringActor,
+          GITHUB_SERVER_URL: context.serverUrl,
+          GITHUB_API_URL: context.apiUrl,
+          GITHUB_RUN_ID: context.runId,
+          GITHUB_RUN_ATTEMPT: context.runAttempt,
+          GITHUB_TOKEN: "fixture-only",
+          GITHUB_EVENT_PATH: eventFile,
+          GITHUB_OUTPUT: outputFile,
+        },
+      },
+    );
+    assert.equal(result.status, kind === "API error" ? 1 : 0, result.stderr);
+    if (kind === "API error") await assert.rejects(readFile(outputFile), /ENOENT/);
+    else {
+      assert.equal((await readFile(outputFile, "utf8")).trim(), `stage=${kind === "release"}`);
+      const parsed = JSON.parse(result.stdout);
+      assert.equal(parsed.stage, kind === "release");
+      if (kind === "release") assert.equal(parsed.authorization.releaseCommit, context.sha);
+      else assert.equal(parsed.authorization, null);
+    }
+  }
+});
+
+test("staging workflow gates accepted main merges and binds a fresh exact-archive handoff", async (t) => {
   const cli = createRequire(import.meta.resolve("@changesets/cli/bin.js"));
   const { parse } = createRequire(cli.resolve("@changesets/config"))("yaml");
   /** @type {{jobs:Record<string,{steps:any[],[key:string]:any}>,[key:string]:any}} */
   const workflow = parse(
     await readFile(new URL("../.github/workflows/stage-pi-release.yml", import.meta.url), "utf8"),
   );
-  assert.deepEqual(workflow.on, { pull_request: { types: ["closed"], branches: ["main"] } });
+  assert.deepEqual(workflow.on.push, { branches: ["main"] });
+  assert.equal(workflow.on.pull_request, undefined);
+  assert.equal(workflow.on.pull_request_target, undefined);
+  const inputs = workflow.on.workflow_dispatch.inputs;
+  assert.equal(inputs.mode.default, "check-environment");
+  assert.deepEqual(inputs.mode.options, ["check-environment", "stage-accepted-release"]);
+  assert.equal(inputs.inspected_npm.default, false);
+  assert.equal(inputs.release_pr.type, "string");
+  assert.equal(inputs.release_commit.type, "string");
   assert.equal(workflow.concurrency["cancel-in-progress"], false);
   assert.deepEqual(workflow.permissions, { contents: "read" });
-  const { validate, stage } = workflow.jobs;
-  assert.match(validate.if, /merged == true/);
-  assert.match(validate.if, /changeset-release\/main/);
-  assert.match(validate.if, /head.repo.full_name == github.repository/);
+  const { diagnose, select, validate, stage } = workflow.jobs;
+  assert.equal(diagnose.environment, "npm-staging");
+  assert.deepEqual(diagnose.permissions, {});
+  const diagnosticRoot = await mkdtemp(join(tmpdir(), "pi-diagnostic-"));
+  t.after(() => rm(diagnosticRoot, { recursive: true, force: true }));
+  for (const ref of ["refs/heads/main", "refs/pull/6/merge", "refs/heads/dev"]) {
+    const result = spawnSync(
+      "/bin/bash",
+      ["--noprofile", "--norc", "-e", "-c", diagnose.steps[0].run],
+      {
+        encoding: "utf8",
+        timeout: 10_000,
+        env: {
+          PATH: "/usr/bin:/bin",
+          RUN_EVENT: "workflow_dispatch",
+          RUN_REF: ref,
+          RUN_SHA: "a".repeat(40),
+          WORKFLOW_SHA: "a".repeat(40),
+          WORKFLOW_REF:
+            "zemccartney/agent-dev/.github/workflows/stage-pi-release.yml@refs/heads/main",
+          GITHUB_STEP_SUMMARY: join(diagnosticRoot, "summary"),
+        },
+      },
+    );
+    assert.equal(result.status, ref === "refs/heads/main" ? 0 : 1, result.stderr);
+    if (ref === "refs/heads/main") assert.match(result.stdout, /Ref: refs\/heads\/main/);
+  }
+  assert.ok(diagnose.steps.every((step) => !step.uses && !/npm|node|checkout|curl/.test(step.run)));
+  assert.deepEqual(select.permissions, { contents: "read", "pull-requests": "read" });
+  assert.equal(select.environment, undefined);
+  assert.ok(select.steps.some((step) => /--select/.test(step.run ?? "")));
+  assert.ok(!select.steps.some((step) => step.run === "mise run setup"));
+  assert.equal(select.outputs.stage, "${{ steps.select.outputs.stage }}");
+  assert.equal(validate.needs, "select");
+  // Assert the declarative job gates; only GitHub can prove hosted admission/evaluation.
+  assert.equal(
+    diagnose.if,
+    "github.repository == 'zemccartney/agent-dev' && github.event_name == 'workflow_dispatch' && inputs.mode == 'check-environment'",
+  );
+  assert.equal(
+    select.if,
+    "github.repository == 'zemccartney/agent-dev' && (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.mode == 'stage-accepted-release'))",
+  );
+  assert.equal(validate.if, "needs.select.outputs.stage == 'true'");
+  for (const [id, job] of Object.entries(workflow.jobs))
+    if (id !== "stage") assert.equal(job.permissions?.["id-token"], undefined);
   assert.deepEqual(validate.permissions, { contents: "read", "pull-requests": "read" });
   assert.deepEqual(stage.permissions, {
     contents: "read",

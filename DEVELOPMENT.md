@@ -103,6 +103,10 @@ installing. A checksum binds bytes; it is not a substitute for source/release tr
 
 ## Branches and releases
 
+Start with the short flowcharts in [RELEASING.md](RELEASING.md). The procedures below
+provide the detailed controls and recovery rules; [SUPPLY_CHAIN.md](SUPPLY_CHAIN.md)
+explains what each security mechanism does and does not establish.
+
 Integrate through `dev`; promote only release-ready contents to `main`. Projects
 version and publish independently, with Pi-lence first. Every publication needs
 explicit human approval of an identifiable artifact; ordinary check/setup tasks
@@ -315,21 +319,30 @@ evidence; local tests do not establish those outcomes.
 
 ### Native staging: what a release merge does
 
-`.github/workflows/stage-pi-release.yml` reacts only to a **merged**, same-repository
-`changeset-release/main → main` PR. Closing without merging, unrelated main PRs,
-ordinary pushes and dev merges do not submit anything. Keep auto-merge off: the
+`.github/workflows/stage-pi-release.yml` runs on **push to main**, with a read-only
+selection job that requires the exact pushed SHA to be the merge commit of a
+**merged**, same-repository `changeset-release/main → main` PR. Ordinary main pushes,
+docs/fix PRs and dev merges have no matching release and skip staging before builds
+or npm authority. API failures, malformed/ambiguous results and unexpected events
+fail closed. This avoids the PR-derived environment identity observed with the
+original `pull_request: closed` trigger; checkout alone cannot change that identity.
+Manual diagnostic/recovery dispatches are described below. Keep auto-merge off: the
 maintainer's deliberate manual merge is the GitHub-side release approval, with no
 second reviewer or additional environment approval. Retain strict main freshness
 and the required maintained macOS checks. Linux compatibility remains visible and
 advisory; a general defect found there still needs investigation.
 
-1. **Verify accepted release archive** checks the event against GitHub's PR record
-   and current actor permissions, then checks out the accepted merge SHA—not a moving
-   branch tip. Deletion of the merged release head is harmless. Fresh frozen setup,
+1. **Select accepted release** checks the main push or explicit recovery request
+   against GitHub's PR record and current actor/merger permissions. No matching
+   release on a normal push is a skip, not permission to stage the current version.
+   **Verify accepted release archive** independently authorizes again and uses the
+   exact workflow/event SHA—not a moving branch tip. Deletion of the merged release head is harmless. Fresh frozen setup,
    full checks and exact-archive Node24/Node22 host tests run with read-only permissions.
 2. The canonical packer supplies exactly ten consumer files; this does not add
-   CHANGELOG.md. `release.json` binds package/version, PR, accepted commit, head SHA,
-   run/attempt, archive filename, SHA256 and SHA512 integrity. After checks, source
+   CHANGELOG.md. Schema2 `release.json` binds package/version, PR, accepted release
+   commit (`releaseCommit`), validation/workflow commit (`commit`), release head SHA,
+   run/attempt, archive filename, SHA256 and SHA512 integrity. On a normal release
+   push the two commits are identical; recovery records both separately. After checks, source
    and bundle are reverified and uploaded as one immutable same-run artifact.
 3. **Submit verified archive to npm staging only** uses a fresh checkout/install,
    downloads that explicit artifact ID, and independently checks its record digest
@@ -351,9 +364,9 @@ advisory; a general defect found there still needs investigation.
    not publication.** CI cannot inspect, download, reject or approve pending stages.
 
 The workflow entry `scripts/stage-pi-release.mjs` is not a general local publisher.
-Its prepare/verify/submit modes require the accepted GitHub event/context. There is
-no manual version/registry override, tag creation, GitHub release, branch write or
-automatic back-sync. For local byte-level tests, use the loopback fixtures instead:
+Its select/prepare/verify/submit modes require the authorized main GitHub event/context.
+There is no manual version/registry override, tag creation, GitHub release, branch
+write or automatic back-sync. For local byte-level tests, use the loopback fixtures instead:
 
 ```sh
 mise exec -- node --test scripts/pi-release-npm.test.mjs scripts/pi-release-stage.test.mjs scripts/stage-pi-release.test.mjs
@@ -362,11 +375,37 @@ mise exec -- node --test scripts/pi-release-npm.test.mjs scripts/pi-release-stag
 Those tests use the real pinned CLI against a local server, not npm authentication
 or OIDC. They cannot establish live stage-only enforcement or provenance signing.
 
+### Main-only diagnostic and accepted-release recovery
+
+In Actions → **Stage accepted Pi-lence release** → Run workflow, select **main**.
+
+- **check-environment** is the default mode. Its isolated job uses `npm-staging` with
+  no token permissions, checkout, dependencies, OIDC or npm commands. It prints only
+  event/ref/SHA/workflow identity. Success proves environment admission for this
+  dispatch, not npm trust, provenance or publication.
+- **stage-accepted-release** is an explicit owner-authorized recovery operation.
+  Enter the release PR number and its original full accepted merge SHA, and affirm
+  the npm-inspection/one-attempt acknowledgement. The workflow independently checks
+  the same-repository, merged/non-draft release PR and current permissions. It uses
+  corrected tooling at the dispatch's main SHA, requires the accepted merge to be an
+  ancestor, and requires identical `pi/pi-lence` content and root LICENSE. Product,
+  manifest, packer or license changes stop recovery. Fresh full checks and exact
+  archive tests run again; no old bundle is imported. The receipt identifies both
+  accepted release and actual validation/workflow commits; provenance uses the latter.
+
+For the first failed run, PR6's accepted merge is
+`43e9cfbe7a05510bf9787523fdd72c92cdc809fc`. Its submit job was rejected before any
+steps, so it did not submit0.1.0. Do not recut the release branch or repeat bootstrap.
+The owner must separately authorize merging the correction, running the diagnostic,
+and submitting the accepted release. Main-only environment and stage-only npm trust
+remain unchanged; a local test cannot prove hosted deployment/OIDC behavior.
+
 ### First release: owner-controlled checkpoints
 
-**Do not run live commands just because these instructions exist.** PR #6 stays
-open/draft until tooling integration, setup and the explicitly authorized merge
-checkpoint are complete. Account settings, authentication, public placeholder
+**Do not run live commands just because these instructions exist.** The first release
+PR #6 has been accepted; its initial staging attempt failed at environment admission.
+For future releases, keep the release PR draft until tooling, setup and the explicitly
+authorized merge checkpoint are complete. Account settings, authentication, public placeholder
 creation and publication are separate decisions, not consequences of local testing.
 
 1. **Integrate reviewed tooling, without refreshing the release branch.** Land the
@@ -441,7 +480,9 @@ creation and publication are separate decisions, not consequences of local testi
   the failed staging job: bundles bind to the run **and attempt**, so an old-attempt
   bundle is rejected. A rerun retains the original accepted source; newer main code
   will not repair an old workflow run. Source fixes require a reviewed correction
-  and renewed checks, not a refresh from moving dev.
+  and renewed checks, not a refresh from moving dev. After a workflow correction,
+  use the explicit main-scoped recovery dispatch for the original accepted release;
+  ordinary maintenance pushes cannot resubmit it automatically.
 - Keep partial remote state and evidence. If setup or first trust validation fails,
   stop for owner investigation; never add a token, direct-publish permission or a
   weaker branch/environment rule as a workaround.
