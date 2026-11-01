@@ -1,6 +1,6 @@
 {
   "name": "@grepco/pi-lence",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "A quieter pi conversation with a response browser, named pins, and a delayed activity warning.",
   "keywords": [
     "pi-package"

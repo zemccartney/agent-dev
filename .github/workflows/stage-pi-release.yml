@@ -1,9 +1,23 @@
 name: Stage accepted Pi-lence release
 
 on:
-  pull_request:
-    types: [closed]
+  push:
     branches: [main]
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: Diagnose environment admission or manually stage main at the expected version
+        type: choice
+        required: true
+        default: check-environment
+        options: [check-environment, stage-main]
+      expected_version:
+        description: Version main must contain, e.g. 1.0.0 (stage-main only; no v prefix)
+        type: string
+      inspected_npm:
+        description: I checked npm for this version; no pending candidate or published version blocks a new attempt. See RELEASING.md; staging only.
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -13,14 +27,65 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  diagnose:
+    name: Diagnose main-only environment (no npm)
+    if: github.repository == 'zemccartney/agent-dev' && github.event_name == 'workflow_dispatch' && inputs.mode == 'check-environment'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    environment: npm-staging
+    permissions: {}
+    steps:
+      - name: Show only deployment identity
+        env:
+          RUN_EVENT: ${{ github.event_name }}
+          RUN_REF: ${{ github.ref }}
+          RUN_SHA: ${{ github.sha }}
+          WORKFLOW_REF: ${{ github.workflow_ref }}
+          WORKFLOW_SHA: ${{ github.workflow_sha }}
+        run: |
+          test "$RUN_EVENT" = workflow_dispatch
+          test "$RUN_REF" = refs/heads/main
+          printf 'Event: %s\nRef: %s\nCommit: %s\nWorkflow: %s\nWorkflow commit: %s\n' \
+            "$RUN_EVENT" "$RUN_REF" "$RUN_SHA" "$WORKFLOW_REF" "$WORKFLOW_SHA"
+          printf 'Main-only environment admitted this diagnostic. Registry authorization was not exercised.\n' >> "$GITHUB_STEP_SUMMARY"
+
+  select:
+    name: Select accepted release (read-only)
+    if: github.repository == 'zemccartney/agent-dev' && (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.mode == 'stage-main'))
+    runs-on: macos-15
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: read # Resolve the exact commit's accepted release PR; never mutate it.
+    outputs:
+      stage: ${{ steps.select.outputs.stage }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: jdx/mise-action@2d8d4cafcbd33be2ea37d2b6f5ad595363d1f1ca # v5.1.1
+        with:
+          version: 2026.9.1
+          install_args: --locked
+          cache: false
+          persist_github_token: false
+      - name: Authorize release merge or manual main version and check published state
+        id: select
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: mise exec -- node scripts/stage-pi-release.mjs --select
+
   validate:
     name: Verify accepted release archive
-    if: github.repository == 'zemccartney/agent-dev' && github.event.pull_request.merged == true && github.event.pull_request.head.ref == 'changeset-release/main' && github.event.pull_request.head.repo.full_name == github.repository
+    needs: select
+    if: needs.select.outputs.stage == 'true'
     runs-on: macos-15
     timeout-minutes: 30
     permissions:
       contents: read
-      pull-requests: read # Bind the event to the accepted release PR; never mutate it.
+      pull-requests: read # Reauthorize the exact release PR; never mutate it.
     outputs:
       digest: ${{ steps.verified.outputs.digest }}
       artifact-id: ${{ steps.artifact.outputs.artifact-id }}
@@ -95,11 +160,12 @@ jobs:
     needs: validate
     runs-on: macos-15
     timeout-minutes: 15
-    # Configure this environment main-only, no reviewers/wait timer, before first use.
+    # Push/dispatch identity is main; checkout alone cannot change environment admission.
+    # Keep this environment main-only, no reviewers/wait timer or administrator bypass.
     environment: npm-staging
     permissions:
       contents: read
-      pull-requests: read # Independently reauthorize the same accepted PR before submission.
+      pull-requests: read # Reauthorize release-merge PRs; manual runs require current actor permissions.
       id-token: write # npm stage-only trust; no direct publication, approval or dist-tag authority.
     env:
       EXPECTED_RECORD_DIGEST: ${{ needs.validate.outputs.digest }}
@@ -122,7 +188,7 @@ jobs:
           artifact-ids: ${{ needs.validate.outputs.artifact-id }}
           path: ${{ runner.temp }}/pi-release/
           digest-mismatch: error
-      - name: Reauthorize and submit the exact checked archive
+      - name: Reauthorize, recheck published state and submit the exact checked archive
         id: submit
         env:
           GITHUB_TOKEN: ${{ github.token }}

@@ -10,7 +10,7 @@ const head = "b".repeat(40);
 export function stageContext(sha = commit) {
   return {
     repository,
-    eventName: "pull_request",
+    eventName: "push",
     ref: "refs/heads/main",
     sha,
     workflowSha: sha,
@@ -25,7 +25,19 @@ export function stageContext(sha = commit) {
 }
 /** @param {string} [sha] */
 export function stageEvent(sha = commit) {
-  const pull_request = {
+  return {
+    ref: "refs/heads/main",
+    after: sha,
+    before: "c".repeat(40),
+    created: false,
+    deleted: false,
+    forced: false,
+    repository: { full_name: repository },
+  };
+}
+/** @param {string} [sha] */
+export function stagePullRequest(sha = commit) {
+  return {
     number: 6,
     state: "closed",
     merged: true,
@@ -35,10 +47,21 @@ export function stageEvent(sha = commit) {
     head: { sha: head, ref: "changeset-release/main", repo: { full_name: repository } },
     base: { ref: "main", repo: { full_name: repository } },
   };
-  return { action: "closed", number: 6, repository: { full_name: repository }, pull_request };
 }
-/** @param {ReturnType<typeof stageEvent>} event @param {string} [permission] */
-export function stageApi(event, permission = "admin") {
+/** @param {string} [version] */
+export function recoveryEvent(version = "0.1.0") {
+  return {
+    repository: { full_name: repository },
+    inputs: {
+      mode: "stage-main",
+      expected_version: version,
+      inspected_npm: "true",
+    },
+  };
+}
+/** @param {ReturnType<typeof stagePullRequest>} [pr] @param {string} [permission]
+ * @param {ReturnType<typeof stagePullRequest>[]} [associated] */
+export function stageApi(pr = stagePullRequest(), permission = "admin", associated = [pr]) {
   /** @type {string[]} */
   const calls = [];
   /** @type {import('../pi-release-github.mjs').Api} */
@@ -47,7 +70,9 @@ export function stageApi(event, permission = "admin") {
     calls.push(path);
     if (path === `/repos/${repository}`)
       return { full_name: repository, default_branch: "main", fork: false };
-    if (path === `/repos/${repository}/pulls/6`) return structuredClone(event.pull_request);
+    if (/\/commits\/[a-f0-9]{40}\/pulls\?per_page=100&page=1$/.test(path))
+      return structuredClone(associated);
+    if (path === `/repos/${repository}/pulls/6`) return structuredClone(pr);
     if (/\/collaborators\/[^/]+\/permission$/.test(path)) return { permission };
     throw new Error(`Unexpected API operation ${path}`);
   };
@@ -68,6 +93,17 @@ export async function sourceFixture(t) {
   git("commit", "-m", "accepted release source");
   const sha = git("rev-parse", "HEAD");
   git("update-ref", "refs/remotes/origin/main", sha);
-  const authorization = { pr: 6, commit: sha, head, runId: "123", runAttempt: "1" };
+  /** @type {import("../pi-release-stage.mjs").Authorization} */
+  const authorization = {
+    mode: "release-merge",
+    expectedVersion: null,
+    actor: "owner",
+    triggeringActor: "owner",
+    pr: 6,
+    commit: sha,
+    head,
+    runId: "123",
+    runAttempt: "1",
+  };
   return { ...f, cwd, git, authorization, bundle: join(f.root, "bundle") };
 }

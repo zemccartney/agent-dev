@@ -56,6 +56,8 @@ mise run check
 See [DEVELOPMENT.md](DEVELOPMENT.md) for repository protocol, optional hooks,
 changed-project checks, dependency exceptions, and safe verification/cleanup.
 Setup does not install hooks or register host integrations.
+For a quick reminder of release preparation, docs-only updates and staging recovery,
+see the flowcharts in [RELEASING.md](RELEASING.md).
 
 Use `/reload` to try Pi edits only in a session explicitly loading this checkout.
 
