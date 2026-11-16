@@ -107,8 +107,9 @@ function prBody(candidate, commit) {
   return `## Prepared Pi-lence release
 
 **Do not merge until review, current required checks, and staging readiness are complete.**
-Before the first release, complete the owner-controlled environment, bootstrap and npm trust setup
-in DEVELOPMENT.md. A local workflow file does not configure that access.
+Verify the owner-controlled environment and npm trust against the
+[release protocol](https://github.com/zemccartney/agent-dev/blob/${commit}/docs/maintenance/RELEASE-PROTOCOL.md).
+A local workflow file does not configure that access; do not repeat completed bootstrap setup.
 This draft is ready for behavioral review only after its preparation run succeeds.
 
 - Package: @grepco/pi-lence ${candidate.targetVersion}

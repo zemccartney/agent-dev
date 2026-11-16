@@ -67,7 +67,7 @@ Pi-lence's intended end-to-end chain:
 | Published state    | Bounded unauthenticated metadata GET before selection/packing/verification/submission; published target or inconclusive lookup stops                           | Snapshot, not an atomic lock; cannot discover pending stages or guarantee reuse of a removed version |
 | Uncertain outcome  | Owner inspects npm before any retry                                                                                                                            | A timeout does not prove that no pending stage exists                                                |
 
-pnpm12's lockfile contains bootstrap-tool and application YAML documents. The bootstrap policy inherits workspace age/trust settings here; mise still selects the executable. Release jobs restore no dependency/build caches.
+pnpm 12's lockfile contains bootstrap-tool and application YAML documents. The bootstrap policy inherits workspace age/trust settings here; mise still selects the executable. Release jobs restore no dependency/build caches.
 
 ## Test environment ≠ security sandbox
 
@@ -84,34 +84,34 @@ The provider supplies repeatable responses, tool calls, failures and delays. Per
 
 ## Project coverage — extend this table as release routes mature
 
-| Project          | Distribution artifact / route                               | Package-identity verification                                                         | Host evidence                                                   | Live release status                                     |
-| ---------------- | ----------------------------------------------------------- | ------------------------------------------------------------------------------------- | --------------------------------------------------------------- | ------------------------------------------------------- |
-| Pi-lence         | Canonical ten-file npm `.tgz`; native npm staging via pnpm  | Implemented: test/transfer/submit checks; pending/public download comparisons planned | Pi1.3.0; Node24.22.1/22.23.4; macOS ARM64 + advisory Ubuntu x64 | Bootstrap staged; real release not yet staged/published |
-| auto-caffeinator | Planned Herdr GitHub/prebuilt payload; npm manifest private | Public release-chain checks not yet established                                       | Local build/launcher/Herdr fixtures; owner human trial accepted | Separate release work remains                           |
-| agentlog         | Planned Herdr GitHub/prebuilt payload; npm manifest private | Public release-chain checks not yet established                                       | Local build/CLI/fixture tests; human trial outstanding          | Separate release work remains                           |
+| Project          | Distribution artifact / route                               | Package-identity verification                                                            | Host evidence                                                     | Live release status                                      |
+| ---------------- | ----------------------------------------------------------- | ---------------------------------------------------------------------------------------- | ----------------------------------------------------------------- | -------------------------------------------------------- |
+| Pi-lence         | Canonical ten-file npm `.tgz`; native npm staging via pnpm  | Implemented: test/transfer/submit checks; 0.1.0 pending/public byte comparisons recorded | Pi 1.3.0; Node 24.22.1/22.23.4; macOS ARM64 + advisory Ubuntu x64 | 0.1.0 published; GitHub finalization remains outstanding |
+| auto-caffeinator | Planned Herdr GitHub/prebuilt payload; npm manifest private | Public release-chain checks not yet established                                          | Local build/launcher/Herdr fixtures; owner human trial accepted   | Separate release work remains                            |
+| agentlog         | Planned Herdr GitHub/prebuilt payload; npm manifest private | Public release-chain checks not yet established                                          | Local build/CLI/fixture tests; human trial outstanding            | Separate release work remains                            |
 
 Add new projects by naming the **actual distributed artifact**, its digest/signing records, host tests, approval boundary and remaining live checks. Do not inherit Pi-lence's release evidence by association.
 
-## Evidence checkpoint — 2026-11-01
+## Recorded release evidence
 
-**Owner-confirmed npm readiness:** account 2FA enabled; organization 2FA enforced; owner is the sole `grepco` member. Owner completed live bootstrap login/staging and confirmed the bootstrap remains pending. Its saved archive matches the client receipt; temporary auth state is removed. Public version metadata independently confirms the `0.0.0-stage` placeholder. This is not real-release or OIDC evidence.
+The initial **0.1.0** publication was confirmed on 2026-11-01. Retained owner-release
+evidence records source `419ce1d`, staging run `41333328598` attempt 1, and matching
+CI, owner-downloaded pending-stage and public npm archives: SHA256
+`6a2366b2bafe45a18c60bc02315b82497a6468957926d36facb2da37a4117607`.
+Owner reported valid stage-only trust and later bootstrap rejection. Registry provenance
+and publish attestations were retrieved; scoped signature/chain/log verification was
+recorded, **not** full npm-audit-signatures/TUF/SCT verification. These are historical
+results, not a fresh audit of remote settings or evidence transferable to a new candidate.
 
-**Owner-reported trust status:** stage-only GitHub configuration saved; npm shows **Pending validation**, with first-use deadline **2026-11-03 03:40 UTC**. Owner also saved and reloaded **Require two-factor authentication and disallow tokens** at package level. Saving the configuration is not proof of live authorization.
-
-| State                  | What we know                                                                                                                                                                |
-| ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Implemented / tested   | Tooling merged to dev and deliberately applied to draft release PR6; full408 checks, exact-archive Node24/22 tests and real-client loopback submission passed               |
-| Configured / read back | GitHub `npm-staging`: only Branch→main, no reviewers/wait timer, administrator bypass disabled, no secrets/variables                                                        |
-| Still pending          | Trust validation/live CI OIDC/Sigstore/permission enforcement, real-release staging and download comparisons                                                                |
-| Release approval       | Owner merged PR6; archive validation passed, but main-only environment rejected the PR-derived deployment before submission. No real-release stage; never approve bootstrap |
-
-This is evidence of configuration and local/CI behavior—not a claim that live publishing has succeeded. Consult current PR/run results before acting.
+The [Pi-lence maintainer guide](../../pi/pi-lence/docs/maintenance/README.md) records
+later public install/update/removal smoke results and their limits. No GitHub tag or
+Release finalization mechanism exists yet; see [backlog](BACKLOG.md).
 
 ## Find the details
 
 | Topic                                | Reference                                                                                                                                                                                                                                                                       |
 | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Owner procedures, setup and recovery | [DEVELOPMENT.md](DEVELOPMENT.md)                                                                                                                                                                                                                                                |
+| Owner procedures, setup and recovery | [Release protocol](RELEASE-PROTOCOL.md)                                                                                                                                                                                                                                         |
 | Canonical package + SHA256           | `pi/pi-lence/scripts/pack.mjs`                                                                                                                                                                                                                                                  |
 | Record, SHA512 and verification      | `scripts/pi-release-stage.mjs`                                                                                                                                                                                                                                                  |
 | Native client and receipt validation | `scripts/pi-release-npm.mjs` (npm registry integration; executes pnpm)                                                                                                                                                                                                          |

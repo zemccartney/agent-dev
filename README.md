@@ -20,4 +20,4 @@ mise run setup
 mise run check
 ```
 
-See the [development guide](DEVELOPMENT.md) and [maintenance notes](MAINTENANCE.md).
+See the [maintenance guides](docs/maintenance/README.md).

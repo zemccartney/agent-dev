@@ -17,7 +17,7 @@ async function subject(name) {
 /** @param {import('node:test').TestContext} t @param {boolean} [withNote] */
 async function fixture(t, withNote = true) {
   const f = await createChangesetFixture(t);
-  for (const path of ["thinking", ".superpowers", "docs"]) await mkdir(join(f.cwd, path));
+  for (const path of ["thinking", ".superpowers"]) await mkdir(join(f.cwd, path));
   for (const path of [
     "plan.md",
     "thinking/local.md",
@@ -224,7 +224,12 @@ test("create-only PR uses CAS, targets main and explains the actual approval bou
   );
   const body = writes.at(-1)?.body.body;
   assert.match(body, /merge authorizes staging only/i);
-  assert.match(body, /environment, bootstrap and.*trust setup/i);
+  assert.match(body, /environment.*trust/i);
+  assert.ok(
+    body.includes(
+      `https://github.com/${repo}/blob/${prepared}/docs/maintenance/RELEASE-PROTOCOL.md`,
+    ),
+  );
   assert.match(body, /release branch/i);
   assert.match(body, /Approve workflows to run/);
   assert.match(body, /Do not merge/i);

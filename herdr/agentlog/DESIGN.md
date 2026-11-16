@@ -1,12 +1,21 @@
 # herder-agentlog — compact v0 design
 
-**Status: design and [implementation plan](PLAN.md) approved; no product implementation yet.**
+**Status: implemented source-build milestone, not a public release.**
+See [maintenance and acceptance](docs/maintenance/README.md) for evidence and remaining gates.
 
 **Refinements agreed:** TypeScript/Node for v0 with an explicit external Node prerequisite; no bundled JavaScript runtime. No startup toast or attachment polling: readiness is shown inside the on-demand popup. Rust/native distribution is a follow-up.
 
 A local Herdr plugin that makes saved Pi conversations easy to close, find, and reopen. It is a recovery catalog, not a process supervisor, transcript backup, or replacement agent session manager.
 
-Agreed behavior is recorded in [DISCUSSION.md](DISCUSSION.md); deferred work is in [FOLLOW-UPS.md](FOLLOW-UPS.md). Technical choices below are the assistant's recommendations under the user's delegation.
+This is the maintained product contract; deferred work is in [FOLLOW-UPS.md](FOLLOW-UPS.md).
+
+## Terms
+
+An **agent session** is a continuing saved conversation, not its current process.
+The **recovery registry** catalogs sessions for rediscovery/resumption, including closed ones.
+A **pinned session** gets preferential ordering, not automatic startup. An **archived session**
+is set aside from the everyday list without deleting its conversation or stopping a process.
+A **registry label** is a display override, separate from the native name and session identifier.
 
 ## 1. The experience
 
@@ -20,7 +29,7 @@ Invoke **Sessions** to open a temporary Herdr popup. Search by display/native na
 - **Archive:** hides the record without stopping Pi or forgetting its pin. Successfully opening an archived session unarchives it. Nothing expires automatically; v0 has no transcript-delete action.
 - **Escape:** close the popup without changing any agent or its draft. Support mouse selection/buttons and ordinary keyboard search/navigation; no bespoke interaction framework.
 
-Use the public plugin action `herder-agentlog.sessions`. Recommend an optional `prefix+a` binding (Ctrl+B, then A with default prefix); it is unbound in the defaults and current config inspected here. Installation must check conflicts and ask before editing user bindings. The action is usable without that binding.
+Use the public plugin action `grepco.agentlog.sessions`. Recommend an optional `prefix+a` binding (Ctrl+B, then A with default prefix); it is unbound in the defaults and current config inspected here. Installation must check conflicts and ask before editing user bindings. The action is usable without that binding.
 
 ## 2. Small architecture
 
@@ -36,11 +45,11 @@ Herdr live pane list ───────────────────�
                                                focus or resume through Herdr
 ```
 
-**Agreed v0 runtime direction:** TypeScript on Node 24 LTS, using built-in `node:sqlite` and standalone `@earendil-works/pi-tui`, selected in [PLAN.md](PLAN.md). Target macOS first, Herdr 0.9.3 and Pi 1.1.0. Node v24.16.0 and `node:sqlite` were verified locally with an in-memory database. **V0 requires separately installed Node 24.15+ (25.x requires 25.7+); Herdr itself does not require Node. Bundling a JavaScript runtime is explicitly rejected.** The package README must acknowledge this prerequisite as a distribution limitation and point to the Rust/native-binary follow-up. No rewrite is required for v0. Herdr launches ordinary commands; it does not privilege Python, Node, or Rust as its plugin language.
+**Agreed v0 runtime direction:** TypeScript on Node 24 LTS, using built-in `node:sqlite` and standalone `@earendil-works/pi-tui`. Recorded host acceptance used macOS, Herdr 0.9.3 and Pi 1.2.0. Node v24.16.0 and `node:sqlite` were verified locally with an in-memory database. **V0 requires separately installed Node 24.15+ (25.x requires 25.7+); Herdr itself does not require Node. Bundling a JavaScript runtime is explicitly rejected.** The package README must acknowledge this prerequisite as a distribution limitation and point to the Rust/native-binary follow-up. No rewrite is required for v0. Herdr launches ordinary commands; it does not privilege Python, Node, or Rust as its plugin language.
 
 **Stability decision after implementation began:** retain `node:sqlite` with the 24.15 / 25.7 release-candidate baseline, not a claim of Stable (2). The user accepts that risk for personal use on current Node 24/26 and requests later reassessment. Earlier unflagged SQLite versions may work but are unsupported; provide an upgrade diagnostic and README disclosure, not compatibility machinery.
 
-The user prefers a TypeScript repository, eventually with a root pnpm workspace and shared lint/format/test tooling. Keep this package workspace-ready and align with the other Herdr plugin's Node direction. Do not create or migrate root tooling as part of this plugin without separate agreement. No daemon, Pi extension, plugin-initiated model calls, or network service. Python/curses was initially recommended for standard-library convenience, but cross-repository consistency now outweighs that local convenience.
+Use the existing root pnpm workspace and shared lint/format/test policy; runtime requirements stay package-local. No daemon, Pi extension, plugin-initiated model calls, or network service. Python/curses was initially recommended for standard-library convenience, but cross-repository consistency now outweighs that local convenience.
 
 Modules stay small: Pi-file adapter, SQLite store, Herdr API wrapper, popup, and hook/action entrypoints. Keep only the Pi-specific discovery/parsing/resume operations behind an adapter boundary; do not build a generalized adapter framework before the Claude fast-follow.
 
@@ -58,7 +67,7 @@ Keep source-derived metadata separate from user-owned fields so refresh never re
 
 ## 4. Discovery and freshness
 
-On popup open and explicit Refresh, scan Pi's normal session tree plus discoverable configured roots and previously recorded Herdr session paths. Include existing sessions created outside Herdr. In this installation there are currently 15 files totaling about 45 MiB: a streaming scan of changed files is a reasonable first implementation.
+On popup open and explicit Refresh, scan Pi's normal session tree plus discoverable configured roots and previously recorded Herdr session paths. Include existing sessions created outside Herdr. Stream changed files rather than reading an entire transcript collection into memory.
 
 Known roots include the default agent directory, an explicitly inherited alternative agent directory, and absolute session-directory overrides visible in Pi's global settings/environment. Relative overrides must resolve against a known project cwd, not the plugin directory. Do not crawl the filesystem or execute project configuration.
 
@@ -66,7 +75,7 @@ Known roots include the default agent directory, an explicitly inherited alterna
 
 Read the session header for identity/original cwd, latest `session_info` for the native name, and user-message entries for recency. Recency is the maximum recorded user-message timestamp across the file, not mtime or active-branch selection. This is a deliberately simple saved-message signal, not an attempt to identify whether every user-role entry came from a human versus automation.
 
-Cache size/mtime fingerprints and stream changed files. During refresh, show a loading view that can be closed but does not accept list actions or edits. Offer Refresh for newly created outside sessions while the popup is open. Ignore an incomplete trailing JSONL line until the next scan; report malformed files without rewriting them or erasing prior records.
+Cache size/mtime fingerprints and stream changed files. Recheck readability even on cache hits; availability is a past observation, not a guarantee. Open rechecks access without creating a destination on failure, while a still-live matching pane can be visited. During refresh, show a loading view that can be closed but does not accept list actions or edits. Offer Refresh for newly created outside sessions while the popup is open. Ignore an incomplete trailing JSONL line until the next scan; report malformed files without rewriting them or erasing prior records.
 
 Short `pane.agent_detected` and `pane.agent_status_changed` hooks query the affected pane and remember valid Pi references while it is running. They do not scan all transcripts or spawn any agents. They can run while clients are detached because the server and its panes remain alive; this does not imply that detaching creates new Pi conversations. Popup refresh also captures current pane references. ID-only references resolve against known files; nonexistent/unsaved sessions are not promised resumable.
 
@@ -111,12 +120,14 @@ Test with synthetic Pi files and disposable named Herdr servers, never by stoppi
 6. Interrupted indexing and process termination preserve committed user metadata; malformed files are not changed.
 7. Popup mouse/keyboard operation, initial blocking Loading, manual blocking Refreshing, errors, escape/draft preservation, and focus transfer receive an actual Herdr smoke test. Verify that server startup and detach/reattach do not display registry UI or send notifications.
 
-## Review and evidence
+## Maintenance references
 
-Self-reviewed against the agreed decisions and as a builder preparing an implementation plan; no independent reviewer tool was available. The review clarified startup delivery, unreliable event-only capture, original-directory ownership, and unarchive ordering. After user feedback, TypeScript/Node with an external runtime prerequisite and popup-only readiness were agreed; runtime bundling and startup-toast machinery were removed. The implementation plan selects standalone pi-tui 1.1.0 after inspection of its published package and terminal/mouse APIs; actual Herdr popup behavior still requires the planned integration tests.
+[Maintenance and acceptance](docs/maintenance/README.md) separates code/tests, recorded
+isolated host evidence and the outstanding owner trial. The material constraints remain
+an external Node prerequisite with no bundled JavaScript runtime, no startup cue,
+and observation-dependent custom-path discovery. No design approval authorizes normal-host
+installation, publication or changing these boundaries.
 
-Checked the installed runtime, Pi's session format/manager, and Herdr v0.9.3's [plugin documentation](https://raw.githubusercontent.com/herdrdev/herdr/v0.9.3/docs/next/website/src/content/docs/plugins.mdx), [plugin event allowlist](https://github.com/herdrdev/herdr/blob/v0.9.3/src/api/schema/events.rs), and [notification implementation](https://github.com/herdrdev/herdr/blob/v0.9.3/src/server/headless/notifications.rs). This is source-level feasibility evidence, not a claim that the proposed plugin has been built or end-to-end tested.
-
-## Approval boundary
-
-The user approved the [implementation plan](PLAN.md) through Crit. Confirm an execution approach before product implementation. The material constraints are **an external Node 24.15+ prerequisite (25.x: 25.7+) with no bundled JavaScript runtime**, **no startup cue**, and **custom-path discovery depending on observation when outside known roots**. Exact colors, schema migrations, helper names, and test-fixture organization are left to the builder. Claude Code, naming synchronization, automatic morning recovery, and richer ranking remain follow-ups.
+Herdr 0.9.3 references: [plugins](https://raw.githubusercontent.com/herdrdev/herdr/v0.9.3/docs/next/website/src/content/docs/plugins.mdx),
+[event allowlist](https://github.com/herdrdev/herdr/blob/v0.9.3/src/api/schema/events.rs),
+[notifications](https://github.com/herdrdev/herdr/blob/v0.9.3/src/server/headless/notifications.rs).

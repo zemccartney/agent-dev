@@ -6,6 +6,14 @@ Status: implemented trial; initial review and fresh repair review completed, rep
 
 Remove the need to manually start caffeinate or guess how long unattended agent work will last. Prevent idle system sleep during autonomous work while allowing the display to sleep. This controls sleep protection, not execution: expiration never cancels an agent, and cannot guarantee that an agent stops or resumes after machine sleep.
 
+## Terms
+
+An **agent session** is the continuing conversation, not its displaying process.
+An **agent run** is an interval of autonomous work within that session, not the
+process lifetime. **Caffeination** means active idle-sleep protection; a **wake lease**
+is its time-bounded entitlement. Lease expiry is not an execution timeout and never
+ends agent work.
+
 ## Agreed scope and policy
 
 - macOS; local Pi and Claude Code agents running inside Herdr. No remote-agent coverage.
@@ -50,7 +58,7 @@ Wait ten seconds after autonomous work starts before automatically granting a le
 
 Explicit manual caffeination bypasses the start delay and sets a deadline for the chosen duration from now. It still obeys the plugged-in requirement. Recommended detail: uncertainty during the initial delay does not reset the timer, but actual caffeination waits for positive working evidence. On that evidence, grant only the remaining original lease duration, and only if the ten-second delay has elapsed. Do not manufacture a later deadline.
 
-Expiration should remain tracked internally for the ongoing run, even though it has no distinct sidebar appearance, so continuing activity cannot automatically grant a replacement lease. Cleanup of that bookkeeping follows reliable run-end/identity handling; implementation details remain unresolved.
+Expiration should remain tracked internally for the ongoing run, even though it has no distinct sidebar appearance, so continuing activity cannot automatically grant a replacement lease. Cleanup follows reliable run-end/identity handling; continuing activity alone cannot renew it.
 
 Implemented controls:
 
@@ -98,7 +106,7 @@ Sources: versioned `integrations.mdx`, `socket-api.mdx`, and `plugins.mdx` linke
 
 ### Package and runtime
 
-Create a standalone Herdr plugin under `herdr/caffeinate/` (working name), with its own package metadata, tests, README, and shipped copy of this design. Use Node.js, matching the repository's existing tooling; no runtime model calls, no agent-prompt injection, and no changes to agent execution. Use Herdr's existing Pi integration rather than building a new Pi extension. Require the Pi integration for supported authoritative Pi tracking; use Herdr's evidence-backed heuristics for Claude Code.
+The standalone Herdr plugin lives under `herdr/auto-caffeinator/`, with package metadata, tests, README and this product design. Use Node.js, matching the repository's existing tooling; no runtime model calls, no agent-prompt injection, and no changes to agent execution. Use Herdr's existing Pi integration rather than building a new Pi extension. Require the Pi integration for supported authoritative Pi tracking; use Herdr's evidence-backed heuristics for Claude Code.
 
 One monitor per local Herdr server owns that server's in-memory run state, timers, and caffeinate children. A one-shot startup helper ensures a single detached monitor exists, then exits; plugin actions can also ensure it exists after first installation. This is explicitly plugin-owned lifecycle management, not an assumption that Herdr supervises a daemon. A server-specific lock and private IPC endpoint prevent duplicate monitors and cross-session actions. Startup must avoid PID-reuse mistakes. Multiple Herdr servers hold independent assertions; macOS naturally keeps the machine awake while any assertion remains.
 
@@ -154,16 +162,16 @@ The approved design below/above remains the product baseline. Implementation cho
 - Runtime singleton directories fail closed after ungraceful monitor death. No automatic PID-based stale-lock takeover; manual cleanup is required after verifying the original owner is gone. This is a deliberate safety/convenience tradeoff, not persisted lease recovery.
 - Native assertion timeouts are rounded down to whole seconds. Arbitrarily large finite deadlines are retained in the domain; native assertions are capped at the signed-int timeout limit and can be reacquired only against the unchanged absolute deadline.
 - The monitor also exposes an explicit private stop command. It never sends stop/input/cancellation commands to agents.
-- OS cleanup and protocol simulations passed; actual agent, physical battery/display behavior and daily usability remain manual acceptance checks. Do not infer unattended reliability from the mockup or simulated reports.
+- OS cleanup and protocol simulations have historical passing evidence; the initial owner daily-use trial is accepted. Remaining real-agent and physical battery/display checks are tracked separately. Do not infer unattended reliability from the mockup or simulated reports.
 
 ## Current build and UI boundary
 
-- Node 24.x only, minimum 24.11.0 for developers and consumers, with one strict compiler project and one Node types environment. Application imports are extensionless under ESNext/Bundler and require the build; developer-run files retain Node-resolvable imports.
+- Consumer Node 24.x only, minimum 24.11.0; developer Node is pinned by the root toolchain. Core and tooling compiler projects are separate, with generated declarations under `node_modules/.cache/agent-dev/`. Application imports are extensionless under ESNext/Bundler and require the build; developer-run files retain Node-resolvable imports.
 - Production is one minified ESM `dist/main.js`; focused tests execute separate `.build/test` modules. Artifact and isolated Herdr tests exercise the actual bundle. The prepared `.build/runtime` payload is allowlisted, source-free and independent of consumer npm installs.
 - Standalone pi-tui owns terminal rendering, input/caret handling, mouse dispatch and width/layout primitives. Application adapters own numeric validation/first-edit behavior, persistent tabs/drafts and occupant selection. No agent SDK or shared UI framework is introduced.
 - `runPopup` installs closure handling before its asynchronous snapshot/label initialization; requests remain serialized, late work is ignored after closure, and leaving the popup never stops its monitor or sends agent input.
 - Required upstream texts are generated into notices from the bundle inventory and exact reviewed policy. pi-tui 1.0.4's missing npm LICENSE is supplied as a version-bound, provenance-recorded upstream copy; OpenTUI attribution and Marked's full redistribution terms are retained.
-- The real bundled monitor/popup passed isolated no-agent Herdr acceptance. Real Pi/Claude exits during active protection, actual minimum Node 24.11.0, physical power/display behavior and overnight reliability remain separate gates. Independent review findings were corrected with tests; the final corrective pass was not sent to a second reviewer. See `review-request.md` before promotion.
+- The real bundled monitor/popup passed isolated no-agent Herdr acceptance. Real Pi/Claude exits during active protection, actual minimum Node 24.11.0, physical power/display behavior and overnight reliability remain separate gates. Independent review findings were corrected with tests; the final corrective pass was not sent to a second reviewer. See [validation and review limits](validation.md) and the [shared backlog](../../../docs/maintenance/BACKLOG.md) before publication.
 
 ## Historical mockup
 
