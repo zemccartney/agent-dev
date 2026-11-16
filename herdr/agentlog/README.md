@@ -59,7 +59,7 @@ command = "grepco.agentlog.sessions"
 description = "Saved Pi sessions"
 ```
 
-No configuration is edited automatically. See [FOLLOW-UPS.md](FOLLOW-UPS.md) for native/Rust distribution and the separate Caffeinate pi-tui evaluation.
+No configuration is edited automatically. See [FOLLOW-UPS.md](FOLLOW-UPS.md) for native/Rust distribution and other product explorations.
 
 ## Controls
 
@@ -93,9 +93,9 @@ The suite stops only its own server, removes its disposable state, and checks th
 
 Before a hands-on trial: confirm the intended Node is on Herdr's PATH; verify the Pi integration; choose a nonconflicting keybinding; try one disposable conversation and an underlying draft; inspect the original cwd after Open. Installation into your normal namespace still requires your deliberate approval.
 
-## Design and implementation plan
+## Maintainer references
 
-- [Implementation plan — approved in Crit](PLAN.md)
-- [Compact design and trade-offs](DESIGN.md)
-- [Agreed requirements and discussion](DISCUSSION.md)
-- [Follow-ups and distribution direction](FOLLOW-UPS.md)
+- [Maintenance and acceptance](docs/maintenance/README.md)
+- [Design and trade-offs](DESIGN.md)
+- [Product follow-ups](FOLLOW-UPS.md)
+- [Shared release backlog](../../docs/maintenance/BACKLOG.md)

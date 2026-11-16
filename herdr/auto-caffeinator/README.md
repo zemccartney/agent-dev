@@ -110,7 +110,7 @@ Settings live in the directory printed by `herdr plugin config-dir grepco.auto-c
 
 ## Development
 
-Follow the shared [repository setup](../../DEVELOPMENT.md) for pinned developer tools and workspace dependencies. Developer Node is **24.22.1**; the consumer requirement remains Node 24.x, minimum 24.11.0. Error-only developer runtime checks never provision Node.
+Follow the shared [repository setup](../../docs/maintenance/DEVELOPMENT.md) for pinned developer tools and workspace dependencies. Developer Node is **24.22.1**; the consumer requirement remains Node 24.x, minimum 24.11.0. Error-only developer runtime checks never provision Node.
 
 From the repository root:
 
@@ -129,7 +129,7 @@ mise exec -- pnpm --filter @grepco/auto-caffeinator test:runtime
 - Default tests use injected clocks, fake sockets, ordinary child processes and a real toolkit renderer/terminal emulator; they acquire no OS assertions. Separate artifact tests execute the actual production bundle. `pnpm test:runtime` consumes an already prepared payload and reports the actual selected binary; use `CAFFEINATE_TEST_NODE=/absolute/path/to/node` for another preinstalled Node 24 binary. Simulated version boundaries are not minimum-runtime acceptance.
 - `pnpm build` prepares `.build/runtime/`: only `dist/main.js`, launcher/preflight, runtime manifest, minimal ESM package metadata, the canonical repository LICENSE and `THIRD_PARTY_NOTICES.txt`. It does not contain source, tests, tools, node_modules, devEngines or maps. This local payload is not a published release.
 - Bundle-graph inventory and exact-version `scripts/license-policy.json` drive fail-closed notices. Installed upstream texts are preserved in full, including injected bundler helpers. Explicit version-bound `vendor:` inputs supply pi-tui's omitted root license and copied OpenTUI attribution, with pinned source provenance under `scripts/licenses/`. Unknown versions or missing required text block preparation. The repository LICENSE is copied, not independently maintained.
-- Installer, release archives, checksums and publishing automation remain subsequent work. The [fresh-context review request](docs/review-request.md) covers the whole package; that broader safety/release review remains separate from the repository-foundation review.
+- Installer, release archives, checksums and publishing automation remain subsequent work. [Validation and review limits](docs/validation.md) distinguish historical independent review from still-outstanding release acceptance.
 - Manifest entrypoints use `/bin/sh scripts/launch.sh`; the obsolete `src/main.mjs` trial shim has been removed. Existing monitors/IPC/leases are not restarted or restored by building; relinking the live trial is intentionally not automatic.
 
 ### Separately opted-in validation

@@ -135,6 +135,20 @@ test("version without pending notes refuses without mutation", async (t) => {
   succeeds(await f.run("pnpm", ["run", "format:check:root"]));
 });
 
+test("root formatter checks and fixes relocated maintenance guidance", async (t) => {
+  const f = await fixture(t);
+  await writeFile(join(f.cwd, "docs/maintenance/DEVELOPMENT.md"), "#   Fixture guide\n");
+  const bad = await f.run("pnpm", ["run", "format:check:root"]);
+  assert.notEqual(bad.code, 0, bad.output);
+  assert.match(bad.output, /docs\/maintenance\/DEVELOPMENT\.md/);
+  succeeds(await f.run("pnpm", ["run", "format:root"]));
+  assert.equal(
+    await readFile(join(f.cwd, "docs/maintenance/DEVELOPMENT.md"), "utf8"),
+    "# Fixture guide\n",
+  );
+  succeeds(await f.run("pnpm", ["run", "format:check:root"]));
+});
+
 test("root formatting checks reject and fix misformatted Changesets configuration and notes", async (t) => {
   const f = await fixture(t);
   await writeFile(

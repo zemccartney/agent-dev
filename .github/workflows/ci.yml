@@ -37,7 +37,7 @@ jobs:
 
   pi-hosts:
     # Linux failures stay visible, but are advisory for merge/release decisions.
-    # See MAINTENANCE.md; do not make compatibility jobs mandatory merge checks.
+    # See docs/maintenance/MAINTENANCE.md; do not make compatibility jobs mandatory merge checks.
     name: Pi ${{ matrix.purpose }} (${{ matrix.os }}, Node ${{ matrix.node }})
     runs-on: ${{ matrix.os }}
     timeout-minutes: 15

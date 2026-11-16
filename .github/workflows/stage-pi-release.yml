@@ -15,7 +15,7 @@ on:
         description: Version main must contain, e.g. 1.0.0 (stage-main only; no v prefix)
         type: string
       inspected_npm:
-        description: I checked npm for this version; no pending candidate or published version blocks a new attempt. See RELEASING.md; staging only.
+        description: I checked npm for this version; no pending candidate or published version blocks a new attempt. See docs/maintenance/RELEASING.md; staging only.
         type: boolean
         default: false
 

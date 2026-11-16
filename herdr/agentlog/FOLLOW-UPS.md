@@ -1,8 +1,10 @@
-# herder-agentlog — follow-ups
+# Agentlog — product follow-ups
 
 Living record of ideas raised during design. Nothing here silently expands v0. “Fast-follow” records intent, not a delivery date or an approved implementation.
 
-Current decisions: [DISCUSSION.md](DISCUSSION.md).
+Current decisions: [DESIGN.md](DESIGN.md). Shared release/verification work lives in
+[the repository backlog](../../docs/maintenance/BACKLOG.md); this file owns Agentlog's
+product exploration, not a duplicate infrastructure roadmap.
 
 ## Requested fast-follows
 
@@ -19,17 +21,6 @@ Current decisions: [DISCUSSION.md](DISCUSSION.md).
 - Motivation: users may expect their registry label to appear in Pi's `/resume` picker or work in a native resume command.
 - Investigate native-name updates/synchronization and conflict ownership. Do not assume bidirectional synchronization is the solution before testing it.
 - Pi currently documents `--session` as accepting a path or ID, not a friendly name. Name synchronization alone does not create CLI name aliases.
-
-## Cross-plugin TUI reuse requested during review
-
-### Evaluate pi-tui for Caffeinate
-
-- Motivation: avoid maintaining handwritten terminal rendering/input/layout machinery in multiple Herdr plugins; the user would welcome simplifying Caffeinate's view layer.
-- Use Agentlog to establish bundled pi-tui behavior inside Herdr, including mouse, Unicode, resize, cleanup, and measured payload size.
-- Agentlog's source-build acceptance now exercises bundled pi-tui 1.0.4 inside real Herdr with mouse, control keys, Unicode, resize, and cleanup, without optional native helpers. The complete runtime is about 202 KB / 62 KB tar.gz. Useful integration details: recreate SelectList while retaining the SessionKey, initialize it before handling input (not only during render), and explicitly move a prefilled Input's cursor to the end.
-- Then evaluate a focused Caffeinate UI migration: replace low-level terminal plumbing while preserving controls, domain behavior, and its existing tests. This is not approval to rewrite its active worktree during the Agentlog plan review.
-- Reusing a dependency shares knowledge and review effort; it does not make its bytes free in separately shipped, self-contained plugin bundles.
-- Keep plugin-specific state/actions separate. Extract a shared helper only when concrete repeated code warrants it; do not build a generalized UI framework first.
 
 ## Revisit after day-to-day use
 
@@ -79,11 +70,12 @@ The user raised concern that requiring Node 24.15+ is friction for end users. He
 - **Hard constraint: do not bundle a JavaScript runtime.** The user explicitly rejected shipping that additional runtime payload; it is not an alternative to revisit without a change in direction.
 - Ordinary JavaScript bundling alone does not remove the Node runtime requirement. Rust/native distribution is the preferred direction to investigate, but no rewrite is required or scheduled for v0.
 
-## Repository direction (separate scope)
+## Maintainer boundary
 
-The user prefers TypeScript throughout this tooling repo, with an eventual root pnpm workspace and shared quality configuration. The Crit review explicitly requested mirroring Caffeinate's package-local direction now: pnpm and its dependency-security policy, tsdown, independent TypeScript checks, type-aware Oxlint, Oxfmt, and Node's test runner against built output. Vitest/bats-core were earlier candidates, not requirements for this implementation.
-
-The expanded [root TODO.md](../../TODO.md) records mise, shared workspace/configuration, hk/CI, Changesets, security checks, and the prebuilt GitHub artifact/install direction. Keep these as separate infrastructure/packaging work; do not make a root migration a prerequisite or silently change Caffeinate. The user explicitly requested a small bundled/minified Agentlog payload. Include reachable pi-tui/transitive JS in that bundle; consumers must not install pi-tui separately. Validate the clean production popup without node_modules and only include a native helper asset if the required behavior actually needs it. Measure the complete compressed/uncompressed payload and preserve license notices. Node itself must remain separately installed.
+The root workspace/shared checks and auto-caffeinator's pi-tui migration are implemented,
+not outstanding product requests. Keep plugin state/actions separate; a shared dependency
+is not a reason to invent a generalized UI framework. See [package maintenance](docs/maintenance/README.md)
+for bundle, tooling and acceptance details.
 
 ## Deliberately out of v0; not promised roadmap items
 

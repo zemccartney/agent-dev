@@ -184,7 +184,8 @@ export async function createChangesetFixture(t, { includeHerdr = true } = {}) {
     join(cwd, "pnpm-workspace.yaml"),
     `${await readFile(join(root, "pnpm-workspace.yaml"), "utf8")}\nverifyDepsBeforeRun: false\n`,
   );
-  for (const name of ["README.md", "DEVELOPMENT.md"])
+  await mkdir(join(cwd, "docs/maintenance"), { recursive: true });
+  for (const name of ["README.md", "docs/maintenance/DEVELOPMENT.md"])
     await writeFile(join(cwd, name), "# Fixture\n");
   await writeFile(join(cwd, ".github/fixture.yml"), "name: Fixture\n");
   await writeFile(join(cwd, "scripts/fixture.mjs"), "export {};\n");

@@ -1,7 +1,8 @@
 # Release flows — quick reference
 
 Pi-lence uses npm staging. Herdr releases/installers are separate work.
-Details: [development procedures](DEVELOPMENT.md) · [supply-chain checks](SUPPLY_CHAIN.md).
+Details: [release protocol and setup](RELEASE-PROTOCOL.md) · [supply-chain checks](SUPPLY_CHAIN.md).
+Pi-lence 0.1.0 is published; these flows apply to subsequent releases. Do not repeat bootstrap.
 
 ## 1. Everyday work
 
@@ -69,8 +70,8 @@ a merged/non-draft PR and the exact merge SHA. API errors/ambiguity stop; they d
 permit staging. A branch name alone is not sufficient release authorization.
 
 **Merge approves staging, not publication.** CI cannot approve/reject a stage or
-manage dist-tags. Keep the inert bootstrap pending until real-release inspection;
-never approve the bootstrap. Preserve newer dev work/notes during back-sync.
+manage dist-tags. Never approve an inert bootstrap candidate. Preserve newer dev
+work/notes during back-sync.
 
 ## 4. Docs-only or maintenance update
 
@@ -110,8 +111,8 @@ Actions → Stage accepted Pi-lence release → Run workflow → select main
 ```
 
 Recovery means **stage main, expecting version X**. Select branch **main**, choose
-**stage-main**, enter **expected_version** (for example `0.1.0`, without a `v`), and
-check the inspection acknowledgement only after completing section6 below. No PR
+**stage-main**, enter **expected_version** (for example an unpublished `1.0.0`, without a `v`), and
+check the inspection acknowledgement only after completing section 6 below. No PR
 number or commit input is needed. The version is a confirmation, not an override:
 the workflow will not edit package.json to match it.
 
@@ -146,8 +147,7 @@ is a human attestation, not an automated registry check or permission to publish
 
 Open npm's Staged Packages view for the intended package, and inspect that package's
 published version history too. Check the exact target version, not just the version
-pointed to by the `latest` dist-tag. For the first real release, the target is
-`@grepco/pi-lence@0.1.0`.
+pointed to by the `latest` dist-tag. Published 0.1.0 is not a retry target.
 
 | What you find                                                          | What to do                                                                                                                                            |
 | ---------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -172,11 +172,9 @@ receive or save its receipt; a failed workflow does not necessarily mean that
 nothing was staged. An existing stage is something to investigate, not a reason to
 blindly retry or automatically discard it.
 
-**First-release exception:** the inert `0.0.0-bootstrap.0` stage is deliberately
-pending. We expect **bootstrap only → bootstrap plus real `0.1.0`**, rather than
-zero total stages → one. The public `0.0.0-stage` placeholder is not publication of
-`0.1.0`. Never approve the bootstrap; rejecting it remains a separately authorized
-step during real-release inspection.
+A first-package bootstrap can coexist with a distinct real-version stage. That is
+not permission to approve the bootstrap or ignore pending entries for the target
+version. This package's bootstrap is historical; the owner reports its rejection.
 
 The acknowledgement defaults to false and is required for recovery, not for the
 harmless diagnostic. It does not verify your inspection or act as a one-use token:
@@ -192,7 +190,7 @@ candidate. You need a new candidate, not an automatic bump to `1.0.1`.
 1. **Settle any active attempt first.** Let it finish, or deliberately cancel it
    and inspect the outcome. Cancellation can happen after an upload; it is not
    proof that no stage exists. Do not race a replacement against an older upload.
-2. **Inspect npm using section6.** If an unwanted `1.0.0` candidate exists, record
+2. **Inspect npm using section 6.** If an unwanted `1.0.0` candidate exists, record
    its ID/receipt and explicitly reject it using owner authentication/2FA. Verify
    the outcome before continuing. CI never rejects, replaces or approves it for you.
    If `1.0.0` is already published, stop: a code change needs a different version.
@@ -215,7 +213,7 @@ The invariant is **publish the exact candidate we tested and reviewed**, not
 remain historical evidence, not interchangeable artifacts. This exceptional manual
 path does not grant CI direct publishing, dist-tag, rejection or replacement powers.
 
-## Appendix: resources used during release planning
+## References
 
 - https://docs.npmjs.com/staged-publishing
 - https://docs.npmjs.com/viewing-package-provenance

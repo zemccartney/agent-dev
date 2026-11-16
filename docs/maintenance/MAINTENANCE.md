@@ -2,7 +2,7 @@
 
 These are personal-first tools shared publicly. This policy applies to Pi-lence,
 auto-caffeinator and agentlog. See [DEVELOPMENT.md](DEVELOPMENT.md) for commands and
-release procedures; this document records the maintenance decisions behind them.
+[release procedures](RELEASING.md); this document records the maintenance decisions behind them.
 
 ## Personal use sets priorities
 
@@ -83,6 +83,26 @@ Before enabling or using Changesets, npm trusted publishing or release automatio
 walk the maintainer through the proposed configuration, distinguish versioning from
 publication, rehearse without publishing, and invite preferences. Publication,
 main promotion and normal-host changes remain separate approval decisions.
+
+## Distribution and acceptance
+
+Consumer installers must not install runtimes/package managers or change shell profiles,
+host integrations or unrelated configuration. Keep source/manifest separate from an
+installed Herdr runtime; prerequisites and failures must be actionable. Every independently
+distributed artifact includes the canonical root LICENSE and all required third-party
+notices. Publish and verify immutable artifacts before advertising installer/checksum
+metadata; failed publication must preserve the previous release.
+
+Pi ships allowlisted TypeScript with host-provided wildcard peers, not bundled Pi libraries.
+Those ranges are not proof of compatibility; pin the development SDK separately.
+Herdr currently ships built JavaScript with an external Node prerequisite. Agentlog's
+release-candidate SQLite risk and no-bundled-JavaScript-runtime choice remain explicit.
+
+The initial week of Pi-lence and auto-caffeinator owner use is accepted; do not impose
+another soak period. Agentlog still needs owner acceptance. Keep targeted regressions,
+clean public-install checks and independent lifecycle/packaging review separate from
+those usability judgments. Unperformed minimum-runtime, native/physical or live-provider
+checks remain gaps, not inferred passes. See [remaining work](BACKLOG.md).
 
 ## Recording further concerns
 
