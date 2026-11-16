@@ -77,12 +77,13 @@ Pre-commit is not a release-tree gate.
 
 ## Temporary agent output
 
-Superpowers remains available for agent work, but its generated `docs/superpowers/`
-and `.superpowers/` output is ignored local scratch, not material to commit.
-At the end of a run, consolidate useful long-term decisions, requirements and evidence
-into maintained repository or package docs, then clean up that run's temporary output.
-Do not remove another agent's active work or discard details still needed for handoff.
-Cleanup is deliberate, not an automatic deletion hook.
+All agents should treat working plans, specs and execution notes as temporary scratch,
+not material to commit. Before wrapping up work, consolidate useful long-term decisions,
+requirements and evidence into maintained repository or package docs, then clean up
+that run's temporary output. For example, Superpowers output under `docs/superpowers/`
+and `.superpowers/` is ignored for this purpose. Do not remove another agent's active
+work or discard details still needed for handoff. Cleanup is deliberate, not an automatic
+deletion hook.
 
 ## Dependency changes
 
