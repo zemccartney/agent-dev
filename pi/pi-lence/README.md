@@ -62,5 +62,5 @@ provider errors and cancellation displays are not replaced. Warnings embedded in
 otherwise successful shell output cannot reliably be recognized and may be hidden.
 There is no cross-session pin library or automatic checklist updating.
 
-[Changelog](https://github.com/zemccartney/agent-dev/blob/dev/pi/pi-lence/CHANGELOG.md)
-· [Development and maintenance](https://github.com/zemccartney/agent-dev/blob/dev/pi/pi-lence/docs/maintenance/README.md)
+[Changelog](CHANGELOG.md)
+· [Development and maintenance](docs/maintenance/README.md)

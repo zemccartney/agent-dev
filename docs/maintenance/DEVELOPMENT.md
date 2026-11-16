@@ -73,7 +73,16 @@ to make it pass; review the existing setup first.
 stashes unstaged edits, formats only selected files, and checks affected projects.
 Structured argument lists preserve spaces/newlines/metacharacters. Missing tools
 fail the hook. Root canary tests and project checks are ordered to avoid races.
-Temporary plans are allowed on work branches: pre-commit is not a release-tree gate.
+Pre-commit is not a release-tree gate.
+
+## Temporary agent output
+
+Superpowers remains available for agent work, but its generated `docs/superpowers/`
+and `.superpowers/` output is ignored local scratch, not material to commit.
+At the end of a run, consolidate useful long-term decisions, requirements and evidence
+into maintained repository or package docs, then clean up that run's temporary output.
+Do not remove another agent's active work or discard details still needed for handoff.
+Cleanup is deliberate, not an automatic deletion hook.
 
 ## Dependency changes
 
