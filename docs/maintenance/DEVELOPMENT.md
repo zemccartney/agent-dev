@@ -16,6 +16,8 @@ mise run check
 `mise.toml` pins developer tools; `mise.lock` binds their download URLs/checksums.
 The verified toolchain targets macOS ARM64 and Linux x64. Developer Node is
 24.22.1; that is not a replacement for each project's consumer prerequisites.
+Use active-LTS Node for development and supported maintenance-LTS Node for consumers,
+subject to each package's documented runtime floor and explicitly reviewed exceptions.
 Setup installs locked tools and frozen workspace dependencies. It does not edit
 shell configuration, install Git hooks, register Pi/Herdr packages, or publish.
 There is no directory-entry hook, and checks do not auto-install missing tools.
